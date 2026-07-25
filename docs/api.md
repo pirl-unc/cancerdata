@@ -269,6 +269,14 @@ candidate is called a CTA by an explicit Human Protein Atlas (HPA) normal-tissue
 expression rule; the call is not evidence that its antigen is presented by the
 major histocompatibility complex (MHC) or that it is a validated therapy target.
 
+### Restriction synthesis
+
+`synthesize_restriction()` prefers the HPA protein restriction when protein data
+exist and otherwise uses the RNA restriction. Confidence increases when the
+modalities agree. The broad RNA call `REPRODUCTIVE` supports `TESTIS`,
+`PLACENTAL`, or `REPRODUCTIVE` protein calls; it never supports a `SOMATIC`
+protein call.
+
 - `oncoref.cta` — CTA definition, HPA restriction tiers, axes, aliases, and gene
   ID/name sets. Strict helpers such as `cta_gene_names()` and
   `cta_filtered_gene_names()` preserve the HPA reproductive-restriction default;
