@@ -4,13 +4,39 @@ on:
     types: [published]
 
 jobs:
+  classify-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.classify.outputs.publish }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Classify release
+        id: classify
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: python scripts/pypi_release_gate.py
+
   build-and-publish:
-    if: ${{ !contains(github.event.release.body, '<!-- oncoref-deploy-pypi-published -->') }}
+    needs: classify-release
+    if: ${{ needs.classify-release.outputs.publish == 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/project/oncoref/
     permissions:
+      contents: read
       id-token: write
     steps:
       - name: Checkout repository
