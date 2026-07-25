@@ -128,8 +128,7 @@ def test_shipped_restriction_is_hpa_only_synthesis():
 
 
 def test_synthesize_restriction_drops_ms():
-    # A protein-SOMATIC row is SOMATIC regardless of any ms_restriction value —
-    # confirms the synthesis ignores MS columns entirely.
+    # The synthesis ignores MS columns entirely.
     row = {
         "protein_restriction": "TESTIS",
         "protein_reliability": "Enhanced",
@@ -140,6 +139,27 @@ def test_synthesize_restriction_drops_ms():
     tissue, conf = cta.synthesize_restriction(row)
     assert tissue == "TESTIS"
     assert conf == "HIGH"  # protein(1.5)+rna-agree(1.5) over 2 sources = 1.5 >= 1.2
+
+
+def test_reproductive_rna_does_not_agree_with_somatic_protein():
+    row = {
+        "protein_restriction": "SOMATIC",
+        "protein_reliability": "Enhanced",
+        "rna_restriction": "REPRODUCTIVE",
+        "rna_restriction_level": "STRICT",
+    }
+    assert cta.synthesize_restriction(row) == ("SOMATIC", "LOW")
+
+
+def test_reproductive_rna_agrees_with_reproductive_protein():
+    for protein_restriction in ("TESTIS", "PLACENTAL", "REPRODUCTIVE"):
+        row = {
+            "protein_restriction": protein_restriction,
+            "protein_reliability": "Enhanced",
+            "rna_restriction": "REPRODUCTIVE",
+            "rna_restriction_level": "STRICT",
+        }
+        assert cta.synthesize_restriction(row) == (protein_restriction, "HIGH")
 
 
 def test_gene_id_to_name():

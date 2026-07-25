@@ -97,6 +97,7 @@ NON_CTA_EXCLUDED_GENE_IDS: frozenset[str] = _non_cta_excluded_gene_ids()
 _PASSES_FILTERS_COLUMN = "passes_filters"
 _LEGACY_FILTERED_COLUMN = "filtered"
 _NO_PROTEIN_RELIABILITY = {"no data", "nan", ""}
+_REPRODUCTIVE_RESTRICTION_LABELS = frozenset({"TESTIS", "PLACENTAL", "REPRODUCTIVE"})
 _CANONICAL_ALIAS_OVERRIDES: dict[str, str] = {
     "NYESO1": "CTAG1B",
     "ESO1": "CTAG1B",
@@ -106,6 +107,20 @@ _CANONICAL_ALIAS_OVERRIDES: dict[str, str] = {
 def _normalize_alias(name: object) -> str:
     """Case- and punctuation-insensitive key for CTA symbols and aliases."""
     return "".join(ch for ch in str(name).upper() if ch.isalnum())
+
+
+def _rna_restriction_agrees(selected_restriction: str, rna_restriction: str) -> bool:
+    """Whether an RNA call supports the selected HPA restriction.
+
+    Exact calls agree. The broader RNA label ``REPRODUCTIVE`` also supports a
+    more specific reproductive protein call, but never a ``SOMATIC`` call.
+    """
+    if rna_restriction == selected_restriction:
+        return True
+    return (
+        rna_restriction == "REPRODUCTIVE"
+        and selected_restriction in _REPRODUCTIVE_RESTRICTION_LABELS
+    )
 
 
 def synthesize_restriction(row) -> tuple[str, str]:
@@ -140,8 +155,7 @@ def synthesize_restriction(row) -> tuple[str, str]:
             score += 0.5
     if rna_has_data:
         sources += 1
-        rna_agrees = rna_r == tissue or (rna_r == "REPRODUCTIVE" and protein_has_data)
-        if rna_agrees:
+        if _rna_restriction_agrees(tissue, rna_r):
             score += 1.0
             if rna_level == "STRICT":
                 score += 0.5
