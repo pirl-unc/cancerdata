@@ -1,6 +1,14 @@
 from pathlib import Path
 
 
+def test_build_backend_supports_declared_pep_639_license_metadata():
+    pyproject = Path("pyproject.toml").read_text()
+
+    assert 'requires = ["setuptools>=77.0.0", "wheel"]' in pyproject
+    assert 'license = "Apache-2.0"' in pyproject
+    assert 'license-files = ["LICENSE"]' in pyproject
+
+
 def test_release_workflow_skips_deploy_sh_created_releases():
     workflow = Path(".github/workflows/release.yml").read_text()
 
