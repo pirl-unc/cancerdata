@@ -1,22 +1,18 @@
-# Registry of every cohort-level expression data source consumed by
-# pirlygenes. Drives `pirlygenes downloads`, `pirlygenes build`, and
-# the cache layout under ~/.cache/pirlygenes/expression/<id>/.
+# Registry of every cohort-level expression source known to oncoref.
+#
+# Entries expose provenance through oncoref.expression_registry. Sources with a
+# registry-backed builder can also be regenerated under
+# ~/.cache/oncoref/expression/<id>/ and staged into the downloadable data bundle.
 #
 # Field reference:
 #   id                 — stable identifier; matches the cache subdir.
 #   category           — expression | (future) protein, etc.
-#   cancer_codes       — pirlygenes cancer codes this source feeds.
-#   source_type        — gdc | geo | broad-cllmap | treehouse-compendium
-#                        | summary-only-import | pan-cancer-fpkm-table
-#   builder            — Python module/script that knows how to build
-#                        per-gene-per-cohort summaries from this source.
-#                        Today these are scripts/build_*.py; will move
-#                        to pirlygenes/builders/ when the
-#                        `pirlygenes build` dispatcher lands
-#                        (see docs/expression-data-refresh-plan.md
-#                        milestone 2).
+#   cancer_codes       — oncoref cancer codes this source feeds.
+#   source_type        — gdc | geo | sra-salmon | broad-cllmap | treehouse-compendium
+#                        | summary-only-import | pan-cancer-fpkm-table.
+#   builder            — build-time script that emits canonical source matrices.
 #   project_id         — GDC project, when source_type == gdc.
-#   accession          — GEO series accession, when source_type == geo.
+#   accession          — repository accession (GEO, BioProject, etc.).
 #   url                — Direct download URL for single-file sources.
 #   unit               — Native quantification unit at the source.
 #   expected_size_gb   — Rough estimate of cached size after fetch.
@@ -1200,6 +1196,102 @@ sources:
     notes: >
       n=5 primary CCS tumors (hCCS_1..5). 3 muscle normal controls
       excluded by sample_filter. Raw counts → length-norm TPM. Low n.
+
+  - id: prjna1083972-mmnst
+    category: expression
+    cancer_codes: [SARC_MMNST]
+    source_type: sra-salmon
+    builder: scripts/build_sra_salmon_source.py
+    accession: PRJNA1083972
+    sra_study: SRP493407
+    source_cohort: SRP493407_MMNST_2024
+    source_project: NCBI SRA / ENA
+    expected_samples_by_code: {SARC_MMNST: 3}
+    unit: Salmon gene TPM
+    library_prep: total RNA, random selection
+    tumor_origin: primary
+    source_scale_class: salmon_gene_tpm
+    linear_tpm_comparable: true
+    tpm_proxy: false
+    expected_size_gb: 18
+    citation: https://www.ncbi.nlm.nih.gov/bioproject/PRJNA1083972
+    source_version: INSDC SRP493407; Ensembl release 112 GRCh38 cDNA
+    processing_pipeline: sra_paired_fastq_salmon_gene_tpm_ensembl112_clean_tpm_16_9_75
+    pipeline_stem: srp493407_mmnst_2024
+    reference:
+      fastas:
+        - url: https://ftp.ensembl.org/pub/release-112/fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz
+          file_name: Homo_sapiens.GRCh38.cdna.all.fa.gz
+          sha256: 0bb3012f45e2474b8ce79911c47de0fc216bd574c60f1ddc8a8d911cd8a32b4d
+        - url: https://ftp.ensembl.org/pub/release-112/fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz
+          file_name: Homo_sapiens.GRCh38.ncrna.fa.gz
+          sha256: 16b9e32d047653e42a5d3b8843b30eefea1a08f7984568746d8db15ada26540b
+      combined_file: Homo_sapiens.GRCh38.cdna_ncrna.fa.gz
+      combined_sha256: 508706adb4e585b5f3d9544201db7aac0fa3b7be184bf2e3ae036a905935253d
+    salmon_args: [--validateMappings, --gcBias, --seqBias]
+    runs:
+      - accession: SRR28227826
+        biosample: SAMN40263701
+        sample_title: Melanotic schwannoma-1
+        role: tumor
+        cancer_code: SARC_MMNST
+        read_urls:
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/026/SRR28227826/SRR28227826_1.fastq.gz
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/026/SRR28227826/SRR28227826_2.fastq.gz
+        read_md5: [46f0d3217a59669b3e233ddd227ad6a5, f6d1cadab76ffc8bfb0a4d886b5710e1]
+      - accession: SRR28227825
+        biosample: SAMN40263702
+        sample_title: Melanotic schwannoma-2
+        role: tumor
+        cancer_code: SARC_MMNST
+        read_urls:
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/025/SRR28227825/SRR28227825_1.fastq.gz
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/025/SRR28227825/SRR28227825_2.fastq.gz
+        read_md5: [7932096bbf9afaf2225e4b39f9c04d87, 2e40a00521e765f7d9e102215cc49389]
+      - accession: SRR28227824
+        biosample: SAMN40263703
+        sample_title: Melanotic schwannoma-3
+        role: tumor
+        cancer_code: SARC_MMNST
+        read_urls:
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/024/SRR28227824/SRR28227824_1.fastq.gz
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/024/SRR28227824/SRR28227824_2.fastq.gz
+        read_md5: [af136c890855d87f20054577e4ebdf5c, 9511aabbdf6877c16fa388e914ae2994]
+      - accession: SRR28227823
+        biosample: SAMN40263704
+        sample_title: Normal nerve -1
+        role: matched_normal
+        read_urls:
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/023/SRR28227823/SRR28227823_1.fastq.gz
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/023/SRR28227823/SRR28227823_2.fastq.gz
+        read_md5: [b03b604f6104f18c12ca8f40709153a5, 8e71932840ba7e09166643ad9bd16802]
+      - accession: SRR28227822
+        biosample: SAMN40263705
+        sample_title: Normal nerve -2
+        role: matched_normal
+        read_urls:
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/022/SRR28227822/SRR28227822_1.fastq.gz
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/022/SRR28227822/SRR28227822_2.fastq.gz
+        read_md5: [bb9a7101dce36bb6a23f5c21cd34e86a, 568b8d926bb876590f8e7b687e91c821]
+      - accession: SRR28227821
+        biosample: SAMN40263706
+        sample_title: Normal nerve -3
+        role: matched_normal
+        read_urls:
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/021/SRR28227821/SRR28227821_1.fastq.gz
+          - https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR282/021/SRR28227821/SRR28227821_2.fastq.gz
+        read_md5: [73ee5444919e4d0d73a2b8355d64f104, 7a65471f381c69bf6fb73aeef6c290ed]
+    notes: >
+      Three primary MMNST tumors and three matched normal-nerve controls.
+      All six runs are quantified and recorded in the build audit; only the
+      tumor runs enter the SARC_MMNST reference matrix. Public INSDC metadata
+      report paired 150-bp DNBSEQ-G400 RNA-seq with random library selection.
+      This ultra-rare n=3 cohort has thin tail estimates.
+    special_handling: >
+      Verify every ENA FASTQ mirror file by its deposited MD5. Quantify all six
+      runs against the checksum-pinned Ensembl 112 cDNA transcriptome with
+      Salmon; sum transcript TPM by Ensembl gene. Never route matched-normal
+      runs SRR28227821/22/23 into the tumor reference.
 
   - id: gse328026-sarc-pec
     category: expression

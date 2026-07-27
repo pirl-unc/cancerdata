@@ -23,7 +23,7 @@ def test_registry_loads_all_sources():
 
 def test_source_types_cover_the_major_providers():
     types = {s.source_type for s in es.expression_sources()}
-    for t in ("gdc", "treehouse-compendium", "recount3", "broad-cllmap"):
+    for t in ("gdc", "treehouse-compendium", "recount3", "sra-salmon", "broad-cllmap"):
         assert t in types
 
 
@@ -59,6 +59,20 @@ def test_mbl_subgroup_source_has_typed_derivation_provenance():
     assert source.source_type == "treehouse-derived"
     assert source.source_version == "25.01"
     assert source.unit == "TPM"
+    assert source.tumor_origin == "primary"
+    assert source.processing_pipeline
+
+
+def test_mmnst_source_has_typed_raw_read_provenance():
+    source = es.expression_source("prjna1083972-mmnst")
+
+    assert source is not None
+    assert source.cancer_codes == ("SARC_MMNST",)
+    assert source.source_type == "sra-salmon"
+    assert source.accession == "PRJNA1083972"
+    assert source.source_cohort == "SRP493407_MMNST_2024"
+    assert source.source_project == "NCBI SRA / ENA"
+    assert source.unit == "Salmon gene TPM"
     assert source.tumor_origin == "primary"
     assert source.processing_pipeline
 

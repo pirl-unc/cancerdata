@@ -43,7 +43,9 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import tempfile
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Iterable, Mapping
@@ -69,6 +71,7 @@ SourceExpressionUnit = Literal["TPM", "FPKM", "RPKM", "log2(TPM+1)", "raw_counts
 GDC_SOURCE_TYPE = "gdc"
 GEO_MATRIX_SOURCE_TYPE = "geo-matrix"
 RECOUNT3_SOURCE_TYPE = "recount3"
+SRA_SALMON_SOURCE_TYPE = "sra-salmon"
 TREEHOUSE_SOURCE_TYPE = "treehouse-compendium"
 MEDULLOBLASTOMA_SUBGROUP_MARKER_GENE_IDS: dict[str, str] = {
     "MBL_WNT": "ENSG00000156076",  # WIF1
@@ -307,6 +310,69 @@ class Recount3Source:
 
 
 @dataclass(frozen=True)
+class SraSalmonRun:
+    """One paired-end SRA run and its explicit reference-cohort role."""
+
+    accession: str
+    biosample: str
+    sample_title: str
+    role: str
+    read_urls: tuple[str, str]
+    read_md5: tuple[str, str]
+    cancer_code: str | None = None
+
+    @property
+    def included_in_reference(self) -> bool:
+        return self.cancer_code is not None
+
+
+@dataclass(frozen=True)
+class SalmonReferenceFasta:
+    """One checksum-pinned FASTA component of a Salmon transcriptome."""
+
+    url: str
+    file_name: str
+    sha256: str
+
+
+@dataclass(frozen=True)
+class SraSalmonSource:
+    """One raw-read SRA study quantified against a pinned Salmon reference.
+
+    Every declared run is quantified so matched controls remain available for
+    within-study review. Only runs with ``cancer_code`` set are routed into
+    released tumor reference artifacts.
+    """
+
+    source_id: str
+    bioproject: str
+    sra_study: str
+    source_cohort: str
+    cancer_code: str | list[str]
+    runs: tuple[SraSalmonRun, ...]
+    reference_fastas: tuple[SalmonReferenceFasta, ...]
+    combined_transcriptome_file: str
+    combined_transcriptome_sha256: str
+    source_project: str | None = "SRA"
+    citation: str | None = None
+    notes: str = ""
+    pipeline_stem: str = ""
+    source_version: str | None = None
+    processing_pipeline: str | None = None
+    tumor_origin: str = "primary"
+    metastasis_site: str | None = None
+    source_scale_class: str | None = "salmon_gene_tpm"
+    linear_tpm_comparable: bool | None = True
+    tpm_proxy: bool | None = False
+    expected_n: Mapping[str, int] | None = None
+    salmon_args: tuple[str, ...] = (
+        "--validateMappings",
+        "--gcBias",
+        "--seqBias",
+    )
+
+
+@dataclass(frozen=True)
 class TreehouseCohort:
     """One cohort routed from a Treehouse compendium clinical table."""
 
@@ -351,7 +417,7 @@ class TreehouseSource:
 class SourceMatrixBuildResult:
     """Artifacts produced by :func:`build_source_matrices`."""
 
-    source: GdcSource | GeoMatrixSource | Recount3Source | TreehouseSource
+    source: GdcSource | GeoMatrixSource | Recount3Source | SraSalmonSource | TreehouseSource
     matrices: dict[str, pd.DataFrame]
     matrix_paths: dict[str, Path]
     summary_rows: pd.DataFrame
@@ -954,6 +1020,215 @@ def recount3_source_from_registry(
     for entry in _source_entries_from_registry(registry_path):
         if entry.get("id") == source_id:
             return recount3_source_from_entry(entry)
+    raise KeyError(f"source id {source_id!r} not found in expression source registry")
+
+
+def sra_salmon_source_entries(registry_path: str | Path | None = None) -> list[dict]:
+    """Raw ``source_type: sra-salmon`` entries from ``expression_sources.yaml``."""
+    return [
+        entry
+        for entry in _source_entries_from_registry(registry_path)
+        if entry.get("source_type") == SRA_SALMON_SOURCE_TYPE
+    ]
+
+
+def _validated_checksum(value, *, algorithm: str, description: str) -> str:
+    checksum = str(value or "").strip().lower()
+    expected_lengths = {"md5": 32, "sha256": 64}
+    if algorithm not in expected_lengths:
+        raise ValueError(f"unsupported checksum algorithm {algorithm!r}")
+    expected_length = expected_lengths[algorithm]
+    if re.fullmatch(rf"[0-9a-f]{{{expected_length}}}", checksum) is None:
+        raise ValueError(f"{description} must be a {expected_length}-character {algorithm} digest")
+    return checksum
+
+
+def _sra_salmon_args_from_entry(entry: Mapping) -> tuple[str, ...]:
+    args = tuple(
+        str(arg)
+        for arg in entry.get(
+            "salmon_args",
+            ["--validateMappings", "--gcBias", "--seqBias"],
+        )
+    )
+    builder_owned = {
+        "--index",
+        "-i",
+        "--libType",
+        "-l",
+        "--mates1",
+        "-1",
+        "--mates2",
+        "-2",
+        "--output",
+        "-o",
+        "--threads",
+        "-p",
+    }
+    conflicts = [
+        arg
+        for arg in args
+        if arg in builder_owned
+        or any(arg.startswith(option + "=") for option in builder_owned if option.startswith("--"))
+    ]
+    if conflicts:
+        raise ValueError(
+            f"source {entry.get('id')!r} salmon_args override builder-owned options: {conflicts}"
+        )
+    return args
+
+
+def _sra_salmon_run_from_entry(
+    entry: Mapping,
+    *,
+    allowed_codes: set[str],
+) -> SraSalmonRun:
+    accession = str(entry.get("accession") or "").strip()
+    biosample = str(entry.get("biosample") or "").strip()
+    sample_title = str(entry.get("sample_title") or "").strip()
+    role = str(entry.get("role") or "").strip()
+    cancer_code = _coerce_optional_text(entry.get("cancer_code"))
+    if re.fullmatch(r"[SED]RR\d+", accession) is None:
+        raise ValueError(f"invalid SRA run accession {accession!r}")
+    if not biosample:
+        raise ValueError(f"SRA run {accession} lacks a BioSample accession")
+    if not sample_title:
+        raise ValueError(f"SRA run {accession} lacks a sample title")
+    if role not in {"tumor", "matched_normal"}:
+        raise ValueError(f"SRA run {accession} has unsupported role {role!r}")
+    if role == "tumor" and cancer_code is None:
+        raise ValueError(f"tumor SRA run {accession} must declare a cancer_code")
+    if role == "matched_normal" and cancer_code is not None:
+        raise ValueError(f"matched-normal SRA run {accession} must not declare a cancer_code")
+    if cancer_code is not None and cancer_code not in allowed_codes:
+        raise ValueError(f"SRA run {accession} routes to undeclared cancer code {cancer_code!r}")
+
+    read_urls = tuple(str(url).strip() for url in entry.get("read_urls", []))
+    read_md5 = tuple(
+        _validated_checksum(
+            digest,
+            algorithm="md5",
+            description=f"SRA run {accession} read checksum",
+        )
+        for digest in entry.get("read_md5", [])
+    )
+    if len(read_urls) != 2 or any(not url.startswith("https://") for url in read_urls):
+        raise ValueError(f"SRA run {accession} must declare two HTTPS read URLs")
+    if len(read_md5) != 2:
+        raise ValueError(f"SRA run {accession} must declare two read MD5 digests")
+    return SraSalmonRun(
+        accession=accession,
+        biosample=biosample,
+        sample_title=sample_title,
+        role=role,
+        cancer_code=cancer_code,
+        read_urls=(read_urls[0], read_urls[1]),
+        read_md5=(read_md5[0], read_md5[1]),
+    )
+
+
+def sra_salmon_source_from_entry(entry: Mapping) -> SraSalmonSource:
+    """Convert one registry entry into an executable :class:`SraSalmonSource`."""
+    if entry.get("source_type") != SRA_SALMON_SOURCE_TYPE:
+        raise ValueError(
+            f"source {entry.get('id')!r} has source_type={entry.get('source_type')!r}, "
+            f"not {SRA_SALMON_SOURCE_TYPE!r}"
+        )
+    cancer_codes = [str(code) for code in entry.get("cancer_codes", [])]
+    if not cancer_codes:
+        raise ValueError(f"source {entry.get('id')!r} has no cancer_codes")
+    allowed_codes = set(cancer_codes)
+    runs = tuple(
+        _sra_salmon_run_from_entry(run, allowed_codes=allowed_codes)
+        for run in entry.get("runs", [])
+    )
+    if not runs:
+        raise ValueError(f"source {entry.get('id')!r} has no SRA runs")
+    accessions = [run.accession for run in runs]
+    if len(set(accessions)) != len(accessions):
+        duplicates = sorted({run for run in accessions if accessions.count(run) > 1})
+        raise ValueError(f"source {entry.get('id')!r} repeats SRA runs: {duplicates}")
+
+    expected = _expected_samples_by_code(entry, cancer_codes)
+    routed_counts = {code: sum(run.cancer_code == code for run in runs) for code in cancer_codes}
+    _validate_routed_sample_counts(
+        str(entry.get("source_cohort") or entry.get("id")),
+        {code: [""] * count for code, count in routed_counts.items()},
+        expected,
+    )
+
+    reference = dict(entry.get("reference") or {})
+    reference_fastas = []
+    for reference_entry in reference.get("fastas", []):
+        url = str(reference_entry.get("url") or "").strip()
+        file_name = str(reference_entry.get("file_name") or "").strip()
+        if not url.startswith("https://"):
+            raise ValueError(f"source {entry.get('id')!r} has a non-HTTPS reference URL")
+        if not file_name:
+            raise ValueError(f"source {entry.get('id')!r} has a reference without a file name")
+        reference_fastas.append(
+            SalmonReferenceFasta(
+                url=url,
+                file_name=file_name,
+                sha256=_validated_checksum(
+                    reference_entry.get("sha256"),
+                    algorithm="sha256",
+                    description=f"source {entry.get('id')!r} reference checksum",
+                ),
+            )
+        )
+    if not reference_fastas:
+        raise ValueError(f"source {entry.get('id')!r} has no transcriptome FASTAs")
+    reference_names = [item.file_name for item in reference_fastas]
+    if len(set(reference_names)) != len(reference_names):
+        raise ValueError(f"source {entry.get('id')!r} repeats a reference FASTA file name")
+    combined_file = str(reference.get("combined_file") or "").strip()
+    if not combined_file:
+        raise ValueError(f"source {entry.get('id')!r} lacks a combined transcriptome file name")
+    if combined_file in reference_names:
+        raise ValueError(
+            f"source {entry.get('id')!r} combined transcriptome must differ from its inputs"
+        )
+    cancer_code: str | list[str] = cancer_codes[0] if len(cancer_codes) == 1 else cancer_codes
+    return SraSalmonSource(
+        source_id=str(entry["id"]),
+        bioproject=str(entry["accession"]),
+        sra_study=str(entry["sra_study"]),
+        source_cohort=str(entry["source_cohort"]),
+        cancer_code=cancer_code,
+        runs=runs,
+        reference_fastas=tuple(reference_fastas),
+        combined_transcriptome_file=combined_file,
+        combined_transcriptome_sha256=_validated_checksum(
+            reference.get("combined_sha256"),
+            algorithm="sha256",
+            description=f"source {entry.get('id')!r} combined transcriptome checksum",
+        ),
+        source_project=entry.get("source_project") or "SRA",
+        citation=entry.get("citation"),
+        expected_n=expected,
+        notes=str(entry.get("notes") or entry.get("special_handling") or ""),
+        pipeline_stem=str(entry.get("pipeline_stem") or ""),
+        source_version=_coerce_optional_text(entry.get("source_version")),
+        processing_pipeline=_coerce_optional_text(entry.get("processing_pipeline")),
+        tumor_origin=_coerce_tumor_origin(entry.get("tumor_origin")),
+        metastasis_site=_coerce_optional_text(entry.get("metastasis_site")),
+        source_scale_class=_coerce_optional_text(entry.get("source_scale_class"))
+        or "salmon_gene_tpm",
+        linear_tpm_comparable=entry.get("linear_tpm_comparable", True),
+        tpm_proxy=entry.get("tpm_proxy", False),
+        salmon_args=_sra_salmon_args_from_entry(entry),
+    )
+
+
+def sra_salmon_source_from_registry(
+    source_id: str,
+    registry_path: str | Path | None = None,
+) -> SraSalmonSource:
+    """Load one ``source_type: sra-salmon`` entry from the source registry."""
+    for entry in _source_entries_from_registry(registry_path):
+        if entry.get("id") == source_id:
+            return sra_salmon_source_from_entry(entry)
     raise KeyError(f"source id {source_id!r} not found in expression source registry")
 
 
@@ -2072,12 +2347,398 @@ def build_gdc_sample_manifest(source: GdcSource, hits: Iterable[Mapping]) -> pd.
     return manifest.sort_values(["case_id", "sample_id", "source_file_id"]).reset_index(drop=True)
 
 
-def _md5(path: Path) -> str:
-    digest = hashlib.md5()
+def _file_digest(path: Path, algorithm: str) -> str:
+    digest = hashlib.new(algorithm)
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _md5(path: Path) -> str:
+    return _file_digest(path, "md5")
+
+
+def _sha256(path: Path) -> str:
+    return _file_digest(path, "sha256")
+
+
+def download_verified_file(
+    url: str,
+    destination: str | Path,
+    *,
+    checksum: str,
+    algorithm: str,
+    force_download: bool = False,
+) -> Path:
+    """Download one build input atomically, resuming partials when supported."""
+    path = Path(destination)
+    expected = _validated_checksum(
+        checksum,
+        algorithm=algorithm,
+        description=f"checksum for {url}",
+    )
+    if path.exists() and not force_download and _file_digest(path, algorithm) == expected:
+        return path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".part")
+
+    def _download_partial(*, resume: bool) -> None:
+        offset = tmp.stat().st_size if resume and tmp.exists() else 0
+        headers = {"Range": f"bytes={offset}-"} if offset else {}
+        request = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(request, timeout=180) as response:
+            status = getattr(response, "status", None) or response.getcode()
+            content_range = str(response.headers.get("Content-Range") or "")
+            resumed = bool(
+                offset and status == 206 and content_range.startswith(f"bytes {offset}-")
+            )
+            mode = "ab" if resumed else "wb"
+            with tmp.open(mode) as handle:
+                shutil.copyfileobj(response, handle, length=1024 * 1024)
+
+    try:
+        try:
+            _download_partial(resume=not force_download)
+        except urllib.error.HTTPError as error:
+            if error.code != 416 or not tmp.exists():
+                raise
+            if _file_digest(tmp, algorithm) != expected:
+                tmp.unlink()
+                _download_partial(resume=False)
+        observed = _file_digest(tmp, algorithm)
+        if observed != expected:
+            tmp.unlink(missing_ok=True)
+            raise RuntimeError(f"{algorithm} mismatch for {url}: {observed} != {expected}")
+        tmp.replace(path)
+    except Exception:
+        # Preserve a nonempty partial download for a later ranged retry.
+        if tmp.exists() and tmp.stat().st_size == 0:
+            tmp.unlink()
+        raise
+    return path
+
+
+def sra_salmon_run_manifest(source: SraSalmonSource) -> pd.DataFrame:
+    """The complete run inventory, including controls excluded from tumor output."""
+    rows = []
+    for run in source.runs:
+        rows.append(
+            {
+                "cancer_code": run.cancer_code or "",
+                "source_cohort": source.source_cohort,
+                "source_project": source.source_project or "",
+                "bioproject": source.bioproject,
+                "sra_study": source.sra_study,
+                "run_accession": run.accession,
+                "biosample": run.biosample,
+                "sample_title": run.sample_title,
+                "sample_role": run.role,
+                "read_1_url": run.read_urls[0],
+                "read_2_url": run.read_urls[1],
+                "read_1_md5": run.read_md5[0],
+                "read_2_md5": run.read_md5[1],
+                "included": run.included_in_reference,
+                "exclusion_reason": ""
+                if run.included_in_reference
+                else "matched_normal_excluded_from_tumor_reference",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def download_sra_salmon_run_reads(
+    run: SraSalmonRun,
+    cache_dir: str | Path,
+    *,
+    force_download: bool = False,
+) -> tuple[Path, Path]:
+    """Fetch and checksum one paired-end run from its pinned INSDC mirror URLs."""
+    run_dir = Path(cache_dir) / "reads" / run.accession
+    paths = (
+        run_dir / f"{run.accession}_1.fastq.gz",
+        run_dir / f"{run.accession}_2.fastq.gz",
+    )
+    for url, checksum, path in zip(run.read_urls, run.read_md5, paths):
+        download_verified_file(
+            url,
+            path,
+            checksum=checksum,
+            algorithm="md5",
+            force_download=force_download,
+        )
+    return paths
+
+
+def ensembl_transcript_gene_map(transcriptome_path: str | Path) -> dict[str, str]:
+    """Map Ensembl transcript FASTA identifiers to their versioned gene IDs."""
+    path = Path(transcriptome_path)
+    opener = gzip.open if path.suffix == ".gz" else open
+    mapping: dict[str, str] = {}
+    with opener(path, "rt") as handle:
+        for line in handle:
+            if not line.startswith(">"):
+                continue
+            header = line[1:].strip()
+            transcript_id = header.split(maxsplit=1)[0]
+            gene_match = re.search(r"(?:^|\s)gene:(ENSG\d+(?:\.\d+)?)", header)
+            if gene_match is None:
+                raise ValueError(
+                    f"Ensembl transcript FASTA header lacks gene identifier: {header[:120]}"
+                )
+            gene_id = gene_match.group(1)
+            previous = mapping.setdefault(transcript_id, gene_id)
+            if previous != gene_id:
+                raise ValueError(
+                    f"transcript {transcript_id!r} maps to both {previous!r} and {gene_id!r}"
+                )
+    if not mapping:
+        raise ValueError(f"no transcript-to-gene mappings found in {path}")
+    return mapping
+
+
+def _salmon_executable(command: str) -> str:
+    executable = shutil.which(command)
+    if executable is None:
+        raise RuntimeError(
+            f"{command!r} is required to build an sra-salmon source; "
+            "install Salmon or pass salmon_executable"
+        )
+    return executable
+
+
+def prepare_salmon_transcriptome(
+    source: SraSalmonSource,
+    *,
+    cache_dir: str | Path,
+    force_download: bool = False,
+) -> Path:
+    """Download, verify, and deterministically combine reference FASTAs."""
+    reference_dir = Path(cache_dir) / "reference"
+    inputs = [
+        download_verified_file(
+            reference.url,
+            reference_dir / reference.file_name,
+            checksum=reference.sha256,
+            algorithm="sha256",
+            force_download=force_download,
+        )
+        for reference in source.reference_fastas
+    ]
+    combined = reference_dir / source.combined_transcriptome_file
+    if (
+        combined.exists()
+        and not force_download
+        and _sha256(combined) == source.combined_transcriptome_sha256
+    ):
+        return combined
+
+    def _write_combined_fasta(tmp_path: Path) -> None:
+        with (
+            tmp_path.open("wb") as raw_output,
+            gzip.GzipFile(
+                filename="",
+                mode="wb",
+                fileobj=raw_output,
+                compresslevel=6,
+                mtime=0,
+            ) as output,
+        ):
+            for path in inputs:
+                with gzip.open(path, "rb") as input_handle:
+                    shutil.copyfileobj(input_handle, output, length=1024 * 1024)
+
+    _atomic_write(combined, _write_combined_fasta)
+    observed = _sha256(combined)
+    if observed != source.combined_transcriptome_sha256:
+        combined.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"sha256 mismatch for combined transcriptome: "
+            f"{observed} != {source.combined_transcriptome_sha256}"
+        )
+    return combined
+
+
+def prepare_salmon_index(
+    source: SraSalmonSource,
+    *,
+    cache_dir: str | Path,
+    salmon_executable: str = "salmon",
+    threads: int = 4,
+    force_download: bool = False,
+    force_index: bool = False,
+) -> tuple[Path, Path]:
+    """Download the pinned transcriptome and build its Salmon index."""
+    if threads < 1:
+        raise ValueError("threads must be at least 1")
+    cache = Path(cache_dir)
+    reference_dir = cache / "reference"
+    transcriptome = prepare_salmon_transcriptome(
+        source,
+        cache_dir=cache,
+        force_download=force_download,
+    )
+    index_dir = reference_dir / "salmon_index"
+    complete_marker = index_dir / "versionInfo.json"
+    reference_marker = index_dir / "oncoref_transcriptome_sha256.txt"
+    index_matches_reference = (
+        reference_marker.exists()
+        and reference_marker.read_text().strip() == source.combined_transcriptome_sha256
+    )
+    if complete_marker.exists() and index_matches_reference and not force_index:
+        return transcriptome, index_dir
+
+    salmon = _salmon_executable(salmon_executable)
+    temp_index = reference_dir / "salmon_index.building"
+    if temp_index.exists():
+        shutil.rmtree(temp_index)
+    subprocess.run(
+        [
+            salmon,
+            "index",
+            "--transcripts",
+            str(transcriptome),
+            "--index",
+            str(temp_index),
+            "--threads",
+            str(threads),
+            "--keepDuplicates",
+        ],
+        check=True,
+    )
+    if not (temp_index / "versionInfo.json").exists():
+        raise RuntimeError("Salmon index completed without versionInfo.json")
+    (temp_index / "oncoref_transcriptome_sha256.txt").write_text(
+        source.combined_transcriptome_sha256 + "\n"
+    )
+    if index_dir.exists():
+        shutil.rmtree(index_dir)
+    temp_index.replace(index_dir)
+    return transcriptome, index_dir
+
+
+def quantify_sra_salmon_run(
+    source: SraSalmonSource,
+    run: SraSalmonRun,
+    *,
+    cache_dir: str | Path,
+    index_dir: str | Path,
+    salmon_executable: str = "salmon",
+    threads: int = 4,
+    force_download: bool = False,
+    force_quant: bool = False,
+) -> Path:
+    """Download and Salmon-quantify one declared paired-end SRA run."""
+    if run not in source.runs:
+        raise ValueError(f"run {run.accession!r} is not declared by source {source.source_id!r}")
+    if threads < 1:
+        raise ValueError("threads must be at least 1")
+    cache = Path(cache_dir)
+    quant_dir = cache / "quant" / run.accession
+    quant_path = quant_dir / "quant.sf"
+    reference_marker = quant_dir / "oncoref_transcriptome_sha256.txt"
+    quant_matches_reference = (
+        reference_marker.exists()
+        and reference_marker.read_text().strip() == source.combined_transcriptome_sha256
+    )
+    if quant_path.exists() and quant_matches_reference and not force_quant:
+        return quant_path
+
+    read_1, read_2 = download_sra_salmon_run_reads(
+        run,
+        cache,
+        force_download=force_download,
+    )
+    salmon = _salmon_executable(salmon_executable)
+    temp_quant = quant_dir.with_name(quant_dir.name + ".building")
+    if temp_quant.exists():
+        shutil.rmtree(temp_quant)
+    subprocess.run(
+        [
+            salmon,
+            "quant",
+            "--index",
+            str(index_dir),
+            "--libType",
+            "A",
+            "--mates1",
+            str(read_1),
+            "--mates2",
+            str(read_2),
+            "--threads",
+            str(threads),
+            "--output",
+            str(temp_quant),
+            *source.salmon_args,
+        ],
+        check=True,
+    )
+    if not (temp_quant / "quant.sf").exists():
+        raise RuntimeError(f"Salmon quantification for {run.accession} produced no quant.sf")
+    (temp_quant / "oncoref_transcriptome_sha256.txt").write_text(
+        source.combined_transcriptome_sha256 + "\n"
+    )
+    if quant_dir.exists():
+        shutil.rmtree(quant_dir)
+    temp_quant.replace(quant_dir)
+    return quant_path
+
+
+def salmon_gene_tpm_matrix(
+    quant_paths: Mapping[str, str | Path],
+    transcript_to_gene: Mapping[str, str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Aggregate Salmon transcript TPMs into a gene-by-run TPM matrix."""
+    gene_tpm: dict[str, pd.Series] = {}
+    audit_rows = []
+    for run_accession, quant_path in quant_paths.items():
+        quant = pd.read_csv(Path(quant_path), sep="\t")
+        required = {"Name", "TPM"}
+        missing = sorted(required - set(quant.columns))
+        if missing:
+            raise ValueError(f"{quant_path} lacks Salmon columns: {missing}")
+        if quant["Name"].astype(str).duplicated().any():
+            raise ValueError(f"{quant_path} contains duplicate transcript identifiers")
+        tpm = pd.to_numeric(quant["TPM"], errors="coerce")
+        if tpm.isna().any() or not np.isfinite(tpm).all() or (tpm < 0).any():
+            raise ValueError(f"{quant_path} contains invalid Salmon TPM values")
+        gene_ids = quant["Name"].astype(str).map(transcript_to_gene)
+        missing_gene = gene_ids.isna()
+        missing_nonzero_tpm = float(tpm[missing_gene].sum())
+        if missing_nonzero_tpm > 1e-6:
+            raise ValueError(
+                f"{quant_path} has {missing_nonzero_tpm:.6f} TPM on transcripts "
+                "absent from the pinned transcript-to-gene map"
+            )
+        total_tpm = float(tpm.sum())
+        if not np.isclose(total_tpm, 1_000_000.0, rtol=1e-4, atol=1.0):
+            raise ValueError(f"{quant_path} Salmon TPM sum is {total_tpm:.6f}; expected 1,000,000")
+        mapped = pd.DataFrame({"gene_id": gene_ids[~missing_gene], "TPM": tpm[~missing_gene]})
+        gene_tpm[str(run_accession)] = mapped.groupby("gene_id", sort=False)["TPM"].sum()
+        metadata_path = Path(quant_path).parent / "aux_info" / "meta_info.json"
+        metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
+        audit_rows.append(
+            {
+                "run_accession": str(run_accession),
+                "salmon_version": str(metadata.get("salmon_version") or ""),
+                "library_types": ";".join(
+                    str(value) for value in metadata.get("library_types", [])
+                ),
+                "percent_mapped": metadata.get("percent_mapped", ""),
+                "num_processed": metadata.get("num_processed", ""),
+                "num_mapped": metadata.get("num_mapped", ""),
+                "n_transcripts": len(quant),
+                "n_transcripts_mapped": int((~missing_gene).sum()),
+                "n_transcripts_unmapped": int(missing_gene.sum()),
+                "total_transcript_tpm": total_tpm,
+                "unmapped_transcript_tpm": missing_nonzero_tpm,
+            }
+        )
+    if not gene_tpm:
+        raise ValueError("no Salmon quantification paths were provided")
+    matrix = pd.DataFrame(gene_tpm).fillna(0.0)
+    matrix.index.name = "Ensembl_Gene_ID"
+    return matrix.reset_index(), pd.DataFrame(audit_rows)
 
 
 def download_gdc_file(
@@ -2641,6 +3302,207 @@ def build_source_matrices(
         mapping_audit=audit,
         parse_diagnostics=parse_diagnostics,
         sample_qc=sample_qc,
+        sidecar_paths=sidecar_paths,
+    )
+
+
+def _resolve_sra_salmon_quant_paths(
+    source: SraSalmonSource,
+    *,
+    cache_dir: Path,
+    quant_paths: Mapping[str, str | Path] | None,
+    salmon_executable: str,
+    threads: int,
+    force_download: bool,
+    force_index: bool,
+    force_quant: bool,
+) -> tuple[dict[str, Path], Path | None]:
+    expected_runs = [run.accession for run in source.runs]
+    if quant_paths is not None:
+        missing = sorted(set(expected_runs) - set(quant_paths))
+        unexpected = sorted(set(quant_paths) - set(expected_runs))
+        if missing or unexpected:
+            raise ValueError(
+                "Salmon quant paths must exactly match the declared run manifest; "
+                f"missing={missing}, unexpected={unexpected}"
+            )
+        return (
+            {accession: Path(quant_paths[accession]) for accession in expected_runs},
+            None,
+        )
+
+    transcriptome, index_dir = prepare_salmon_index(
+        source,
+        cache_dir=cache_dir,
+        salmon_executable=salmon_executable,
+        threads=threads,
+        force_download=force_download,
+        force_index=force_index,
+    )
+    generated = {
+        run.accession: quantify_sra_salmon_run(
+            source,
+            run,
+            cache_dir=cache_dir,
+            index_dir=index_dir,
+            salmon_executable=salmon_executable,
+            threads=threads,
+            force_download=force_download,
+            force_quant=force_quant,
+        )
+        for run in source.runs
+    }
+    return generated, transcriptome
+
+
+def _resolve_sra_salmon_transcript_map(
+    source: SraSalmonSource,
+    *,
+    cache_dir: Path,
+    transcript_to_gene: Mapping[str, str] | None,
+    transcriptome_path: str | Path | None,
+    prepared_transcriptome: Path | None,
+    force_download: bool,
+) -> Mapping[str, str]:
+    if transcript_to_gene is not None:
+        return transcript_to_gene
+    if transcriptome_path is not None:
+        transcriptome = Path(transcriptome_path)
+        observed = _sha256(transcriptome)
+        if observed != source.combined_transcriptome_sha256:
+            raise RuntimeError(
+                f"sha256 mismatch for {transcriptome}: "
+                f"{observed} != {source.combined_transcriptome_sha256}"
+            )
+    elif prepared_transcriptome is not None:
+        transcriptome = prepared_transcriptome
+    else:
+        transcriptome = prepare_salmon_transcriptome(
+            source,
+            cache_dir=cache_dir,
+            force_download=force_download,
+        )
+    return ensembl_transcript_gene_map(transcriptome)
+
+
+def build_sra_salmon_source_matrices(
+    source: SraSalmonSource,
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    quant_paths: Mapping[str, str | Path] | None = None,
+    transcriptome_path: str | Path | None = None,
+    transcript_to_gene: Mapping[str, str] | None = None,
+    salmon_executable: str = "salmon",
+    threads: int = 4,
+    force_download: bool = False,
+    force_index: bool = False,
+    force_quant: bool = False,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build canonical source artifacts from a pinned SRA/Salmon run inventory.
+
+    ``quant_paths`` and ``transcript_to_gene`` allow a reviewed external Salmon
+    run to enter at the deterministic aggregation boundary. Without them, this
+    function downloads all declared run pairs, builds the pinned transcriptome
+    index, and executes Salmon locally.
+    """
+    cache = Path(cache_dir)
+    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
+    resolved_quant_paths, prepared_transcriptome = _resolve_sra_salmon_quant_paths(
+        source,
+        cache_dir=cache,
+        quant_paths=quant_paths,
+        salmon_executable=salmon_executable,
+        threads=threads,
+        force_download=force_download,
+        force_index=force_index,
+        force_quant=force_quant,
+    )
+    transcript_to_gene = _resolve_sra_salmon_transcript_map(
+        source,
+        cache_dir=cache,
+        transcript_to_gene=transcript_to_gene,
+        transcriptome_path=transcriptome_path,
+        prepared_transcriptome=prepared_transcriptome,
+        force_download=force_download,
+    )
+
+    raw_gene_tpm, quantification_audit = salmon_gene_tpm_matrix(
+        resolved_quant_paths,
+        transcript_to_gene,
+    )
+    raw_matrix_path = cache / f"{_artifact_stem(source.source_cohort)}_salmon_gene_tpm.tsv"
+    _atomic_write(
+        raw_matrix_path,
+        lambda tmp_path: raw_gene_tpm.to_csv(tmp_path, sep="\t", index=False),
+    )
+
+    run_to_code = {run.accession: run.cancer_code for run in source.runs}
+    geo_source = GeoMatrixSource(
+        cancer_code=source.cancer_code,
+        source_cohort=source.source_cohort,
+        source_project=source.source_project,
+        citation=source.citation,
+        file_name=raw_matrix_path.name,
+        unit="TPM",
+        gene_id_col="Ensembl_Gene_ID",
+        sep="\t",
+        sample_to_cancer_code=lambda accession: run_to_code.get(str(accession)),
+        expected_source_samples=len(source.runs),
+        expected_samples_by_code=source.expected_n,
+        source_scale_class=source.source_scale_class,
+        linear_tpm_comparable=source.linear_tpm_comparable,
+        tpm_proxy=source.tpm_proxy,
+        notes=source.notes,
+        pipeline_stem=source.pipeline_stem,
+        source_version=source.source_version,
+        processing_pipeline=source.processing_pipeline,
+        tumor_origin=source.tumor_origin,
+        metastasis_site=source.metastasis_site,
+    )
+    result = build_source_matrices(
+        geo_source,
+        cache_dir=cache,
+        output_dir=out_dir,
+        source_path=raw_matrix_path,
+        high_expression_threshold=high_expression_threshold,
+    )
+
+    manifest = sra_salmon_run_manifest(source)
+    audit = quantification_audit.merge(
+        manifest[
+            [
+                "run_accession",
+                "biosample",
+                "sample_title",
+                "sample_role",
+                "cancer_code",
+                "included",
+            ]
+        ],
+        on="run_accession",
+        how="left",
+        validate="one_to_one",
+    )
+    stem = _artifact_stem(source.source_cohort)
+    manifest_path = out_dir / f"{stem}_run_manifest.csv"
+    quant_audit_path = out_dir / f"{stem}_salmon_quantification_audit.csv"
+    _write_csv_atomic(manifest, manifest_path)
+    _write_csv_atomic(audit, quant_audit_path)
+    sidecar_paths = {
+        **result.sidecar_paths,
+        "run_manifest": manifest_path,
+        "salmon_quantification_audit": quant_audit_path,
+    }
+    return SourceMatrixBuildResult(
+        source=source,
+        matrices=result.matrices,
+        matrix_paths=result.matrix_paths,
+        summary_rows=result.summary_rows,
+        mapping_audit=result.mapping_audit,
+        parse_diagnostics=result.parse_diagnostics,
+        sample_qc=result.sample_qc,
         sidecar_paths=sidecar_paths,
     )
 

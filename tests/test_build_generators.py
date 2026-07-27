@@ -5,10 +5,14 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 
 import glob
+import gzip
+import hashlib
 import importlib.util
+import io
 import json
 import os
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -83,6 +87,44 @@ def _write_gdc_star_counts(path: Path, values: dict[str, float]) -> None:
     pd.DataFrame(rows).to_csv(path, sep="\t", index=False)
 
 
+def _synthetic_sra_salmon_source() -> expression_builders.SraSalmonSource:
+    runs = []
+    for index in range(6):
+        tumor = index < 3
+        runs.append(
+            expression_builders.SraSalmonRun(
+                accession=f"SRR0000000{index}",
+                biosample=f"SAMN0000000{index}",
+                sample_title=f"{'Tumor' if tumor else 'Normal'}-{index + 1}",
+                role="tumor" if tumor else "matched_normal",
+                cancer_code="SARC_MMNST" if tumor else None,
+                read_urls=(
+                    f"https://example.org/SRR0000000{index}_1.fastq.gz",
+                    f"https://example.org/SRR0000000{index}_2.fastq.gz",
+                ),
+                read_md5=("a" * 32, "b" * 32),
+            )
+        )
+    return expression_builders.SraSalmonSource(
+        source_id="synthetic-sra-salmon",
+        bioproject="PRJNA000000",
+        sra_study="SRP000000",
+        source_cohort="SYNTHETIC_SRA_SALMON",
+        cancer_code="SARC_MMNST",
+        runs=tuple(runs),
+        reference_fastas=(
+            expression_builders.SalmonReferenceFasta(
+                url="https://example.org/ensembl.fa.gz",
+                file_name="ensembl.fa.gz",
+                sha256="c" * 64,
+            ),
+        ),
+        combined_transcriptome_file="ensembl-combined.fa.gz",
+        combined_transcriptome_sha256="d" * 64,
+        expected_n={"SARC_MMNST": 3},
+    )
+
+
 # ---------- source-matrix ingestion builders ----------
 
 
@@ -99,6 +141,37 @@ def test_atomic_write_preserves_existing_artifact_on_failure(tmp_path):
 
     assert path.read_text() == "old\n"
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_verified_download_resumes_a_partial_file(tmp_path, monkeypatch):
+    destination = tmp_path / "reads.fastq.gz"
+    partial = destination.with_suffix(destination.suffix + ".part")
+    partial.write_bytes(b"abc")
+    requests = []
+
+    class _Response(io.BytesIO):
+        status = 206
+        headers = {"Content-Range": "bytes 3-5/6"}
+
+        def getcode(self):
+            return self.status
+
+    def _urlopen(request, timeout):
+        requests.append((request, timeout))
+        return _Response(b"def")
+
+    monkeypatch.setattr(expression_builders.urllib.request, "urlopen", _urlopen)
+    result = expression_builders.download_verified_file(
+        "https://example.org/reads.fastq.gz",
+        destination,
+        checksum=hashlib.md5(b"abcdef").hexdigest(),
+        algorithm="md5",
+    )
+
+    assert result.read_bytes() == b"abcdef"
+    assert requests[0][0].get_header("Range") == "bytes=3-"
+    assert requests[0][1] == 180
+    assert not partial.exists()
 
 
 def test_geo_matrix_builder_writes_canonical_per_sample_matrix_and_sidecars(tmp_path):
@@ -833,6 +906,87 @@ def test_recount3_source_from_registry_loads_packaged_routes():
     assert source.sample_to_cancer_code({"origin": "pancreas"}, "") == "NET_PANCREAS"
     assert source.sample_to_cancer_code({"origin": "rectal"}, "") == "NET_RECTAL"
     assert source.sample_to_cancer_code({"origin": "lung"}, "") is None
+
+
+def test_sra_salmon_source_from_registry_loads_complete_mmnst_manifest():
+    source = expression_builders.sra_salmon_source_from_registry("prjna1083972-mmnst")
+
+    assert source.bioproject == "PRJNA1083972"
+    assert source.sra_study == "SRP493407"
+    assert source.cancer_code == "SARC_MMNST"
+    assert source.expected_n == {"SARC_MMNST": 3}
+    assert source.combined_transcriptome_sha256 == (
+        "508706adb4e585b5f3d9544201db7aac0fa3b7be184bf2e3ae036a905935253d"
+    )
+    assert [reference.sha256 for reference in source.reference_fastas] == [
+        "0bb3012f45e2474b8ce79911c47de0fc216bd574c60f1ddc8a8d911cd8a32b4d",
+        "16b9e32d047653e42a5d3b8843b30eefea1a08f7984568746d8db15ada26540b",
+    ]
+    assert len(source.runs) == 6
+    assert [run.accession for run in source.runs if run.included_in_reference] == [
+        "SRR28227826",
+        "SRR28227825",
+        "SRR28227824",
+    ]
+    assert {run.role for run in source.runs if not run.included_in_reference} == {"matched_normal"}
+
+    manifest = expression_builders.sra_salmon_run_manifest(source)
+    assert manifest["included"].value_counts().to_dict() == {True: 3, False: 3}
+    excluded = manifest.loc[~manifest["included"]]
+    assert set(excluded["cancer_code"]) == {""}
+    assert set(excluded["exclusion_reason"]) == {"matched_normal_excluded_from_tumor_reference"}
+
+
+def test_sra_salmon_source_rejects_a_control_routed_to_tumor():
+    entry = {
+        "id": "bad-sra",
+        "source_type": "sra-salmon",
+        "cancer_codes": ["SARC_MMNST"],
+        "accession": "PRJNA000000",
+        "sra_study": "SRP000000",
+        "source_cohort": "BAD_SRA",
+        "expected_samples_by_code": {"SARC_MMNST": 0},
+        "reference": {
+            "fastas": [
+                {
+                    "url": "https://example.org/ref.fa.gz",
+                    "file_name": "ref.fa.gz",
+                    "sha256": "a" * 64,
+                }
+            ],
+            "combined_file": "combined.fa.gz",
+            "combined_sha256": "d" * 64,
+        },
+        "runs": [
+            {
+                "accession": "SRR00000001",
+                "biosample": "SAMN00000001",
+                "sample_title": "Normal-1",
+                "role": "matched_normal",
+                "cancer_code": "SARC_MMNST",
+                "read_urls": [
+                    "https://example.org/read_1.fastq.gz",
+                    "https://example.org/read_2.fastq.gz",
+                ],
+                "read_md5": ["b" * 32, "c" * 32],
+            }
+        ],
+    }
+
+    with pytest.raises(ValueError, match="must not declare a cancer_code"):
+        expression_builders.sra_salmon_source_from_entry(entry)
+
+
+def test_sra_salmon_source_rejects_builder_option_overrides():
+    entry = next(
+        dict(source)
+        for source in expression_builders.sra_salmon_source_entries()
+        if source["id"] == "prjna1083972-mmnst"
+    )
+    entry["salmon_args"] = ["--validateMappings", "--output=/tmp/not-the-build-cache"]
+
+    with pytest.raises(ValueError, match="override builder-owned options"):
+        expression_builders.sra_salmon_source_from_entry(entry)
 
 
 def test_treehouse_source_from_registry_loads_direct_cohort_routes():
@@ -2213,6 +2367,215 @@ def test_build_recount3_source_matrices_writes_canonical_artifacts(tmp_path, mon
     assert set(result.sample_qc["cancer_code"]) == {"CODE_A", "CODE_B"}
 
 
+def test_ensembl_transcript_gene_map_reads_versioned_fasta_headers(tmp_path):
+    fasta = tmp_path / "ensembl.fa"
+    fasta.write_text(
+        ">ENST000001.2 cdna chromosome:GRCh38:1:1:2:1 gene:ENSG000001.7\n"
+        "ACGT\n"
+        ">ENST000002.1 cdna chromosome:GRCh38:1:3:4:1 gene:ENSG000002.3\n"
+        "TGCA\n"
+    )
+
+    assert expression_builders.ensembl_transcript_gene_map(fasta) == {
+        "ENST000001.2": "ENSG000001.7",
+        "ENST000002.1": "ENSG000002.3",
+    }
+
+
+def test_prepare_salmon_transcriptome_combines_all_pinned_fastas(tmp_path):
+    reference_dir = tmp_path / "reference"
+    reference_dir.mkdir()
+    cdna = reference_dir / "cdna.fa.gz"
+    ncrna = reference_dir / "ncrna.fa.gz"
+    contents = (
+        b">ENST000001.1 gene:ENSG000001.1\nACGT\n",
+        b">ENST000002.1 gene:ENSG000002.1\nTGCA\n",
+    )
+    for path, content in zip((cdna, ncrna), contents):
+        with (
+            path.open("wb") as raw,
+            gzip.GzipFile(
+                filename="",
+                mode="wb",
+                fileobj=raw,
+                mtime=0,
+            ) as handle,
+        ):
+            handle.write(content)
+
+    expected = tmp_path / "expected.fa.gz"
+    with (
+        expected.open("wb") as raw,
+        gzip.GzipFile(
+            filename="",
+            mode="wb",
+            fileobj=raw,
+            compresslevel=6,
+            mtime=0,
+        ) as handle,
+    ):
+        for content in contents:
+            handle.write(content)
+    source = replace(
+        _synthetic_sra_salmon_source(),
+        reference_fastas=(
+            expression_builders.SalmonReferenceFasta(
+                url="https://example.org/cdna.fa.gz",
+                file_name=cdna.name,
+                sha256=expression_builders._sha256(cdna),
+            ),
+            expression_builders.SalmonReferenceFasta(
+                url="https://example.org/ncrna.fa.gz",
+                file_name=ncrna.name,
+                sha256=expression_builders._sha256(ncrna),
+            ),
+        ),
+        combined_transcriptome_file="combined.fa.gz",
+        combined_transcriptome_sha256=expression_builders._sha256(expected),
+    )
+
+    combined = expression_builders.prepare_salmon_transcriptome(source, cache_dir=tmp_path)
+
+    assert expression_builders._sha256(combined) == expression_builders._sha256(expected)
+    assert expression_builders.ensembl_transcript_gene_map(combined) == {
+        "ENST000001.1": "ENSG000001.1",
+        "ENST000002.1": "ENSG000002.1",
+    }
+
+
+def test_quantify_sra_salmon_run_rebuilds_a_stale_reference_cache(tmp_path, monkeypatch):
+    source = _synthetic_sra_salmon_source()
+    run = source.runs[0]
+    quant_dir = tmp_path / "quant" / run.accession
+    quant_dir.mkdir(parents=True)
+    (quant_dir / "quant.sf").write_text("stale")
+    (quant_dir / "oncoref_transcriptome_sha256.txt").write_text("old-reference\n")
+    read_1 = tmp_path / "read_1.fastq.gz"
+    read_2 = tmp_path / "read_2.fastq.gz"
+    read_1.write_bytes(b"reads")
+    read_2.write_bytes(b"reads")
+    commands = []
+
+    monkeypatch.setattr(
+        expression_builders,
+        "download_sra_salmon_run_reads",
+        lambda *_args, **_kwargs: (read_1, read_2),
+    )
+    monkeypatch.setattr(expression_builders, "_salmon_executable", lambda _command: "salmon")
+
+    def _run(command, check):
+        commands.append((command, check))
+        output = Path(command[command.index("--output") + 1])
+        output.mkdir(parents=True)
+        (output / "quant.sf").write_text("fresh")
+
+    monkeypatch.setattr(expression_builders.subprocess, "run", _run)
+    result = expression_builders.quantify_sra_salmon_run(
+        source,
+        run,
+        cache_dir=tmp_path,
+        index_dir=tmp_path / "index",
+    )
+
+    assert result.read_text() == "fresh"
+    assert commands
+    assert (quant_dir / "oncoref_transcriptome_sha256.txt").read_text().strip() == (
+        source.combined_transcriptome_sha256
+    )
+
+
+def test_salmon_gene_tpm_matrix_rejects_unmapped_expression(tmp_path):
+    quant_path = tmp_path / "quant.sf"
+    pd.DataFrame(
+        {
+            "Name": ["ENST_MAPPED", "ENST_UNMAPPED"],
+            "Length": [1000, 1000],
+            "EffectiveLength": [800, 800],
+            "TPM": [999_999.0, 1.0],
+            "NumReads": [100, 1],
+        }
+    ).to_csv(quant_path, sep="\t", index=False)
+
+    with pytest.raises(ValueError, match="absent from the pinned transcript-to-gene map"):
+        expression_builders.salmon_gene_tpm_matrix(
+            {"SRR00000001": quant_path},
+            {"ENST_MAPPED": "ENSG00000141510.1"},
+        )
+
+
+def test_build_sra_salmon_source_routes_only_tumors_and_audits_controls(tmp_path):
+    source = _synthetic_sra_salmon_source()
+    transcript_to_gene = {
+        "ENST_TP53_A": "ENSG00000141510.17",
+        "ENST_TP53_B": "ENSG00000141510.18",
+        "ENST_EGFR": "ENSG00000146648.16",
+    }
+    quant_paths = {}
+    for index, run in enumerate(source.runs):
+        quant_dir = tmp_path / "quant" / run.accession
+        quant_dir.mkdir(parents=True)
+        quant_path = quant_dir / "quant.sf"
+        tp53 = 600_000.0 - index * 10_000.0
+        pd.DataFrame(
+            {
+                "Name": list(transcript_to_gene),
+                "Length": [1000, 800, 2000],
+                "EffectiveLength": [800, 600, 1800],
+                "TPM": [tp53 / 2, tp53 / 2, 1_000_000.0 - tp53],
+                "NumReads": [100, 100, 100],
+            }
+        ).to_csv(quant_path, sep="\t", index=False)
+        aux_dir = quant_dir / "aux_info"
+        aux_dir.mkdir()
+        (aux_dir / "meta_info.json").write_text(
+            json.dumps(
+                {
+                    "salmon_version": "1.10.3",
+                    "library_types": ["ISR"],
+                    "percent_mapped": 95.0 - index,
+                    "num_processed": 1000,
+                    "num_mapped": 950 - index * 10,
+                }
+            )
+        )
+        quant_paths[run.accession] = quant_path
+
+    result = expression_builders.build_sra_salmon_source_matrices(
+        source,
+        cache_dir=tmp_path / "cache",
+        quant_paths=quant_paths,
+        transcript_to_gene=transcript_to_gene,
+    )
+
+    assert result.source is source
+    assert set(result.matrices) == {"SARC_MMNST"}
+    matrix = result.matrices["SARC_MMNST"]
+    assert list(matrix.columns) == [
+        "Ensembl_Gene_ID",
+        "Symbol",
+        "SRR00000000",
+        "SRR00000001",
+        "SRR00000002",
+    ]
+    assert set(matrix["Symbol"]) == {"TP53", "EGFR"}
+    assert np.allclose(matrix.iloc[:, 2:].sum(axis=0), 1_000_000.0)
+    assert set(result.sample_qc["sample_id"]) == {
+        "SRR00000000",
+        "SRR00000001",
+        "SRR00000002",
+    }
+    assert set(result.summary_rows["n_samples"]) == {3}
+
+    manifest = pd.read_csv(result.sidecar_paths["run_manifest"])
+    quant_audit = pd.read_csv(result.sidecar_paths["salmon_quantification_audit"])
+    assert len(manifest) == 6
+    assert manifest["included"].value_counts().to_dict() == {True: 3, False: 3}
+    assert len(quant_audit) == 6
+    assert set(quant_audit["n_transcripts_unmapped"]) == {0}
+    assert set(quant_audit["salmon_version"]) == {"1.10.3"}
+    assert set(quant_audit["library_types"]) == {"ISR"}
+
+
 def test_build_geo_matrix_script_uses_registry_config(tmp_path, capsys):
     source_path = tmp_path / "source.tsv"
     pd.DataFrame(
@@ -2310,6 +2673,60 @@ def test_build_recount3_script_uses_registry_config(tmp_path, monkeypatch, capsy
     stdout = capsys.readouterr().out
     assert '"source_id": "synthetic-recount3"' in stdout
     assert '"CODE_A": 1' in stdout
+
+
+def test_build_sra_salmon_script_uses_registry_config(tmp_path, monkeypatch, capsys):
+    mod = _load_script("build_sra_salmon_source")
+    source = _synthetic_sra_salmon_source()
+
+    def _fake_build(source_obj, *, cache_dir, quant_paths=None, **_kwargs):
+        assert source_obj is source
+        assert Path(cache_dir) == tmp_path / "cache"
+        assert quant_paths == {
+            run.accession: tmp_path / "quant" / run.accession / "quant.sf" for run in source.runs
+        }
+        matrix = pd.DataFrame(
+            {
+                "Ensembl_Gene_ID": ["ENSG00000141510"],
+                "Symbol": ["TP53"],
+                "SRR00000000": [1_000_000.0],
+            }
+        )
+        return expression_builders.SourceMatrixBuildResult(
+            source=source,
+            matrices={"SARC_MMNST": matrix},
+            matrix_paths={"SARC_MMNST": tmp_path / "SARC_MMNST_per_sample_tpm.parquet"},
+            summary_rows=pd.DataFrame(
+                columns=list(expression_builders.REFERENCE_EXPRESSION_COLUMNS)
+            ),
+            mapping_audit=pd.DataFrame(),
+            parse_diagnostics=pd.DataFrame(),
+            sample_qc=pd.DataFrame(),
+            sidecar_paths={"run_manifest": tmp_path / "run_manifest.csv"},
+        )
+
+    monkeypatch.setattr(
+        mod,
+        "sra_salmon_source_from_registry",
+        lambda source_id, registry_path=None: source,
+    )
+    monkeypatch.setattr(mod, "build_sra_salmon_source_matrices", _fake_build)
+
+    assert (
+        mod.main(
+            [
+                "synthetic-sra-salmon",
+                "--cache-dir",
+                str(tmp_path / "cache"),
+                "--quant-dir",
+                str(tmp_path / "quant"),
+            ]
+        )
+        == 0
+    )
+    stdout = capsys.readouterr().out
+    assert '"source_id": "synthetic-sra-salmon"' in stdout
+    assert '"SARC_MMNST": 1' in stdout
 
 
 def test_build_treehouse_script_uses_registry_config(tmp_path, monkeypatch, capsys):
