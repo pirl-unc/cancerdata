@@ -2507,6 +2507,24 @@ def _salmon_executable(command: str) -> str:
     return executable
 
 
+def _salmon_version(executable: str) -> str:
+    """Return the semantic version reported by a resolved Salmon executable."""
+    completed = subprocess.run(
+        [executable, "--version"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    output = completed.stdout.strip() or completed.stderr.strip()
+    match = re.search(
+        r"(?:^|\s)(\d+(?:\.\d+)+(?:[-+][0-9A-Za-z.-]+)?)(?:\s|$)",
+        output,
+    )
+    if match is None:
+        raise RuntimeError(f"could not parse Salmon version from {output!r}")
+    return match.group(1)
+
+
 def prepare_salmon_transcriptome(
     source: SraSalmonSource,
     *,
@@ -2641,15 +2659,18 @@ def prepare_salmon_index(
 def _sra_salmon_quantification_inputs(
     source: SraSalmonSource,
     run: SraSalmonRun,
+    *,
+    salmon_version: str,
 ) -> dict:
     """Inputs whose content or interpretation can change one ``quant.sf``."""
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "transcriptome_sha256": source.combined_transcriptome_sha256,
         "run_accession": run.accession,
         "read_md5": list(run.read_md5),
         "library_type": "A",
         "salmon_args": list(source.salmon_args),
+        "salmon_version": salmon_version,
     }
 
 
@@ -2681,7 +2702,12 @@ def quantify_sra_salmon_run(
     cache = Path(cache_dir)
     quant_dir = cache / "quant" / run.accession
     quant_path = quant_dir / "quant.sf"
-    input_manifest = _sra_salmon_quantification_inputs(source, run)
+    salmon = _salmon_executable(salmon_executable)
+    input_manifest = _sra_salmon_quantification_inputs(
+        source,
+        run,
+        salmon_version=_salmon_version(salmon),
+    )
     input_manifest_path = quant_dir / "oncoref_quantification_inputs.json"
     cache_reusable = (
         quant_path.exists()
@@ -2698,7 +2724,6 @@ def quantify_sra_salmon_run(
         cache,
         force_download=force_download,
     )
-    salmon = _salmon_executable(salmon_executable)
     temp_quant = quant_dir.with_name(quant_dir.name + ".building")
     if temp_quant.exists():
         shutil.rmtree(temp_quant)
@@ -3369,6 +3394,20 @@ def _resolve_sra_salmon_quant_paths(
 ) -> tuple[dict[str, Path], Path | None]:
     expected_runs = [run.accession for run in source.runs]
     if quant_paths is not None:
+        incompatible_flags = [
+            name
+            for name, enabled in (
+                ("force_index", force_index),
+                ("force_quant", force_quant),
+            )
+            if enabled
+        ]
+        if incompatible_flags:
+            formatted_flags = ", ".join(incompatible_flags)
+            raise ValueError(
+                "external Salmon quant paths cannot be regenerated; "
+                f"disable {formatted_flags} or omit quant_paths"
+            )
         missing = sorted(set(expected_runs) - set(quant_paths))
         unexpected = sorted(set(quant_paths) - set(expected_runs))
         if missing or unexpected:

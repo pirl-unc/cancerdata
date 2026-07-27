@@ -44,7 +44,8 @@ canonicalizes gene IDs and computes sample QC. Interrupted downloads retain
 their partial file and resume with an HTTP range request when the mirror supports
 it. A cached `quant.sf` is reused only when its transcriptome checksum, paired
 read checksums, automatic library type, and ordered Salmon arguments exactly
-match the current registry inputs.
+match the current registry inputs and its recorded Salmon version matches the
+selected executable.
 
 Reviewed Salmon output can be reused without rerunning quantification:
 
@@ -61,7 +62,8 @@ Salmon index, without downloading the registry FASTA components.
 
 `--force-download` refreshes and checksum-verifies the FASTQs even when their
 existing `quant.sf` remains reusable. Use `--force-quant` separately when Salmon
-must run again.
+must run again. `--quant-dir` selects immutable external quantifications, so it
+cannot be combined with `--force-quant` or `--force-index`.
 
 ## Outputs
 

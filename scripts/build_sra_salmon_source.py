@@ -61,6 +61,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--high-expression-threshold", type=float, default=1.0)
     args = parser.parse_args(argv)
 
+    if args.quant_dir is not None and (args.force_index or args.force_quant):
+        parser.error("--quant-dir cannot be combined with --force-index or --force-quant")
+
     source_id = args.source_id or args.source_id_arg
     if source_id is None:
         raise SystemExit("provide --source-id <id>")

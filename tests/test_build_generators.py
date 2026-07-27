@@ -11,6 +11,7 @@ import importlib.util
 import io
 import json
 import os
+import subprocess
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -2480,6 +2481,19 @@ def test_prepare_salmon_index_uses_supplied_transcriptome_without_download(
     assert commands[0][0][commands[0][0].index("--transcripts") + 1] == str(transcriptome)
 
 
+def test_salmon_version_reads_resolved_executable_output(monkeypatch):
+    calls = []
+
+    def _run(command, *, check, capture_output, text):
+        calls.append((command, check, capture_output, text))
+        return subprocess.CompletedProcess(command, 0, stdout="salmon 1.10.3\n", stderr="")
+
+    monkeypatch.setattr(expression_builders.subprocess, "run", _run)
+
+    assert expression_builders._salmon_version("/opt/salmon") == "1.10.3"
+    assert calls == [(["/opt/salmon", "--version"], True, True, True)]
+
+
 def test_quantify_sra_salmon_run_reuses_an_exact_input_cache(tmp_path, monkeypatch):
     source = _synthetic_sra_salmon_source()
     run = source.runs[0]
@@ -2487,8 +2501,16 @@ def test_quantify_sra_salmon_run_reuses_an_exact_input_cache(tmp_path, monkeypat
     quant_dir.mkdir(parents=True)
     (quant_dir / "quant.sf").write_text("cached")
     (quant_dir / "oncoref_quantification_inputs.json").write_text(
-        json.dumps(expression_builders._sra_salmon_quantification_inputs(source, run))
+        json.dumps(
+            expression_builders._sra_salmon_quantification_inputs(
+                source,
+                run,
+                salmon_version="1.10.3",
+            )
+        )
     )
+    monkeypatch.setattr(expression_builders, "_salmon_executable", lambda _command: "salmon")
+    monkeypatch.setattr(expression_builders, "_salmon_version", lambda _executable: "1.10.3")
     monkeypatch.setattr(
         expression_builders,
         "download_sra_salmon_run_reads",
@@ -2512,7 +2534,13 @@ def test_quantify_sra_salmon_run_forces_read_refresh_on_cache_hit(tmp_path, monk
     quant_dir.mkdir(parents=True)
     (quant_dir / "quant.sf").write_text("cached")
     (quant_dir / "oncoref_quantification_inputs.json").write_text(
-        json.dumps(expression_builders._sra_salmon_quantification_inputs(source, run))
+        json.dumps(
+            expression_builders._sra_salmon_quantification_inputs(
+                source,
+                run,
+                salmon_version="1.10.3",
+            )
+        )
     )
     refresh_calls = []
 
@@ -2524,8 +2552,9 @@ def test_quantify_sra_salmon_run_forces_read_refresh_on_cache_hit(tmp_path, monk
     monkeypatch.setattr(
         expression_builders,
         "_salmon_executable",
-        lambda _command: pytest.fail("read refresh should not force quantification"),
+        lambda _command: "salmon",
     )
+    monkeypatch.setattr(expression_builders, "_salmon_version", lambda _executable: "1.10.3")
     result = expression_builders.quantify_sra_salmon_run(
         source,
         run,
@@ -2570,7 +2599,32 @@ def test_external_salmon_quant_paths_still_honor_forced_read_downloads(
     assert refreshed == [(run.accession, tmp_path / "cache", True) for run in source.runs]
 
 
-@pytest.mark.parametrize("changed_input", ["transcriptome", "read_md5", "salmon_args"])
+@pytest.mark.parametrize("force_flag", ["force_index", "force_quant"])
+def test_external_salmon_quant_paths_reject_regeneration_flags(tmp_path, force_flag):
+    source = _synthetic_sra_salmon_source()
+    options = {
+        "source": source,
+        "cache_dir": tmp_path / "cache",
+        "quant_paths": {
+            run.accession: tmp_path / "external" / run.accession / "quant.sf" for run in source.runs
+        },
+        "transcriptome_path": None,
+        "salmon_executable": "salmon",
+        "threads": 4,
+        "force_download": False,
+        "force_index": False,
+        "force_quant": False,
+    }
+    options[force_flag] = True
+
+    with pytest.raises(ValueError, match=force_flag):
+        expression_builders._resolve_sra_salmon_quant_paths(**options)
+
+
+@pytest.mark.parametrize(
+    "changed_input",
+    ["transcriptome", "read_md5", "salmon_args", "salmon_version"],
+)
 def test_quantify_sra_salmon_run_rebuilds_when_cache_inputs_change(
     tmp_path,
     monkeypatch,
@@ -2596,6 +2650,7 @@ def test_quantify_sra_salmon_run_rebuilds_when_cache_inputs_change(
             expression_builders._sra_salmon_quantification_inputs(
                 original_source,
                 original_run,
+                salmon_version="1.10.2" if changed_input == "salmon_version" else "1.10.3",
             )
         )
     )
@@ -2611,6 +2666,7 @@ def test_quantify_sra_salmon_run_rebuilds_when_cache_inputs_change(
         lambda *_args, **_kwargs: (read_1, read_2),
     )
     monkeypatch.setattr(expression_builders, "_salmon_executable", lambda _command: "salmon")
+    monkeypatch.setattr(expression_builders, "_salmon_version", lambda _executable: "1.10.3")
 
     def _run(command, check):
         commands.append((command, check))
@@ -2629,7 +2685,11 @@ def test_quantify_sra_salmon_run_rebuilds_when_cache_inputs_change(
     assert result.read_text() == "fresh"
     assert commands
     assert json.loads((quant_dir / "oncoref_quantification_inputs.json").read_text()) == (
-        expression_builders._sra_salmon_quantification_inputs(source, run)
+        expression_builders._sra_salmon_quantification_inputs(
+            source,
+            run,
+            salmon_version="1.10.3",
+        )
     )
 
 
@@ -2881,6 +2941,24 @@ def test_build_sra_salmon_script_uses_registry_config(tmp_path, monkeypatch, cap
     stdout = capsys.readouterr().out
     assert '"source_id": "synthetic-sra-salmon"' in stdout
     assert '"SARC_MMNST": 1' in stdout
+
+
+@pytest.mark.parametrize("force_flag", ["--force-index", "--force-quant"])
+def test_build_sra_salmon_script_rejects_external_regeneration(tmp_path, capsys, force_flag):
+    mod = _load_script("build_sra_salmon_source")
+
+    with pytest.raises(SystemExit) as error:
+        mod.main(
+            [
+                "synthetic-sra-salmon",
+                "--quant-dir",
+                str(tmp_path / "quant"),
+                force_flag,
+            ]
+        )
+
+    assert error.value.code == 2
+    assert "--quant-dir cannot be combined" in capsys.readouterr().err
 
 
 def test_build_treehouse_script_uses_registry_config(tmp_path, monkeypatch, capsys):
