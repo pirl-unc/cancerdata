@@ -2697,7 +2697,9 @@ def cancer_reference_expression(
     artifact was built. Clean/log-clean modes read the shipped percentile shard;
     raw TPM is recomputed from the bounded per-code source matrix with that code's
     recorded effective policy. Long-form provenance keeps ``sample_qc="artifact"``
-    and reports the applied policy in ``sample_qc_effective``. This mode requires
+    and reports the applied policy in ``sample_qc_effective``.
+    ``n_reference_samples`` is the selected sample count used to build the returned
+    artifact, not the wider raw source-matrix count. This mode requires
     ``reference_source="artifact"``.
 
     Raw-TPM mode needs the per-sample source matrix available; pass
@@ -2896,15 +2898,11 @@ def cancer_reference_expression(
                             if col in ref.columns:
                                 part[col] = ref[col].to_numpy()
                     else:
-                        provenance = _reference_expression_provenance(
-                            code,
-                            method,
-                            sample_qc=sample_qc,
-                            sample_qc_effective=effective_sample_qc,
-                            reference_source=reference_source,
-                        )
-                        for col, value in provenance.items():
-                            part[col] = value
+                        # Availability has already applied the artifact build count
+                        # and QC policy. Reuse it so returned provenance cannot drift
+                        # back to the wider raw source-matrix metadata.
+                        for col in _REFERENCE_PROVENANCE_COLUMNS:
+                            part[col] = getattr(request_row, col)
                     for col in _REFERENCE_PROVENANCE_COLUMNS:
                         if col not in part.columns:
                             part[col] = pd.NA
