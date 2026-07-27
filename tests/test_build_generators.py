@@ -2443,6 +2443,43 @@ def test_prepare_salmon_transcriptome_combines_all_pinned_fastas(tmp_path):
     }
 
 
+def test_prepare_salmon_index_uses_supplied_transcriptome_without_download(
+    tmp_path,
+    monkeypatch,
+):
+    transcriptome = tmp_path / "supplied.fa.gz"
+    transcriptome.write_bytes(b"reviewed combined transcriptome")
+    source = replace(
+        _synthetic_sra_salmon_source(),
+        combined_transcriptome_sha256=expression_builders._sha256(transcriptome),
+    )
+    commands = []
+    monkeypatch.setattr(
+        expression_builders,
+        "prepare_salmon_transcriptome",
+        lambda *_args, **_kwargs: pytest.fail("supplied transcriptome should prevent download"),
+    )
+    monkeypatch.setattr(expression_builders, "_salmon_executable", lambda _command: "salmon")
+
+    def _run(command, check):
+        commands.append((command, check))
+        output = Path(command[command.index("--index") + 1])
+        output.mkdir(parents=True)
+        (output / "versionInfo.json").write_text("{}")
+
+    monkeypatch.setattr(expression_builders.subprocess, "run", _run)
+    selected, index_dir = expression_builders.prepare_salmon_index(
+        source,
+        cache_dir=tmp_path / "cache",
+        transcriptome_path=transcriptome,
+        force_download=True,
+    )
+
+    assert selected == transcriptome
+    assert index_dir.exists()
+    assert commands[0][0][commands[0][0].index("--transcripts") + 1] == str(transcriptome)
+
+
 def test_quantify_sra_salmon_run_reuses_an_exact_input_cache(tmp_path, monkeypatch):
     source = _synthetic_sra_salmon_source()
     run = source.runs[0]
@@ -2466,6 +2503,71 @@ def test_quantify_sra_salmon_run_reuses_an_exact_input_cache(tmp_path, monkeypat
     )
 
     assert result.read_text() == "cached"
+
+
+def test_quantify_sra_salmon_run_forces_read_refresh_on_cache_hit(tmp_path, monkeypatch):
+    source = _synthetic_sra_salmon_source()
+    run = source.runs[0]
+    quant_dir = tmp_path / "quant" / run.accession
+    quant_dir.mkdir(parents=True)
+    (quant_dir / "quant.sf").write_text("cached")
+    (quant_dir / "oncoref_quantification_inputs.json").write_text(
+        json.dumps(expression_builders._sra_salmon_quantification_inputs(source, run))
+    )
+    refresh_calls = []
+
+    def _refresh(refreshed_run, cache_dir, *, force_download):
+        refresh_calls.append((refreshed_run, Path(cache_dir), force_download))
+        return tmp_path / "read_1.fastq.gz", tmp_path / "read_2.fastq.gz"
+
+    monkeypatch.setattr(expression_builders, "download_sra_salmon_run_reads", _refresh)
+    monkeypatch.setattr(
+        expression_builders,
+        "_salmon_executable",
+        lambda _command: pytest.fail("read refresh should not force quantification"),
+    )
+    result = expression_builders.quantify_sra_salmon_run(
+        source,
+        run,
+        cache_dir=tmp_path,
+        index_dir=tmp_path / "index",
+        force_download=True,
+    )
+
+    assert result.read_text() == "cached"
+    assert refresh_calls == [(run, tmp_path, True)]
+
+
+def test_external_salmon_quant_paths_still_honor_forced_read_downloads(
+    tmp_path,
+    monkeypatch,
+):
+    source = _synthetic_sra_salmon_source()
+    quant_paths = {
+        run.accession: tmp_path / "external" / run.accession / "quant.sf" for run in source.runs
+    }
+    refreshed = []
+
+    def _refresh(run, cache_dir, *, force_download):
+        refreshed.append((run.accession, Path(cache_dir), force_download))
+        return tmp_path / "read_1.fastq.gz", tmp_path / "read_2.fastq.gz"
+
+    monkeypatch.setattr(expression_builders, "download_sra_salmon_run_reads", _refresh)
+    resolved, transcriptome = expression_builders._resolve_sra_salmon_quant_paths(
+        source,
+        cache_dir=tmp_path / "cache",
+        quant_paths=quant_paths,
+        transcriptome_path=None,
+        salmon_executable="salmon",
+        threads=4,
+        force_download=True,
+        force_index=False,
+        force_quant=False,
+    )
+
+    assert resolved == quant_paths
+    assert transcriptome is None
+    assert refreshed == [(run.accession, tmp_path / "cache", True) for run in source.runs]
 
 
 @pytest.mark.parametrize("changed_input", ["transcriptome", "read_md5", "salmon_args"])
@@ -2729,6 +2831,8 @@ def test_build_sra_salmon_script_uses_registry_config(tmp_path, monkeypatch, cap
     def _fake_build(source_obj, *, cache_dir, quant_paths=None, **_kwargs):
         assert source_obj is source
         assert Path(cache_dir) == tmp_path / "cache"
+        assert _kwargs["transcriptome_path"] == tmp_path / "supplied.fa.gz"
+        assert _kwargs["force_download"] is True
         assert quant_paths == {
             run.accession: tmp_path / "quant" / run.accession / "quant.sf" for run in source.runs
         }
@@ -2767,6 +2871,9 @@ def test_build_sra_salmon_script_uses_registry_config(tmp_path, monkeypatch, cap
                 str(tmp_path / "cache"),
                 "--quant-dir",
                 str(tmp_path / "quant"),
+                "--transcriptome",
+                str(tmp_path / "supplied.fa.gz"),
+                "--force-download",
             ]
         )
         == 0

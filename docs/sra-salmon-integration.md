@@ -55,7 +55,13 @@ python scripts/build_sra_salmon_source.py prjna1083972-mmnst \
 ```
 
 `--quant-dir` must contain `<run-accession>/quant.sf` for every declared tumor
-and control run. The transcriptome checksum is still enforced.
+and control run. `--transcriptome` can also be used without `--quant-dir`; the
+supplied combined FASTA is checksum-verified and used directly to build the
+Salmon index, without downloading the registry FASTA components.
+
+`--force-download` refreshes and checksum-verifies the FASTQs even when their
+existing `quant.sf` remains reusable. Use `--force-quant` separately when Salmon
+must run again.
 
 ## Outputs
 

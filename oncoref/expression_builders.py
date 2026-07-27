@@ -2559,24 +2559,45 @@ def prepare_salmon_transcriptome(
     return combined
 
 
+def _verified_salmon_transcriptome(
+    source: SraSalmonSource,
+    transcriptome_path: str | Path,
+) -> Path:
+    """Return a supplied combined transcriptome after enforcing its registry hash."""
+    transcriptome = Path(transcriptome_path)
+    observed = _sha256(transcriptome)
+    if observed != source.combined_transcriptome_sha256:
+        raise RuntimeError(
+            f"sha256 mismatch for {transcriptome}: "
+            f"{observed} != {source.combined_transcriptome_sha256}"
+        )
+    return transcriptome
+
+
 def prepare_salmon_index(
     source: SraSalmonSource,
     *,
     cache_dir: str | Path,
+    transcriptome_path: str | Path | None = None,
     salmon_executable: str = "salmon",
     threads: int = 4,
     force_download: bool = False,
     force_index: bool = False,
 ) -> tuple[Path, Path]:
-    """Download the pinned transcriptome and build its Salmon index."""
+    """Select the verified transcriptome and build or reuse its Salmon index."""
     if threads < 1:
         raise ValueError("threads must be at least 1")
     cache = Path(cache_dir)
     reference_dir = cache / "reference"
-    transcriptome = prepare_salmon_transcriptome(
-        source,
-        cache_dir=cache,
-        force_download=force_download,
+    reference_dir.mkdir(parents=True, exist_ok=True)
+    transcriptome = (
+        _verified_salmon_transcriptome(source, transcriptome_path)
+        if transcriptome_path is not None
+        else prepare_salmon_transcriptome(
+            source,
+            cache_dir=cache,
+            force_download=force_download,
+        )
     )
     index_dir = reference_dir / "salmon_index"
     complete_marker = index_dir / "versionInfo.json"
@@ -2662,11 +2683,14 @@ def quantify_sra_salmon_run(
     quant_path = quant_dir / "quant.sf"
     input_manifest = _sra_salmon_quantification_inputs(source, run)
     input_manifest_path = quant_dir / "oncoref_quantification_inputs.json"
-    if (
+    cache_reusable = (
         quant_path.exists()
         and _json_file_matches(input_manifest_path, input_manifest)
         and not force_quant
-    ):
+    )
+    if cache_reusable:
+        if force_download:
+            download_sra_salmon_run_reads(run, cache, force_download=True)
         return quant_path
 
     read_1, read_2 = download_sra_salmon_run_reads(
@@ -3336,6 +3360,7 @@ def _resolve_sra_salmon_quant_paths(
     *,
     cache_dir: Path,
     quant_paths: Mapping[str, str | Path] | None,
+    transcriptome_path: str | Path | None,
     salmon_executable: str,
     threads: int,
     force_download: bool,
@@ -3351,6 +3376,9 @@ def _resolve_sra_salmon_quant_paths(
                 "Salmon quant paths must exactly match the declared run manifest; "
                 f"missing={missing}, unexpected={unexpected}"
             )
+        if force_download:
+            for run in source.runs:
+                download_sra_salmon_run_reads(run, cache_dir, force_download=True)
         return (
             {accession: Path(quant_paths[accession]) for accession in expected_runs},
             None,
@@ -3359,6 +3387,7 @@ def _resolve_sra_salmon_quant_paths(
     transcriptome, index_dir = prepare_salmon_index(
         source,
         cache_dir=cache_dir,
+        transcriptome_path=transcriptome_path,
         salmon_executable=salmon_executable,
         threads=threads,
         force_download=force_download,
@@ -3391,16 +3420,10 @@ def _resolve_sra_salmon_transcript_map(
 ) -> Mapping[str, str]:
     if transcript_to_gene is not None:
         return transcript_to_gene
-    if transcriptome_path is not None:
-        transcriptome = Path(transcriptome_path)
-        observed = _sha256(transcriptome)
-        if observed != source.combined_transcriptome_sha256:
-            raise RuntimeError(
-                f"sha256 mismatch for {transcriptome}: "
-                f"{observed} != {source.combined_transcriptome_sha256}"
-            )
-    elif prepared_transcriptome is not None:
+    if prepared_transcriptome is not None:
         transcriptome = prepared_transcriptome
+    elif transcriptome_path is not None:
+        transcriptome = _verified_salmon_transcriptome(source, transcriptome_path)
     else:
         transcriptome = prepare_salmon_transcriptome(
             source,
@@ -3438,6 +3461,7 @@ def build_sra_salmon_source_matrices(
         source,
         cache_dir=cache,
         quant_paths=quant_paths,
+        transcriptome_path=transcriptome_path,
         salmon_executable=salmon_executable,
         threads=threads,
         force_download=force_download,
