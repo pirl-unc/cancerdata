@@ -86,6 +86,11 @@ from oncoref.expression_registry import expression_source_registry_entries
 from oncoref.gene_families import clean_tpm_censored_gene_ids
 from oncoref.load_dataset import get_data
 from oncoref.normalization import clean_tpm
+from oncoref.representative_partitions import (
+    assign_representative_partitions,
+    representative_partition_build_metadata,
+    representative_partition_cohort_metadata,
+)
 from oncoref.source_matrices import registry as source_registry
 from oncoref.source_matrices import source_sample_namespace
 
@@ -602,6 +607,7 @@ def rebuild(
             )
             provenance.append(
                 {
+                    "cancer_code": code,
                     "representative_id": rep_id,
                     "source_cohort": source_cohort,
                     "source_version": source_version,  # harmonized Ensembl release
@@ -671,12 +677,20 @@ def rebuild(
                 compression="gzip",
             )
 
-    pd.DataFrame(provenance).to_csv(rep_dir / "_provenance.csv", index=False)
+    provenance_df = assign_representative_partitions(pd.DataFrame(provenance))
+    provenance_df.to_csv(rep_dir / "_provenance.csv", index=False)
     if qc_manifest:
         pd.concat(qc_manifest, ignore_index=True).to_csv(
             out / "source-matrix-sample-qc.csv", index=False
         )
-    pd.DataFrame(build_rows).to_csv(out / "expression-artifact-build-metadata.csv", index=False)
+    partition_by_cohort = representative_partition_cohort_metadata(provenance_df)
+    build_df = pd.DataFrame(build_rows).merge(
+        partition_by_cohort,
+        on="cancer_code",
+        how="left",
+        validate="one_to_one",
+    )
+    build_df.to_csv(out / "expression-artifact-build-metadata.csv", index=False)
     metadata = {
         "artifact": "expression-derived-shards",
         "schema_version": EXPRESSION_ARTIFACT_BUILD_METADATA_SCHEMA_VERSION,
@@ -693,6 +707,7 @@ def rebuild(
         "n_negative_values_clipped": int(
             sum(row["n_negative_values_clipped"] for row in build_rows)
         ),
+        "representative_partition": representative_partition_build_metadata(provenance_df),
         "derived_artifacts": [
             "clean",
             _SUMMARY_DIR,

@@ -203,6 +203,7 @@ from .expression import (
     proteoform_within_sample_top_fraction,
     representative_cohort_availability,
     representative_cohort_samples,
+    representative_partition_manifest,
     sample_expression_qc,
     source_matrix_sample_qc_manifest,
     within_sample_top_fraction,
@@ -338,6 +339,7 @@ from .proteoforms import (
     proteoform_symbol,
     proteoform_symbol_map,
 )
+from .representative_partitions import REPRESENTATIVE_PARTITION_POLICY_VERSION
 from .response_signatures import (
     response_signature_direction,
     response_signature_genes,
@@ -371,6 +373,7 @@ __all__ = [
     "REFERENCE_SOURCE_VALUES",
     "REGIMEN_FALLBACK",
     "REGIMEN_LABELS",
+    "REPRESENTATIVE_PARTITION_POLICY_VERSION",
     "RIBOSOMAL_PROTEIN_FRACTION",
     "SHARD_DATASETS",
     "TECHNICAL_FRACTION",
@@ -640,6 +643,7 @@ __all__ = [
     "renormalize_to_million",
     "representative_cohort_availability",
     "representative_cohort_samples",
+    "representative_partition_manifest",
     "resolve_apd1_response_source",
     "resolve_cancer_type",
     "resolve_cohort_id",

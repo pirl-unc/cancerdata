@@ -832,6 +832,15 @@ def test_representative_provenance_includes_source_sample_and_selection_metadata
             "source_sample_qc": ["pass"],
             "representative_role": ["standard"],
             "benchmark_eligible": [True],
+            "partition_role": ["validation"],
+            "partition_reason": ["stable_source_group_validation"],
+            "partition_policy_version": [expression.REPRESENTATIVE_PARTITION_POLICY_VERSION],
+            "partition_validation_target": [1],
+            "partition_status": ["available"],
+            "n_partition_train": [1],
+            "n_partition_validation": [1],
+            "n_partition_validation_external": [0],
+            "n_partition_audit_only": [0],
             "review_source": ["https://example.test/review"],
             "review_note": ["reviewed source"],
             "n_cohort_samples": [10],
@@ -848,6 +857,10 @@ def test_representative_provenance_includes_source_sample_and_selection_metadata
     assert df.loc[0, "source_sample_qc"] == "pass"
     assert df.loc[0, "representative_role"] == "standard"
     assert bool(df.loc[0, "benchmark_eligible"]) is True
+    assert df.loc[0, "partition_role"] == "validation"
+    assert (
+        df.loc[0, "partition_policy_version"] == expression.REPRESENTATIVE_PARTITION_POLICY_VERSION
+    )
     assert df.loc[0, "review_source"] == "https://example.test/review"
     assert df.loc[0, "review_note"] == "reviewed source"
     assert df.loc[0, "selection_rank"] == 1
@@ -865,6 +878,94 @@ def test_representative_provenance_includes_source_sample_and_selection_metadata
         representative_id_style="internal",
     )
     assert internal.loc[0, "representative_id"] == "PRAD__rep1"
+
+
+def test_representative_partition_manifest_is_one_row_per_vector(monkeypatch, tmp_path):
+    monkeypatch.setenv("CANCERDATA_BUNDLED_DATA", str(tmp_path))
+    shard_dir = tmp_path / "cancer-reference-expression-representatives"
+    shard_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "representative_id": ["PRAD__rep1", "PRAD__rep2", "BRCA__rep1"],
+            "source_group_id": ["TCGA:p1", "TCGA:p2", "TCGA:b1"],
+            "source_cohort": ["TCGA_PRAD", "TCGA_PRAD", "TCGA_BRCA"],
+            "source_project": ["TCGA", "TCGA", "TCGA"],
+            "source_sample": ["p1", "p2", "b1"],
+            "representative_role": ["standard", "standard", "standard"],
+            "benchmark_eligible": [True, True, True],
+            "partition_role": ["train", "validation", "train"],
+            "partition_reason": [
+                "stable_source_group_training",
+                "stable_source_group_validation",
+                "stable_source_group_training",
+            ],
+            "partition_policy_version": [expression.REPRESENTATIVE_PARTITION_POLICY_VERSION] * 3,
+            "partition_validation_target": [1, 1, 0],
+            "partition_status": [
+                "available",
+                "available",
+                "insufficient_independent_groups",
+            ],
+            "n_partition_train": [1, 1, 1],
+            "n_partition_validation": [1, 1, 0],
+            "n_partition_validation_external": [0, 0, 0],
+            "n_partition_audit_only": [0, 0, 0],
+        }
+    ).to_csv(shard_dir / "_provenance.csv", index=False)
+
+    manifest = expression.representative_partition_manifest("PRAD")
+
+    assert manifest["representative_id"].tolist() == ["PRAD_rep01", "PRAD_rep02"]
+    assert manifest["partition_role"].tolist() == ["train", "validation"]
+    assert manifest["source_group_id"].is_unique
+    assert (
+        manifest.attrs["partition_policy_version"]
+        == expression.REPRESENTATIVE_PARTITION_POLICY_VERSION
+    )
+
+
+def test_released_representative_partition_is_source_grouped_and_stratified():
+    manifest = expression.representative_partition_manifest()
+    availability = expression.representative_cohort_availability()
+
+    assert not manifest.empty
+    assert set(manifest["partition_role"]) <= {
+        "train",
+        "validation",
+        "validation_external",
+        "audit_only",
+    }
+    assert manifest.groupby("source_group_id")["partition_role"].nunique().max() == 1
+    assert set(manifest["partition_policy_version"]) == {
+        expression.REPRESENTATIVE_PARTITION_POLICY_VERSION
+    }
+
+    ordinary = availability[
+        (availability["n_representatives"] == 5) & (availability["n_partition_audit_only"] == 0)
+    ]
+    assert not ordinary.empty
+    assert set(ordinary["n_partition_train"]) == {3}
+    assert set(ordinary["n_partition_validation"]) == {2}
+    assert set(ordinary["partition_status"]) == {"available"}
+    partition_totals = (
+        availability["n_partition_train"]
+        + availability["n_partition_validation"]
+        + availability["n_partition_audit_only"]
+    )
+    assert partition_totals.equals(availability["n_representatives"])
+
+    by_code = availability.set_index("cancer_code")
+    assert by_code.loc["SARC_EHE", "partition_status"] == ("insufficient_independent_groups")
+    assert by_code.loc["SARC_EHE", "n_partition_train"] == 1
+    for code in ("RB", "SARC_CHOR"):
+        assert by_code.loc[code, "partition_status"] == ("no_benchmark_eligible_groups")
+        assert by_code.loc[code, "n_partition_audit_only"] == 5
+
+    build_summary = expression.expression_artifact_build_summary(on_missing="raise")
+    assert build_summary["representative_partition"]["grouping_key"] == ("source_group_id")
+    assert build_summary["representative_partition"]["policy_version"] == (
+        expression.REPRESENTATIVE_PARTITION_POLICY_VERSION
+    )
 
 
 def test_representative_availability_routes_proxy_and_qc_fallback_cohorts(monkeypatch, tmp_path):
@@ -1043,6 +1144,15 @@ def test_representative_empty_long_schema_includes_requested_provenance(monkeypa
         "selection_scale_class",
         "representative_role",
         "benchmark_eligible",
+        "partition_role",
+        "partition_reason",
+        "partition_policy_version",
+        "partition_validation_target",
+        "partition_status",
+        "n_partition_train",
+        "n_partition_validation",
+        "n_partition_validation_external",
+        "n_partition_audit_only",
         "review_source",
         "review_note",
         "selection_rank",
