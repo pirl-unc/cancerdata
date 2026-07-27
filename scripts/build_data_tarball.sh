@@ -10,6 +10,8 @@
 #
 # Usage:
 #   scripts/build_data_tarball.sh <source-dir> [output-dir]
+#   ONCOREF_DATA_RELEASE_VERSION=5.23.13 \
+#       scripts/build_data_tarball.sh <source-dir> [output-dir]
 #
 # Then: upload <output-dir>/oncoref-data-v<DATA_VERSION>.tar.gz plus the emitted
 # .sha256 and .manifest.json files to the `v<DATA_VERSION>` release on
@@ -31,7 +33,12 @@ OUT_DIR="$(cd "${OUT_DIR%/}" && pwd)"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-DATA_VERSION="$(python -c 'from oncoref.version import DATA_VERSION; print(DATA_VERSION)')"
+CODE_DATA_VERSION="$(python -c 'from oncoref.version import DATA_VERSION; print(DATA_VERSION)')"
+DATA_VERSION="${ONCOREF_DATA_RELEASE_VERSION:-$CODE_DATA_VERSION}"
+if [[ ! "$DATA_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "error: data release version must have the form X.Y.Z, got '$DATA_VERSION'" >&2
+    exit 1
+fi
 PACKAGE_VERSION="$(python -c 'from oncoref.version import __version__; print(__version__)')"
 SOURCE_MATRIX_VERSION="$(python -c 'from oncoref.version import SOURCE_MATRIX_VERSION; print(SOURCE_MATRIX_VERSION)')"
 BUILDER_COMMIT="$(git rev-parse HEAD 2>/dev/null || true)"
@@ -124,6 +131,7 @@ if build_json.exists():
         "n_cohort_samples": build_metadata.get("n_cohort_samples"),
         "sample_qc_fallbacks": build_metadata.get("sample_qc_fallbacks"),
         "n_negative_values_clipped": build_metadata.get("n_negative_values_clipped"),
+        "representative_partition": build_metadata.get("representative_partition"),
     }
 manifest.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 PY

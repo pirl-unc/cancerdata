@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "1.8.157"
+__version__ = "1.8.158"
 
 # Version of the downloadable data bundle (the heavy per-cohort percentile +
 # representative shards). Bump when the DERIVED reference artifacts change — it pins
@@ -34,7 +34,9 @@ __version__ = "1.8.157"
 # other TCGA-SARC histology cohorts instead of the generic TCGA sample cohort.
 # 5.23.12 marks the duplicated metaplastic BRCA/BRCA_Basal source vector as a
 # reviewed dual-lineage audit representative rather than ordinary benchmark truth.
-DATA_VERSION = "5.23.12"
+# 5.23.13 assigns every representative source group to a deterministic,
+# leakage-resistant train, validation, external-validation, or audit-only role.
+DATA_VERSION = "5.23.13"
 
 # Version of the per-cohort RAW source matrices (source_matrices.py). Independent of
 # DATA_VERSION: the source matrices are the unchanging raw-TPM inputs, while DATA_VERSION

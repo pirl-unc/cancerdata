@@ -2642,6 +2642,11 @@ def test_representatives_generator_writes_shards_and_provenance(tmp_path):
     assert (prov["source_cohort"] == "COHORT_A").all()
     assert set(prov["source_sample"]) <= {f"s{i}" for i in range(6)}
     assert (prov["source_group_id"] == prov["source_cohort"] + ":" + prov["source_sample"]).all()
+    assert prov["partition_role"].value_counts().to_dict() == {
+        "train": 2,
+        "validation": 1,
+    }
+    assert set(prov["partition_status"]) == {"available"}
 
 
 def test_representatives_generator_selects_on_biological_view(tmp_path, monkeypatch):
@@ -2692,6 +2697,54 @@ def test_representatives_generator_groups_treehouse_views_by_physical_sample(tmp
     provenance = pd.read_csv(out / "_provenance.csv").iloc[0]
     assert provenance["source_cohort"] == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
     assert provenance["source_group_id"] == ("TREEHOUSE_POLYA_25_01:TCGA-AC-A2QH-01")
+
+
+def test_partition_existing_bundle_updates_only_provenance_and_metadata(tmp_path):
+    gen = _load_script("partition_representatives")
+    representative_dir = tmp_path / "cancer-reference-expression-representatives"
+    representative_dir.mkdir()
+    shard_path = representative_dir / "A.parquet"
+    shard_path.write_bytes(b"unchanged expression shard")
+    pd.DataFrame(
+        {
+            "representative_id": [f"A__rep{i}" for i in range(1, 6)],
+            "source_group_id": [f"PROJECT:s{i}" for i in range(1, 6)],
+            "benchmark_eligible": [True] * 5,
+        }
+    ).to_csv(representative_dir / "_provenance.csv", index=False)
+    pd.DataFrame(
+        {
+            "cancer_code": ["A"],
+            "source_cohort": ["PROJECT"],
+            "n_cohort_samples": [10],
+        }
+    ).to_csv(tmp_path / "expression-artifact-build-metadata.csv", index=False)
+    (tmp_path / "expression-artifact-build-metadata.json").write_text(
+        json.dumps(
+            {
+                "artifact": "expression-derived-shards",
+                "schema_version": "expression_artifact_build_metadata_v2",
+            }
+        )
+    )
+
+    partitioned = gen.partition_existing_bundle(tmp_path)
+
+    assert shard_path.read_bytes() == b"unchanged expression shard"
+    assert partitioned["partition_role"].value_counts().to_dict() == {
+        "train": 3,
+        "validation": 2,
+    }
+    cohort_metadata = pd.read_csv(tmp_path / "expression-artifact-build-metadata.csv")
+    assert cohort_metadata.loc[0, "partition_status"] == "available"
+    assert cohort_metadata.loc[0, "n_partition_train"] == 3
+    assert cohort_metadata.loc[0, "n_partition_validation"] == 2
+    build_metadata = json.loads((tmp_path / "expression-artifact-build-metadata.json").read_text())
+    assert build_metadata["schema_version"] == "expression_artifact_build_metadata_v3"
+    assert build_metadata["representative_partition"]["role_counts"] == {
+        "train": 3,
+        "validation": 2,
+    }
 
 
 def _write_rebuild_inputs(tmp_path):
@@ -2787,6 +2840,9 @@ def test_rebuild_expression_artifacts_defaults_to_qc_passing_samples(tmp_path, m
     assert prov.loc[0, "n_qc_pass"] == 1
     assert prov.loc[0, "n_qc_warn"] == 1
     assert prov.loc[0, "n_qc_fail"] == 1
+    assert prov.loc[0, "partition_role"] == "train"
+    assert prov.loc[0, "partition_status"] == "insufficient_independent_groups"
+    assert prov.loc[0, "partition_validation_target"] == 0
 
     qc = pd.read_csv(out / "source-matrix-sample-qc.csv")
     assert list(qc["sample_id"]) == ["pass_sample", "warn_sample", "fail_sample"]
@@ -2797,13 +2853,21 @@ def test_rebuild_expression_artifacts_defaults_to_qc_passing_samples(tmp_path, m
     assert build_meta.loc[0, "n_source_samples"] == 3
     assert build_meta.loc[0, "n_cohort_samples"] == 1
     assert build_meta.loc[0, "sample_qc_policy_version"] == "sample_expression_qc_v2"
+    assert build_meta.loc[0, "partition_status"] == "insufficient_independent_groups"
+    assert build_meta.loc[0, "n_partition_train"] == 1
+    assert build_meta.loc[0, "n_partition_validation"] == 0
 
     metadata = json.loads((out / "expression-artifact-build-metadata.json").read_text())
-    assert metadata["schema_version"] == "expression_artifact_build_metadata_v2"
+    assert metadata["schema_version"] == "expression_artifact_build_metadata_v3"
     assert metadata["sample_qc"] == "pass"
     assert metadata["sample_qc_manifest"] == "source-matrix-sample-qc.csv"
     assert metadata["n_source_samples"] == 3
     assert metadata["n_cohort_samples"] == 1
+    assert metadata["representative_partition"] == {
+        "grouping_key": "source_group_id",
+        "policy_version": "source_grouped_3_train_2_validation_v1",
+        "role_counts": {"train": 1},
+    }
 
 
 def test_rebuild_expression_artifacts_applies_reviewed_source_adjudication(tmp_path, monkeypatch):

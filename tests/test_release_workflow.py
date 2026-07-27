@@ -1,3 +1,6 @@
+import json
+import os
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -7,6 +10,8 @@ from scripts.pypi_release_gate import (
     should_publish_to_pypi,
     write_github_output,
 )
+
+from oncoref.data_bundle import DOWNLOADABLE_PATHS
 
 
 def test_build_backend_supports_declared_pep_639_license_metadata():
@@ -83,3 +88,33 @@ def test_deploy_uses_one_virtualenv_python_interpreter():
 
     command_lines = [line.strip() for line in script.splitlines()]
     assert not any(line.startswith(("python ", "python3 ")) for line in command_lines)
+
+
+def test_data_tarball_can_target_an_unreleased_version(tmp_path):
+    source = tmp_path / "source"
+    output = tmp_path / "output"
+    source.mkdir()
+    output.mkdir()
+    for relative_path in DOWNLOADABLE_PATHS:
+        path = source / relative_path
+        if path.suffix:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}" if path.suffix == ".json" else "fixture\n")
+        else:
+            path.mkdir(parents=True)
+            (path / "fixture.txt").write_text("fixture\n")
+
+    env = os.environ.copy()
+    env["ONCOREF_DATA_RELEASE_VERSION"] = "9.8.7"
+    subprocess.run(
+        ["bash", "scripts/build_data_tarball.sh", str(source), str(output)],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    manifest = json.loads((output / "oncoref-data-v9.8.7.manifest.json").read_text())
+    assert manifest["data_version"] == "9.8.7"
+    assert manifest["tarball"]["filename"] == "oncoref-data-v9.8.7.tar.gz"
+    assert (output / "oncoref-data-v9.8.7.tar.gz.sha256").exists()

@@ -101,6 +101,9 @@ from .gene_ids import (
 from .gene_qc import TECHNICAL_RNA_GROUPS, classify_gene_qc
 from .load_dataset import _register_derived_cache, get_data
 from .normalization import clean_tpm, percentile_rank, tpm_to_housekeeping_normalized
+from .representative_partitions import (
+    REPRESENTATIVE_PARTITION_POLICY_VERSION as REPRESENTATIVE_PARTITION_POLICY_VERSION,
+)
 from .version import DATA_VERSION, SOURCE_MATRIX_VERSION
 
 
@@ -186,7 +189,7 @@ _REPRESENTATIVES = SHARD_DATASETS["representatives"]
 _PERCENTILES = SHARD_DATASETS["percentiles"]
 _WITHIN_SAMPLE = SHARD_DATASETS["within_sample"]
 
-REPRESENTATIVE_ARTIFACT_SCHEMA_VERSION = "representative_expression_v1"
+REPRESENTATIVE_ARTIFACT_SCHEMA_VERSION = "representative_expression_v2"
 PERCENTILE_ARTIFACT_SCHEMA_VERSION = "cohort_percentile_expression_v1"
 REFERENCE_EXPRESSION_SCHEMA_VERSION = "cancer_reference_expression_v4"
 REPRESENTATIVE_SELECTION_METHOD = "central_medoid_then_farthest_first"
@@ -337,6 +340,15 @@ _REPRESENTATIVE_PROVENANCE_COLUMNS = [
     "selection_scale_class",
     "representative_role",
     "benchmark_eligible",
+    "partition_role",
+    "partition_reason",
+    "partition_policy_version",
+    "partition_validation_target",
+    "partition_status",
+    "n_partition_train",
+    "n_partition_validation",
+    "n_partition_validation_external",
+    "n_partition_audit_only",
     "review_source",
     "review_note",
     "selection_rank",
@@ -363,10 +375,37 @@ _REPRESENTATIVE_AVAILABILITY_COLUMNS = [
     "n_qc_fail",
     "representative_role",
     "benchmark_eligible",
+    "partition_policy_version",
+    "partition_validation_target",
+    "partition_status",
+    "n_partition_train",
+    "n_partition_validation",
+    "n_partition_validation_external",
+    "n_partition_audit_only",
     "selection_scale_class",
     "selection_method",
     "selection_basis",
     "availability_reason",
+]
+
+_REPRESENTATIVE_PARTITION_COLUMNS = [
+    "cancer_code",
+    "representative_id",
+    "source_group_id",
+    "source_cohort",
+    "source_project",
+    "source_sample",
+    "representative_role",
+    "benchmark_eligible",
+    "partition_role",
+    "partition_reason",
+    "partition_policy_version",
+    "partition_validation_target",
+    "partition_status",
+    "n_partition_train",
+    "n_partition_validation",
+    "n_partition_validation_external",
+    "n_partition_audit_only",
 ]
 
 
@@ -651,6 +690,10 @@ def _attach_representative_provenance(long: pd.DataFrame, root: Path) -> pd.Data
         "source_sample",
         "source_group_id",
         "representative_role",
+        "partition_role",
+        "partition_reason",
+        "partition_policy_version",
+        "partition_status",
         "review_source",
         "review_note",
     ):
@@ -662,6 +705,11 @@ def _attach_representative_provenance(long: pd.DataFrame, root: Path) -> pd.Data
         "n_qc_pass",
         "n_qc_warn",
         "n_qc_fail",
+        "partition_validation_target",
+        "n_partition_train",
+        "n_partition_validation",
+        "n_partition_validation_external",
+        "n_partition_audit_only",
     ):
         if col not in long.columns:
             long[col] = pd.NA
@@ -910,6 +958,19 @@ def representative_cohort_availability(
                 "n_qc_fail": _one_provenance_value(group, "n_qc_fail"),
                 "representative_role": role,
                 "benchmark_eligible": benchmark,
+                "partition_policy_version": _one_provenance_value(
+                    group, "partition_policy_version"
+                ),
+                "partition_validation_target": _one_provenance_value(
+                    group, "partition_validation_target"
+                ),
+                "partition_status": _one_provenance_value(group, "partition_status"),
+                "n_partition_train": _one_provenance_value(group, "n_partition_train"),
+                "n_partition_validation": _one_provenance_value(group, "n_partition_validation"),
+                "n_partition_validation_external": _one_provenance_value(
+                    group, "n_partition_validation_external"
+                ),
+                "n_partition_audit_only": _one_provenance_value(group, "n_partition_audit_only"),
                 "selection_scale_class": _one_provenance_value(group, "selection_scale_class"),
                 "selection_method": REPRESENTATIVE_SELECTION_METHOD,
                 "selection_basis": REPRESENTATIVE_SELECTION_BASIS,
@@ -924,6 +985,52 @@ def representative_cohort_availability(
         if expected is not None:
             out = out[out[col].map(_optional_bool) == bool(expected)].copy()
     out.attrs["schema_version"] = REPRESENTATIVE_ARTIFACT_SCHEMA_VERSION
+    out.attrs["data_version"] = DATA_VERSION
+    out.attrs["source_matrix_version"] = SOURCE_MATRIX_VERSION
+    return out.reset_index(drop=True)
+
+
+def representative_partition_manifest(
+    cancer_types: str | Iterable[str] | None = None,
+    *,
+    representative_id_style: str = "pirlygenes",
+) -> pd.DataFrame:
+    """One machine-readable train/validation row per representative vector.
+
+    ``source_group_id`` is the leakage boundary: every parent, subtype, or alias
+    row backed by the same physical sample has one shared partition role.
+    ``validation_external`` holds out a complete independent source project;
+    ``audit_only`` keeps reviewed or QC-fallback vectors out of both model fitting
+    and evaluation. Cohorts without two independent eligible groups remain
+    ``train`` and report ``partition_status="insufficient_independent_groups"``.
+    """
+
+    _validate_representative_id_style(representative_id_style)
+    root = _shard_dir(_REPRESENTATIVES)
+    provenance = _representative_provenance(root)
+
+    if cancer_types is not None and not provenance.empty:
+        requested = set(_resolve_cancer_types(cancer_types, expand_aggregates=True))
+        provenance = provenance[provenance["cancer_code"].isin(requested)].copy()
+
+    for column in _REPRESENTATIVE_PARTITION_COLUMNS:
+        if column not in provenance:
+            provenance[column] = pd.NA
+    out = provenance[_REPRESENTATIVE_PARTITION_COLUMNS].copy()
+    out["representative_id"] = out["representative_id"].map(
+        lambda value: _representative_id_for_style(
+            value,
+            style=representative_id_style,
+        )
+    )
+    out = out.sort_values(["cancer_code", "representative_id"], kind="stable")
+    policy_versions = [
+        str(value) for value in out["partition_policy_version"].dropna().unique() if str(value)
+    ]
+    out.attrs["schema_version"] = REPRESENTATIVE_ARTIFACT_SCHEMA_VERSION
+    out.attrs["partition_policy_version"] = (
+        policy_versions[0] if len(policy_versions) == 1 else ("mixed" if policy_versions else None)
+    )
     out.attrs["data_version"] = DATA_VERSION
     out.attrs["source_matrix_version"] = SOURCE_MATRIX_VERSION
     return out.reset_index(drop=True)
@@ -1484,7 +1591,7 @@ _PER_SAMPLE_NORMALIZE = ("tpm_raw", "tpm_clean", "tpm_clean_log1p", "tpm_clean_h
 _SAMPLE_QC_MODES = ("all", "pass", "pass_or_warn")
 _ARTIFACT_SAMPLE_QC_MODES = ("artifact", *_SAMPLE_QC_MODES)
 SAMPLE_EXPRESSION_QC_POLICY_VERSION = "sample_expression_qc_v2"
-EXPRESSION_ARTIFACT_BUILD_METADATA_SCHEMA_VERSION = "expression_artifact_build_metadata_v2"
+EXPRESSION_ARTIFACT_BUILD_METADATA_SCHEMA_VERSION = "expression_artifact_build_metadata_v3"
 SOURCE_MATRIX_SAMPLE_QC_MANIFEST_PATH = "source-matrix-sample-qc.csv"
 EXPRESSION_ARTIFACT_BUILD_METADATA_PATH = "expression-artifact-build-metadata.csv"
 EXPRESSION_ARTIFACT_BUILD_METADATA_JSON_PATH = "expression-artifact-build-metadata.json"
@@ -1541,6 +1648,13 @@ _EXPRESSION_ARTIFACT_BUILD_METADATA_COLUMNS = [
     "n_qc_pass",
     "n_qc_warn",
     "n_qc_fail",
+    "partition_policy_version",
+    "partition_validation_target",
+    "partition_status",
+    "n_partition_train",
+    "n_partition_validation",
+    "n_partition_validation_external",
+    "n_partition_audit_only",
 ]
 DEFAULT_MIN_DETECTED_GENES_FOR_QC = 5000
 DEFAULT_MIN_HOUSEKEEPING_GENES_FOR_QC = 10
@@ -2253,8 +2367,8 @@ def expression_artifact_build_metadata(
     expression artifact loaders. ``build_source_cohort`` preserves the cohort label
     physically recorded when the bundle was built, which can differ in older bundles.
     The remaining fields record the selected source matrix, QC policy, selected sample
-    count, and QC pass/warn/fail counts. Missing current-bundle metadata returns a
-    schema-stable empty frame by default.
+    count, QC pass/warn/fail counts, and representative partition coverage. Missing
+    current-bundle metadata returns a schema-stable empty frame by default.
     """
     mode = _validate_metadata_on_missing(on_missing)
     path = _optional_bundle_metadata_path(
@@ -2430,7 +2544,8 @@ def expression_artifact_build_summary(
 ) -> dict:
     """Read bundle-level expression artifact build metadata.
 
-    Returns the JSON summary emitted beside the per-cohort metadata CSV. The summary
+    Returns the JSON summary emitted beside the per-cohort metadata CSV, including the
+    representative partition policy and unique source-group role counts. The summary
     remains optional until a regenerated data bundle ships it; callers that require it
     should pass ``on_missing="raise"``.
     """

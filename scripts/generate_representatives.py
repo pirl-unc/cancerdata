@@ -58,6 +58,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from oncoref.expression_builders import cohort_medoids, sample_columns
 from oncoref.gene_families import clean_tpm_censored_gene_ids
+from oncoref.representative_partitions import assign_representative_partitions
 from oncoref.source_matrices import source_sample_namespace
 
 _DATA_DIR = Path(__file__).resolve().parents[1] / "oncoref" / "data"
@@ -65,12 +66,15 @@ OUT_DIR = _DATA_DIR / "cancer-reference-expression-representatives"
 _BASE = ["Ensembl_Gene_ID", "Symbol"]
 #: Columns representative_cohort_samples(include_provenance=True) merges back in.
 _PROVENANCE_COLUMNS = [
+    "cancer_code",
     "representative_id",
     "source_cohort",
     "source_project",
     "source_sample",
     "source_group_id",
     "n_cohort_samples",
+    "representative_role",
+    "benchmark_eligible",
 ]
 
 
@@ -132,17 +136,22 @@ def build(input_dir: Path, *, k: int = 5, out_dir: Path = OUT_DIR) -> None:
         for rep_id, src in zip(rep_ids, source_cols):
             provenance.append(
                 {
+                    "cancer_code": code,
                     "representative_id": rep_id,
                     "source_cohort": source_cohort,
                     "source_project": source_project,
                     "source_sample": src,
                     "source_group_id": f"{source_sample_namespace(source_cohort)}:{src}",
                     "n_cohort_samples": n_cohort,
+                    "representative_role": "standard",
+                    "benchmark_eligible": True,
                 }
             )
         n += 1
         print(f"  {code}: {len(rep_ids)} reps of {n_cohort} samples", flush=True)
-    prov_df = pd.DataFrame(provenance, columns=_PROVENANCE_COLUMNS)
+    prov_df = assign_representative_partitions(
+        pd.DataFrame(provenance, columns=_PROVENANCE_COLUMNS)
+    )
     prov_df.to_csv(out_dir / "_provenance.csv", index=False)
     total_mb = sum(f.stat().st_size for f in out_dir.glob("*.parquet")) / 1e6
     print(f"\ndone: {n} cohorts, {total_mb:.1f} MB -> {out_dir}", flush=True)

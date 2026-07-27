@@ -397,13 +397,15 @@ different unit.
   (`--sample-qc pass`) and emits `source-matrix-sample-qc.csv` plus
   `expression-artifact-build-metadata.*` in the staging directory so bundle
   releases record which source samples fed percentiles, representatives,
-  proteoform summaries, and within-sample summaries. Representative
-  sample selection uses `representative_sample_columns` / `cohort_medoids` on the
-  biological clean-TPM view, then stores the selected samples' full
-  clean_tpm_16_9_75 vectors. Release builds retain curated cohorts that have no
-  strict QC-pass samples only through explicit source-aware fallbacks recorded in
-  the build metadata, and clip invalid negative source expression values to zero
-  with per-cohort counts.
+  proteoform summaries, and within-sample summaries. The rebuild also assigns
+  every representative source group to the released train/validation partition
+  and records the policy, role counts, and per-cohort validation coverage in the
+  same metadata. Representative sample selection uses
+  `representative_sample_columns` / `cohort_medoids` on the biological clean-TPM
+  view, then stores the selected samples' full clean_tpm_16_9_75 vectors. Release
+  builds retain curated cohorts that have no strict QC-pass samples only through
+  explicit source-aware fallbacks recorded in the build metadata, and clip
+  invalid negative source expression values to zero with per-cohort counts.
 
 ### Registry and low-level APIs
 
@@ -532,7 +534,45 @@ for required cohorts. `include_request_metadata=True` adds request/availability
 columns to long expression output, which is useful when a requested aggregate
 expands to child expression cohorts.
 
-### Derived artifact contracts
+### Representative evaluation partitions
+
+Representative vectors are real source samples. A model trained on all of them
+must not report accuracy on those same vectors as an estimate of generalization.
+Use `expression.representative_partition_manifest()` to obtain the released
+training and evaluation assignment before fitting or benchmarking:
+
+```python
+from oncoref import representative_partition_manifest
+
+partition = representative_partition_manifest()
+train_ids = partition.loc[partition["partition_role"] == "train", "representative_id"]
+validation_ids = partition.loc[
+    partition["partition_role"].isin(["validation", "validation_external"]),
+    "representative_id",
+]
+```
+
+The physical `source_group_id`, not the displayed representative ID or cancer
+label, is the partition unit. Parent labels, subtypes, and compatibility aliases
+backed by the same sample therefore always receive one shared role:
+
+- `train` — eligible for model fitting.
+- `validation` — deterministic within-cohort holdout.
+- `validation_external` — a complete independent source project held out when a
+  cohort spans projects.
+- `audit_only` — retained for inspection but excluded from fitting and evaluation
+  because its source group is not benchmark-eligible.
+
+The ordinary within-cohort policy holds out up to two independent groups, never
+more than half of a cohort. A usual five-representative cohort therefore has
+three training and two validation groups. When a cohort spans independent source
+projects, the smallest viable project is instead held out whole and labeled
+`validation_external`. A cohort with only one eligible group remains train-only
+and reports `partition_status="insufficient_independent_groups"` instead of
+claiming validation coverage. `partition_policy_version` makes the exact
+assignment contract release-visible.
+
+### Derived artifact fields
 
 Representative and percentile artifact readers have explicit downstream-facing
 contracts:
@@ -542,9 +582,9 @@ contracts:
   source sample id and stable source-group id, source diagnosis/morphology when a
   sample has been reviewed, effective QC status/reasons, source scale class,
   linear-TPM and absolute-floor comparability flags, representative role and
-  benchmark eligibility, review evidence, cohort sample count, deterministic
-  selection rank/method/basis, artifact schema version, `DATA_VERSION`, and
-  `SOURCE_MATRIX_VERSION`.
+  benchmark eligibility, partition role/status/policy, review evidence, cohort
+  sample count, deterministic selection rank/method/basis, artifact schema
+  version, `DATA_VERSION`, and `SOURCE_MATRIX_VERSION`.
   Treehouse PolyA parent, subset, and annotation-derived cohorts share one physical
   sample namespace, so aliases of the same source vector receive the same
   `source_group_id` even when their displayed source cohorts differ.
