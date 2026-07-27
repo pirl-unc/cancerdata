@@ -396,6 +396,12 @@ def test_sparse_source_qc_release_artifacts_have_count_and_diagnostic_parity():
         reference_source="artifact",
         sample_qc="artifact",
     ).set_index("cancer_code")
+    artifact_reference = expression.cancer_reference_expression(
+        codes,
+        genes="ENSG00000141510",
+        reference_source="artifact",
+        sample_qc="artifact",
+    )
 
     provenance_path = data_bundle.find(
         "cancer-reference-expression-representatives/_provenance.csv"
@@ -412,6 +418,10 @@ def test_sparse_source_qc_release_artifacts_have_count_and_diagnostic_parity():
         assert metadata.loc[code, "sample_qc_effective"] == "pass"
         assert summary_availability.loc[code, "n_reference_samples"] == counts["pass"]
         assert artifact_availability.loc[code, "n_reference_samples"] == counts["pass"]
+        reference_rows = artifact_reference.loc[artifact_reference["cancer_code"] == code]
+        assert not reference_rows.empty
+        assert set(reference_rows["n_reference_samples"]) == {counts["pass"]}
+        assert set(reference_rows["n_samples"]) == {counts["pass"]}
         assert set(provenance.loc[provenance_codes.eq(code), "n_cohort_samples"]) == {
             counts["pass"]
         }
@@ -3323,7 +3333,7 @@ def test_artifact_build_metadata_uses_loader_source_cohort_identity():
     assert by_code.loc["CML", "build_source_cohort"] == "GEO_HEME_2022"
 
 
-def test_artifact_availability_uses_selected_build_sample_count(monkeypatch):
+def test_artifact_reference_uses_selected_build_sample_count(monkeypatch):
     metadata = pd.DataFrame(
         {
             "cancer_code": ["MCL"],
@@ -3331,10 +3341,29 @@ def test_artifact_availability_uses_selected_build_sample_count(monkeypatch):
             "n_cohort_samples": [10],
         }
     )
+    percentiles = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["E1"],
+            "Symbol": ["A"],
+            "p25": [1.0],
+            "p50": [2.0],
+            "p75": [3.0],
+        }
+    )
     monkeypatch.setattr(expression, "available_percentile_cohorts", lambda: ["MCL"])
     monkeypatch.setattr(expression, "expression_artifact_build_metadata", lambda **kwargs: metadata)
+    monkeypatch.setattr(
+        expression,
+        "cohort_gene_percentiles",
+        lambda *args, **kwargs: percentiles.copy(),
+    )
 
     availability = expression.cancer_reference_expression_availability(
+        "MCL",
+        reference_source="artifact",
+        sample_qc="artifact",
+    )
+    reference = expression.cancer_reference_expression(
         "MCL",
         reference_source="artifact",
         sample_qc="artifact",
@@ -3343,6 +3372,8 @@ def test_artifact_availability_uses_selected_build_sample_count(monkeypatch):
     assert expression.source_matrices.cohort_info("MCL")["n_samples"] == 51
     assert availability.loc[0, "n_reference_samples"] == 10
     assert availability.loc[0, "n_samples"] == 10
+    assert reference["n_reference_samples"].tolist() == [10]
+    assert reference["n_samples"].tolist() == [10]
 
 
 @pytest.mark.parametrize("invalid_count", [-1, 1.5])
