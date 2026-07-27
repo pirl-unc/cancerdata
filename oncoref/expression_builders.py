@@ -2617,6 +2617,30 @@ def prepare_salmon_index(
     return transcriptome, index_dir
 
 
+def _sra_salmon_quantification_inputs(
+    source: SraSalmonSource,
+    run: SraSalmonRun,
+) -> dict:
+    """Inputs whose content or interpretation can change one ``quant.sf``."""
+    return {
+        "schema_version": 1,
+        "transcriptome_sha256": source.combined_transcriptome_sha256,
+        "run_accession": run.accession,
+        "read_md5": list(run.read_md5),
+        "library_type": "A",
+        "salmon_args": list(source.salmon_args),
+    }
+
+
+def _json_file_matches(path: Path, expected: Mapping) -> bool:
+    if not path.exists():
+        return False
+    try:
+        return json.loads(path.read_text()) == dict(expected)
+    except (OSError, TypeError, ValueError):
+        return False
+
+
 def quantify_sra_salmon_run(
     source: SraSalmonSource,
     run: SraSalmonRun,
@@ -2636,12 +2660,13 @@ def quantify_sra_salmon_run(
     cache = Path(cache_dir)
     quant_dir = cache / "quant" / run.accession
     quant_path = quant_dir / "quant.sf"
-    reference_marker = quant_dir / "oncoref_transcriptome_sha256.txt"
-    quant_matches_reference = (
-        reference_marker.exists()
-        and reference_marker.read_text().strip() == source.combined_transcriptome_sha256
-    )
-    if quant_path.exists() and quant_matches_reference and not force_quant:
+    input_manifest = _sra_salmon_quantification_inputs(source, run)
+    input_manifest_path = quant_dir / "oncoref_quantification_inputs.json"
+    if (
+        quant_path.exists()
+        and _json_file_matches(input_manifest_path, input_manifest)
+        and not force_quant
+    ):
         return quant_path
 
     read_1, read_2 = download_sra_salmon_run_reads(
@@ -2675,8 +2700,8 @@ def quantify_sra_salmon_run(
     )
     if not (temp_quant / "quant.sf").exists():
         raise RuntimeError(f"Salmon quantification for {run.accession} produced no quant.sf")
-    (temp_quant / "oncoref_transcriptome_sha256.txt").write_text(
-        source.combined_transcriptome_sha256 + "\n"
+    (temp_quant / "oncoref_quantification_inputs.json").write_text(
+        json.dumps(input_manifest, indent=2, sort_keys=True) + "\n"
     )
     if quant_dir.exists():
         shutil.rmtree(quant_dir)

@@ -2443,13 +2443,60 @@ def test_prepare_salmon_transcriptome_combines_all_pinned_fastas(tmp_path):
     }
 
 
-def test_quantify_sra_salmon_run_rebuilds_a_stale_reference_cache(tmp_path, monkeypatch):
+def test_quantify_sra_salmon_run_reuses_an_exact_input_cache(tmp_path, monkeypatch):
     source = _synthetic_sra_salmon_source()
     run = source.runs[0]
     quant_dir = tmp_path / "quant" / run.accession
     quant_dir.mkdir(parents=True)
+    (quant_dir / "quant.sf").write_text("cached")
+    (quant_dir / "oncoref_quantification_inputs.json").write_text(
+        json.dumps(expression_builders._sra_salmon_quantification_inputs(source, run))
+    )
+    monkeypatch.setattr(
+        expression_builders,
+        "download_sra_salmon_run_reads",
+        lambda *_args, **_kwargs: pytest.fail("exact cache should not download reads"),
+    )
+
+    result = expression_builders.quantify_sra_salmon_run(
+        source,
+        run,
+        cache_dir=tmp_path,
+        index_dir=tmp_path / "index",
+    )
+
+    assert result.read_text() == "cached"
+
+
+@pytest.mark.parametrize("changed_input", ["transcriptome", "read_md5", "salmon_args"])
+def test_quantify_sra_salmon_run_rebuilds_when_cache_inputs_change(
+    tmp_path,
+    monkeypatch,
+    changed_input,
+):
+    original_source = _synthetic_sra_salmon_source()
+    original_run = original_source.runs[0]
+    source = original_source
+    run = original_run
+    if changed_input == "transcriptome":
+        source = replace(source, combined_transcriptome_sha256="e" * 64)
+    elif changed_input == "read_md5":
+        run = replace(run, read_md5=("e" * 32, run.read_md5[1]))
+        source = replace(source, runs=(run, *source.runs[1:]))
+    elif changed_input == "salmon_args":
+        source = replace(source, salmon_args=(*source.salmon_args, "--posBias"))
+
+    quant_dir = tmp_path / "quant" / run.accession
+    quant_dir.mkdir(parents=True)
     (quant_dir / "quant.sf").write_text("stale")
-    (quant_dir / "oncoref_transcriptome_sha256.txt").write_text("old-reference\n")
+    (quant_dir / "oncoref_quantification_inputs.json").write_text(
+        json.dumps(
+            expression_builders._sra_salmon_quantification_inputs(
+                original_source,
+                original_run,
+            )
+        )
+    )
     read_1 = tmp_path / "read_1.fastq.gz"
     read_2 = tmp_path / "read_2.fastq.gz"
     read_1.write_bytes(b"reads")
@@ -2479,8 +2526,8 @@ def test_quantify_sra_salmon_run_rebuilds_a_stale_reference_cache(tmp_path, monk
 
     assert result.read_text() == "fresh"
     assert commands
-    assert (quant_dir / "oncoref_transcriptome_sha256.txt").read_text().strip() == (
-        source.combined_transcriptome_sha256
+    assert json.loads((quant_dir / "oncoref_quantification_inputs.json").read_text()) == (
+        expression_builders._sra_salmon_quantification_inputs(source, run)
     )
 
 
