@@ -58,7 +58,7 @@ if ((${#missing[@]})); then
 fi
 
 echo "packaging ${#PATHS[@]} bundle paths from $SRC -> $OUT"
-COPYFILE_DISABLE=1 tar -czf "$OUT" -C "$SRC" "${PATHS[@]}"
+COPYFILE_DISABLE=1 tar -cf - -C "$SRC" "${PATHS[@]}" | gzip -n >"$OUT"
 SIZE="$(du -h "$OUT" | cut -f1)"
 echo "wrote $OUT ($SIZE)"
 python - "$OUT" "$SRC" "$MANIFEST_OUT" "$DATA_VERSION" "$PACKAGE_VERSION" "$SOURCE_MATRIX_VERSION" "$BUILDER_COMMIT" "${PATHS[@]}" <<'PY'

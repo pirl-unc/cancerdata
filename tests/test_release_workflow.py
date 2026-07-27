@@ -113,8 +113,17 @@ def test_data_tarball_can_target_an_unreleased_version(tmp_path):
         text=True,
         env=env,
     )
+    first_tarball = (output / "oncoref-data-v9.8.7.tar.gz").read_bytes()
+    subprocess.run(
+        ["bash", "scripts/build_data_tarball.sh", str(source), str(output)],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
 
     manifest = json.loads((output / "oncoref-data-v9.8.7.manifest.json").read_text())
     assert manifest["data_version"] == "9.8.7"
     assert manifest["tarball"]["filename"] == "oncoref-data-v9.8.7.tar.gz"
+    assert (output / "oncoref-data-v9.8.7.tar.gz").read_bytes() == first_tarball
     assert (output / "oncoref-data-v9.8.7.tar.gz.sha256").exists()
