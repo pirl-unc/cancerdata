@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 
@@ -1066,6 +1067,24 @@ def test_sra_salmon_source_rejects_builder_option_overrides(override):
     entry["salmon_args"] = ["--validateMappings", override]
 
     with pytest.raises(ValueError, match="override builder-owned options"):
+        expression_builders.sra_salmon_source_from_entry(entry)
+
+
+@pytest.mark.parametrize("file_kind", ["component", "combined"])
+def test_sra_salmon_source_requires_gzip_fasta_file_names(file_kind):
+    entry = deepcopy(
+        next(
+            source
+            for source in expression_builders.sra_salmon_source_entries()
+            if source["id"] == "prjna1083972-mmnst"
+        )
+    )
+    if file_kind == "component":
+        entry["reference"]["fastas"][0]["file_name"] = "reference.fa"
+    else:
+        entry["reference"]["combined_file"] = "combined.fa"
+
+    with pytest.raises(ValueError, match=r"must be gzip-compressed with a \.gz file name"):
         expression_builders.sra_salmon_source_from_entry(entry)
 
 
@@ -2900,6 +2919,9 @@ def test_build_sra_salmon_source_routes_only_tumors_and_audits_controls(tmp_path
         "SRR00000001",
         "SRR00000002",
     }
+    assert set(result.sample_qc["source_type"]) == {"sra-salmon"}
+    emitted_qc = pd.read_csv(result.sidecar_paths["SARC_MMNST_sample_qc"])
+    assert set(emitted_qc["source_type"]) == {"sra-salmon"}
     assert set(result.summary_rows["n_samples"]) == {3}
 
     manifest = pd.read_csv(result.sidecar_paths["run_manifest"])

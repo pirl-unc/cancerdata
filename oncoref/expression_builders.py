@@ -287,6 +287,7 @@ class GeoMatrixSource:
     processing_pipeline: str | None = None
     tumor_origin: str = "primary"
     metastasis_site: str | None = None
+    source_type: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1166,6 +1167,11 @@ def sra_salmon_source_from_entry(entry: Mapping) -> SraSalmonSource:
             raise ValueError(f"source {entry.get('id')!r} has a non-HTTPS reference URL")
         if not file_name:
             raise ValueError(f"source {entry.get('id')!r} has a reference without a file name")
+        if not file_name.endswith(".gz"):
+            raise ValueError(
+                f"source {entry.get('id')!r} reference FASTA {file_name!r} "
+                "must be gzip-compressed with a .gz file name"
+            )
         reference_fastas.append(
             SalmonReferenceFasta(
                 url=url,
@@ -1185,6 +1191,11 @@ def sra_salmon_source_from_entry(entry: Mapping) -> SraSalmonSource:
     combined_file = str(reference.get("combined_file") or "").strip()
     if not combined_file:
         raise ValueError(f"source {entry.get('id')!r} lacks a combined transcriptome file name")
+    if not combined_file.endswith(".gz"):
+        raise ValueError(
+            f"source {entry.get('id')!r} combined transcriptome {combined_file!r} "
+            "must be gzip-compressed with a .gz file name"
+        )
     if combined_file in reference_names:
         raise ValueError(
             f"source {entry.get('id')!r} combined transcriptome must differ from its inputs"
@@ -3324,7 +3335,7 @@ def build_source_matrices(
 
     meta = source_metadata(
         source_cohort=source.source_cohort,
-        source_type=source.source_project,
+        source_type=source.source_type or source.source_project,
         unit=source.unit,
         source_scale_class=source.source_scale_class,
         linear_tpm_comparable=source.linear_tpm_comparable,
@@ -3580,6 +3591,7 @@ def build_sra_salmon_source_matrices(
         processing_pipeline=source.processing_pipeline,
         tumor_origin=source.tumor_origin,
         metastasis_site=source.metastasis_site,
+        source_type=SRA_SALMON_SOURCE_TYPE,
     )
     result = build_source_matrices(
         geo_source,
