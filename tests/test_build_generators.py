@@ -175,6 +175,73 @@ def test_verified_download_resumes_a_partial_file(tmp_path, monkeypatch):
     assert not partial.exists()
 
 
+def test_verified_download_preserves_and_resumes_a_truncated_response(tmp_path, monkeypatch):
+    destination = tmp_path / "reads.fastq.gz"
+    partial = destination.with_suffix(destination.suffix + ".part")
+    responses = [
+        (200, {"Content-Length": "6"}, b"abc"),
+        (206, {"Content-Range": "bytes 3-5/6"}, b"def"),
+    ]
+    requests = []
+
+    class _Response(io.BytesIO):
+        def __init__(self, status, headers, body):
+            super().__init__(body)
+            self.status = status
+            self.headers = headers
+
+        def getcode(self):
+            return self.status
+
+    def _urlopen(request, timeout):
+        requests.append((request, timeout))
+        return _Response(*responses.pop(0))
+
+    monkeypatch.setattr(expression_builders.urllib.request, "urlopen", _urlopen)
+    options = {
+        "url": "https://example.org/reads.fastq.gz",
+        "destination": destination,
+        "checksum": hashlib.md5(b"abcdef").hexdigest(),
+        "algorithm": "md5",
+    }
+
+    with pytest.raises(RuntimeError, match="incomplete download"):
+        expression_builders.download_verified_file(**options)
+
+    assert partial.read_bytes() == b"abc"
+    result = expression_builders.download_verified_file(**options)
+    assert result.read_bytes() == b"abcdef"
+    assert requests[1][0].get_header("Range") == "bytes=3-"
+
+
+def test_verified_download_discards_a_complete_corrupt_response(tmp_path, monkeypatch):
+    destination = tmp_path / "reads.fastq.gz"
+    partial = destination.with_suffix(destination.suffix + ".part")
+
+    class _Response(io.BytesIO):
+        status = 200
+        headers = {"Content-Length": "3"}
+
+        def getcode(self):
+            return self.status
+
+    monkeypatch.setattr(
+        expression_builders.urllib.request,
+        "urlopen",
+        lambda _request, timeout: _Response(b"bad"),
+    )
+
+    with pytest.raises(RuntimeError, match="md5 mismatch"):
+        expression_builders.download_verified_file(
+            "https://example.org/reads.fastq.gz",
+            destination,
+            checksum=hashlib.md5(b"xyz").hexdigest(),
+            algorithm="md5",
+        )
+
+    assert not partial.exists()
+
+
 def test_geo_matrix_builder_writes_canonical_per_sample_matrix_and_sidecars(tmp_path):
     path = tmp_path / "geo.csv"
     pd.DataFrame(
@@ -978,13 +1045,25 @@ def test_sra_salmon_source_rejects_a_control_routed_to_tumor():
         expression_builders.sra_salmon_source_from_entry(entry)
 
 
-def test_sra_salmon_source_rejects_builder_option_overrides():
+@pytest.mark.parametrize(
+    "override",
+    [
+        "--output=/tmp/not-the-build-cache",
+        "-i/path/to/index",
+        "-lA",
+        "-1reads_1.fastq.gz",
+        "-2reads_2.fastq.gz",
+        "-o/tmp/not-the-build-cache",
+        "-p8",
+    ],
+)
+def test_sra_salmon_source_rejects_builder_option_overrides(override):
     entry = next(
         dict(source)
         for source in expression_builders.sra_salmon_source_entries()
         if source["id"] == "prjna1083972-mmnst"
     )
-    entry["salmon_args"] = ["--validateMappings", "--output=/tmp/not-the-build-cache"]
+    entry["salmon_args"] = ["--validateMappings", override]
 
     with pytest.raises(ValueError, match="override builder-owned options"):
         expression_builders.sra_salmon_source_from_entry(entry)

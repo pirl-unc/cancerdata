@@ -1051,26 +1051,26 @@ def _sra_salmon_args_from_entry(entry: Mapping) -> tuple[str, ...]:
             ["--validateMappings", "--gcBias", "--seqBias"],
         )
     )
-    builder_owned = {
+    builder_owned_long = {
         "--index",
-        "-i",
         "--libType",
-        "-l",
         "--mates1",
-        "-1",
         "--mates2",
-        "-2",
         "--output",
-        "-o",
         "--threads",
-        "-p",
     }
-    conflicts = [
-        arg
-        for arg in args
-        if arg in builder_owned
-        or any(arg.startswith(option + "=") for option in builder_owned if option.startswith("--"))
-    ]
+    builder_owned_short = {"-i", "-l", "-1", "-2", "-o", "-p"}
+
+    def _overrides_builder_option(arg: str) -> bool:
+        if arg in builder_owned_long or arg in builder_owned_short:
+            return True
+        if any(arg.startswith(option + "=") for option in builder_owned_long):
+            return True
+        return any(
+            len(arg) > len(option) and arg.startswith(option) for option in builder_owned_short
+        )
+
+    conflicts = [arg for arg in args if _overrides_builder_option(arg)]
     if conflicts:
         raise ValueError(
             f"source {entry.get('id')!r} salmon_args override builder-owned options: {conflicts}"
@@ -2383,32 +2383,53 @@ def download_verified_file(
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".part")
 
-    def _download_partial(*, resume: bool) -> None:
+    def _download_partial(*, resume: bool) -> int | None:
         offset = tmp.stat().st_size if resume and tmp.exists() else 0
         headers = {"Range": f"bytes={offset}-"} if offset else {}
         request = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(request, timeout=180) as response:
             status = getattr(response, "status", None) or response.getcode()
             content_range = str(response.headers.get("Content-Range") or "")
-            resumed = bool(
-                offset and status == 206 and content_range.startswith(f"bytes {offset}-")
+            range_match = re.fullmatch(
+                r"bytes (\d+)-(\d+)/(\d+|\*)",
+                content_range,
             )
+            if status == 206 and (range_match is None or int(range_match.group(1)) != offset):
+                raise RuntimeError(f"unexpected Content-Range for {url}: {content_range!r}")
+            resumed = bool(offset and status == 206)
             mode = "ab" if resumed else "wb"
             with tmp.open(mode) as handle:
                 shutil.copyfileobj(response, handle, length=1024 * 1024)
+            if range_match is not None and range_match.group(3) != "*":
+                return int(range_match.group(3))
+            content_length = response.headers.get("Content-Length")
+            if content_length is not None and not resumed:
+                try:
+                    return int(content_length)
+                except (TypeError, ValueError):
+                    pass
+            return None
 
     try:
         try:
-            _download_partial(resume=not force_download)
+            expected_size = _download_partial(resume=not force_download)
         except urllib.error.HTTPError as error:
             if error.code != 416 or not tmp.exists():
                 raise
             if _file_digest(tmp, algorithm) != expected:
                 tmp.unlink()
-                _download_partial(resume=False)
+                expected_size = _download_partial(resume=False)
+            else:
+                expected_size = tmp.stat().st_size
+        partial_size = tmp.stat().st_size
+        if expected_size is not None and partial_size < expected_size:
+            raise RuntimeError(
+                f"incomplete download for {url}: {partial_size} of {expected_size} bytes"
+            )
         observed = _file_digest(tmp, algorithm)
         if observed != expected:
-            tmp.unlink(missing_ok=True)
+            if expected_size is not None and partial_size >= expected_size:
+                tmp.unlink(missing_ok=True)
             raise RuntimeError(f"{algorithm} mismatch for {url}: {observed} != {expected}")
         tmp.replace(path)
     except Exception:
