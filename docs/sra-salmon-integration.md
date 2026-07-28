@@ -42,7 +42,8 @@ sequence bias correction, and GC bias correction. Transcript TPM is summed by
 the `gene:` identifier in that combined Ensembl FASTA before oncoref
 canonicalizes gene IDs and computes sample QC. Interrupted downloads retain
 their partial file and resume with an HTTP range request when the mirror supports
-it. A cached `quant.sf` is reused only when its transcriptome checksum, paired
+it. The transcriptome checksum and selected Salmon version jointly key the index
+cache. A cached `quant.sf` is reused only when its transcriptome checksum, paired
 read checksums, automatic library type, and ordered Salmon arguments exactly
 match the current registry inputs and its recorded Salmon version matches the
 selected executable.

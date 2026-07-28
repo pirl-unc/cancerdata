@@ -2620,14 +2620,24 @@ def prepare_salmon_index(
     index_dir = reference_dir / "salmon_index"
     complete_marker = index_dir / "versionInfo.json"
     reference_marker = index_dir / "oncoref_transcriptome_sha256.txt"
+    version_marker = index_dir / "oncoref_salmon_version.txt"
+    salmon = _salmon_executable(salmon_executable)
+    salmon_version = _salmon_version(salmon)
     index_matches_reference = (
         reference_marker.exists()
         and reference_marker.read_text().strip() == source.combined_transcriptome_sha256
     )
-    if complete_marker.exists() and index_matches_reference and not force_index:
+    index_matches_version = (
+        version_marker.exists() and version_marker.read_text().strip() == salmon_version
+    )
+    if (
+        complete_marker.exists()
+        and index_matches_reference
+        and index_matches_version
+        and not force_index
+    ):
         return transcriptome, index_dir
 
-    salmon = _salmon_executable(salmon_executable)
     temp_index = reference_dir / "salmon_index.building"
     if temp_index.exists():
         shutil.rmtree(temp_index)
@@ -2650,6 +2660,7 @@ def prepare_salmon_index(
     (temp_index / "oncoref_transcriptome_sha256.txt").write_text(
         source.combined_transcriptome_sha256 + "\n"
     )
+    (temp_index / "oncoref_salmon_version.txt").write_text(salmon_version + "\n")
     if index_dir.exists():
         shutil.rmtree(index_dir)
     temp_index.replace(index_dir)

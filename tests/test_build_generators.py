@@ -2461,6 +2461,7 @@ def test_prepare_salmon_index_uses_supplied_transcriptome_without_download(
         lambda *_args, **_kwargs: pytest.fail("supplied transcriptome should prevent download"),
     )
     monkeypatch.setattr(expression_builders, "_salmon_executable", lambda _command: "salmon")
+    monkeypatch.setattr(expression_builders, "_salmon_version", lambda _executable: "1.10.3")
 
     def _run(command, check):
         commands.append((command, check))
@@ -2478,7 +2479,54 @@ def test_prepare_salmon_index_uses_supplied_transcriptome_without_download(
 
     assert selected == transcriptome
     assert index_dir.exists()
+    assert (index_dir / "oncoref_salmon_version.txt").read_text() == "1.10.3\n"
     assert commands[0][0][commands[0][0].index("--transcripts") + 1] == str(transcriptome)
+
+
+@pytest.mark.parametrize(
+    ("cached_version", "expected_rebuild"),
+    [("1.10.3", False), ("1.10.2", True)],
+)
+def test_prepare_salmon_index_cache_is_keyed_by_salmon_version(
+    tmp_path,
+    monkeypatch,
+    cached_version,
+    expected_rebuild,
+):
+    transcriptome = tmp_path / "supplied.fa.gz"
+    transcriptome.write_bytes(b"reviewed combined transcriptome")
+    source = replace(
+        _synthetic_sra_salmon_source(),
+        combined_transcriptome_sha256=expression_builders._sha256(transcriptome),
+    )
+    index_dir = tmp_path / "cache" / "reference" / "salmon_index"
+    index_dir.mkdir(parents=True)
+    (index_dir / "versionInfo.json").write_text("{}")
+    (index_dir / "oncoref_transcriptome_sha256.txt").write_text(
+        source.combined_transcriptome_sha256 + "\n"
+    )
+    (index_dir / "oncoref_salmon_version.txt").write_text(cached_version + "\n")
+    commands = []
+
+    monkeypatch.setattr(expression_builders, "_salmon_executable", lambda _command: "salmon")
+    monkeypatch.setattr(expression_builders, "_salmon_version", lambda _executable: "1.10.3")
+
+    def _run(command, check):
+        commands.append((command, check))
+        output = Path(command[command.index("--index") + 1])
+        output.mkdir(parents=True)
+        (output / "versionInfo.json").write_text("{}")
+
+    monkeypatch.setattr(expression_builders.subprocess, "run", _run)
+    _, selected_index = expression_builders.prepare_salmon_index(
+        source,
+        cache_dir=tmp_path / "cache",
+        transcriptome_path=transcriptome,
+    )
+
+    assert selected_index == index_dir
+    assert bool(commands) is expected_rebuild
+    assert (index_dir / "oncoref_salmon_version.txt").read_text() == "1.10.3\n"
 
 
 def test_salmon_version_reads_resolved_executable_output(monkeypatch):
