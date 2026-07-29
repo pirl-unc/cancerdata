@@ -147,15 +147,15 @@ def test_proteoform_paralogs_are_summed(monkeypatch):
     assert pf_split[pf_split["Symbol"] == "A1"]["fraction_expressing"].iloc[0] == 0.0
 
 
-# ---- real-data parity (skipped unless the source-matrix cache is staged) ----
+# ---- required real-data parity ----
 
 from oncoref import source_matrices as _sm  # noqa: E402
 
-_LUAD_READY = _sm.is_cached("LUAD") if "LUAD" in _sm.available_cohorts() else False
 
-
-@pytest.mark.skipif(not _LUAD_READY, reason="LUAD per-sample matrix not staged")
 def test_real_cohort_coverage_is_consistent():
+    # The 48 MB matrix is a required test input. ``ensure`` uses the versioned
+    # local/CI cache and downloads it from the source-matrix release when absent.
+    assert _sm.ensure("LUAD").is_file()
     af = coverage.addressable_fraction("LUAD", threshold_tpm=10)
     pf = coverage.cta_patient_fractions("LUAD", threshold_tpm=10)
     gc = coverage.greedy_coverage("LUAD", threshold_tpm=10)

@@ -3,6 +3,8 @@ from pathlib import Path
 
 import yaml
 
+from oncoref.version import SOURCE_MATRIX_VERSION
+
 NODE24_ACTION_MAJORS = {
     "actions/cache": 5,
     "actions/checkout": 6,
@@ -37,3 +39,19 @@ def test_workflows_use_node24_action_generations():
                 f"{path}:{job_name} uses {action}@{version}; "
                 f"Node 24 requires v{minimum_major} or newer"
             )
+
+
+def test_test_workflow_stages_required_luad_matrix():
+    workflow = yaml.safe_load(Path(".github/workflows/tests.yml").read_text())
+    test_job = workflow["jobs"]["test"]
+
+    assert "CANCERDATA_SOURCE_MATRICES" in test_job["env"]
+    cache_step = next(
+        step for step in test_job["steps"] if step["name"] == "Cache required source matrices"
+    )
+    assert cache_step["with"]["key"] == f"source-matrices-v{SOURCE_MATRIX_VERSION}-luad"
+
+    stage_step = next(
+        step for step in test_job["steps"] if step["name"] == "Stage required source matrices"
+    )
+    assert 'source_matrices.ensure("LUAD")' in stage_step["run"]
