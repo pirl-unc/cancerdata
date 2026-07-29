@@ -47,6 +47,7 @@ _DEPRECATED_COHORT_ALIASES = {
 CANCER_TYPE_ALIASES = {
     "prostate": "PRAD",
     "breast": "BRCA",
+    "acicc": "ACINIC",
     "nsclc": "NSCLC",
     "non_small_cell_lung_cancer": "NSCLC",
     "lung_adeno": "LUAD",
@@ -284,6 +285,7 @@ def _clear_caches():
     _reference_source_map.cache_clear()
     _classification_target_map.cache_clear()
     _classification_reference_code_map.cache_clear()
+    _expression_source_cohort_counts.cache_clear()
     _clear_cache()  # frame cache + registered derived caches (burden maps, CTA, …)
 
 
@@ -2336,16 +2338,64 @@ def cohort_registry_df():
     ``prefix, kind, source_project, assay, n_samples, n_codes, is_computed,
     member_cohorts, provenance``. The authority to validate any
     ``source_cohort`` against — includes the computed aggregates and
-    literature-curated cohorts."""
+    literature-curated cohorts.
+
+    For physical source cohorts, ``n_samples`` counts matrix rows before
+    diagnosis routing and ``n_codes`` counts the canonical cancer codes fed by
+    that source. Per-code routed counts live in
+    :func:`oncoref.expression.cancer_reference_expression_availability`.
+    """
     df = get_data("cohort-registry")
+    for cohort_id, counts in _expression_source_cohort_counts().items():
+        row_index = _cohort_registry_row_index(df, cohort_id, "expression source")
+        df.at[row_index, "n_samples"] = counts["physical_samples"]
+        df.at[row_index, "n_codes"] = counts["routed_code_count"]
     for cohort_id, members in _live_computed_cohort_members().items():
-        matching_rows = df.index[df["cohort_id"].astype(str) == cohort_id]
-        if len(matching_rows) != 1:
-            raise ValueError(f"computed cohort {cohort_id!r} must have exactly one registry row")
-        row_index = matching_rows[0]
+        row_index = _cohort_registry_row_index(df, cohort_id, "computed cohort")
         df.at[row_index, "n_codes"] = len(members)
         df.at[row_index, "member_cohorts"] = ";".join(members)
     return df
+
+
+def _cohort_registry_row_index(df, cohort_id: str, contract_name: str):
+    matching_rows = df.index[df["cohort_id"].astype(str) == cohort_id]
+    if len(matching_rows) != 1:
+        raise ValueError(f"{contract_name} {cohort_id!r} must have exactly one cohort registry row")
+    return matching_rows[0]
+
+
+@lru_cache(maxsize=1)
+def _expression_source_cohort_counts() -> dict[str, dict[str, int]]:
+    """Physical and routed-code counts declared by expression source entries."""
+    from .expression_registry import expression_source_registry_entries
+
+    contracts = {}
+    for source in expression_source_registry_entries():
+        if source.get("expected_source_samples") is None:
+            continue
+        cohort_id = str(source["source_cohort"])
+        cancer_codes = tuple(str(code) for code in source["cancer_codes"])
+        routed_counts = {
+            str(code): int(count) for code, count in source["expected_samples_by_code"].items()
+        }
+        if set(routed_counts) != set(cancer_codes):
+            raise ValueError(
+                f"expression source {source['id']!r} routed counts must match cancer_codes"
+            )
+        physical_samples = int(source["expected_source_samples"])
+        if sum(routed_counts.values()) > physical_samples:
+            raise ValueError(
+                f"expression source {source['id']!r} routes more samples than it contains"
+            )
+        if cohort_id in contracts:
+            raise ValueError(
+                f"physical sample counts are declared more than once for cohort {cohort_id!r}"
+            )
+        contracts[cohort_id] = {
+            "physical_samples": physical_samples,
+            "routed_code_count": len(cancer_codes),
+        }
+    return contracts
 
 
 def _live_computed_cohort_members() -> dict[str, list[str]]:

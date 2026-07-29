@@ -68,6 +68,8 @@ HPA_RNA_V23_TISSUES = {
 def test_resolve_common_name_alias():
     assert cancer_types.resolve_cancer_type("prostate") == "PRAD"
     assert cancer_types.resolve_cancer_type("melanoma") == "SKCM"
+    assert cancer_types.resolve_cancer_type("AciCC") == "ACINIC"
+    assert cancer_types.resolve_cancer_type("ACICC") == "ACINIC"
 
 
 def test_resolve_mplps_aliases_without_collapsing_other_liposarcomas():
@@ -223,6 +225,26 @@ def test_computed_cohort_registry_members_are_derived_from_live_aggregates():
 
     sarcoma_members = set(cancer_types.cohort_aggregate_members("SARC"))
     assert {"SARC_MMNST", "SARC_MPLPS"} <= sarcoma_members
+
+
+def test_source_cohort_counts_are_derived_from_expression_registry(monkeypatch):
+    shipped = get_data("cohort-registry")
+    stale = shipped.copy()
+    matching = stale["cohort_id"].eq("GSE294016_BARTL_2025_SGC")
+    stale.loc[matching, ["n_samples", "n_codes"]] = [123, 1]
+    original_get_data = cancer_types.get_data
+
+    def get_data_with_stale_cohort_registry(name, *args, **kwargs):
+        if name == "cohort-registry":
+            return stale.copy()
+        return original_get_data(name, *args, **kwargs)
+
+    monkeypatch.setattr(cancer_types, "get_data", get_data_with_stale_cohort_registry)
+    cancer_types._expression_source_cohort_counts.cache_clear()
+
+    row = cancer_types.cohort_registry_df().set_index("cohort_id").loc["GSE294016_BARTL_2025_SGC"]
+    assert int(row["n_samples"]) == 95
+    assert int(row["n_codes"]) == 2
 
 
 def test_cohort_source_version_parses_ensembl_release():
