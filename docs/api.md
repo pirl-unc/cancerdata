@@ -384,7 +384,13 @@ different unit.
   `recount3_gene_sums_to_tpm`, `build_recount3_source_matrices`, and
   `scripts/build_recount3_source.py` do the same for `source_type: recount3`
   entries, including run-to-sample aggregation and metadata-based routing before
-  writing the standard source-matrix artifact set. `TreehouseSource`,
+  writing the standard source-matrix artifact set. `SraSalmonSource`,
+  `sra_salmon_source_from_registry`, `build_sra_salmon_source_matrices`, and
+  `scripts/build_sra_salmon_source.py` own raw-read-only SRA studies: the
+  registry pins run roles, read checksums, and the Ensembl transcriptome; all
+  declared runs are audited while only explicitly routed tumor runs enter
+  reference matrices. See
+  [Raw SRA Expression Sources](sra-salmon-integration.md). `TreehouseSource`,
   `treehouse_source_from_registry`, `treehouse_cohorts_for_group`, and
   `scripts/build_treehouse_source.py` own the direct Treehouse-compendium path:
   clinical disease-label routing, log2(TPM+1) inverse transform, symbol

@@ -6,4 +6,5 @@ theme:
   name: mkdocs
 nav:
   - Home: index.md
+  - SRA/Salmon Sources: sra-salmon-integration.md
   - API Guide: api.md
