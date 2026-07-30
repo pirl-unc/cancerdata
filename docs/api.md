@@ -354,13 +354,13 @@ the selected ACC matrix, for example, currently comes from Treehouse even though
 `tcga-acc` is a registered acquisition source.
 
 Use `oncoref.source_matrices.codes_for_source(source_id)` for the selected code
-list. Use `resolution_for_source(source_id)` when provenance matters. Its
-`resolution_method` is `physical_source` only when the registered and selected
-`source_cohort` values match; `declared_cancer_code` means the source's declared
-codes route to matrices built from other physical sources. Each returned
-`SelectedSourceMatrix` always retains the selected matrix's real
-`source_cohort`. A registered source without a published matrix returns
-`unavailable` plus a machine-readable `availability_reason`.
+list. Use `oncoref.source_matrices.resolution_for_source(source_id)` when
+provenance matters. Its `resolution_method` is `physical_source` only when the
+registered and selected `source_cohort` values match; `declared_cancer_code`
+means the source's declared codes route to matrices built from other physical
+sources. Each returned `SelectedSourceMatrix` always retains the selected
+matrix's real `source_cohort`. A registered source without a published matrix
+returns `unavailable` plus a machine-readable `availability_reason`.
 
 `expression_registry.expression_source_candidates()` remains an acquisition
 planning table. A row is marked `direct_reference_available` only when it names
