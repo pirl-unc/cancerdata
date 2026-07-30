@@ -3,8 +3,6 @@ from pathlib import Path
 
 import yaml
 
-from oncoref.version import SOURCE_MATRIX_VERSION
-
 NODE24_ACTION_MAJORS = {
     "actions/cache": 5,
     "actions/checkout": 6,
@@ -46,12 +44,19 @@ def test_test_workflow_stages_required_luad_matrix():
     test_job = workflow["jobs"]["test"]
 
     assert "CANCERDATA_SOURCE_MATRICES" in test_job["env"]
+    expected_sha256 = "001ebb9ad18aea86599ff5d808851007523f6d8f0927dfdf2a2f39372f83ffc5"
+    assert test_job["env"]["CI_LUAD_SHA256"] == expected_sha256
+    assert test_job["env"]["CI_LUAD_SOURCE_URL"].endswith(
+        "/source-v5.22.8/LUAD_per_sample_tpm.parquet"
+    )
     cache_step = next(
         step for step in test_job["steps"] if step["name"] == "Cache required source matrices"
     )
-    assert cache_step["with"]["key"] == f"source-matrices-v{SOURCE_MATRIX_VERSION}-luad"
+    assert cache_step["with"]["key"] == "source-matrices-luad-${{ env.CI_LUAD_SHA256 }}"
 
     stage_step = next(
         step for step in test_job["steps"] if step["name"] == "Stage required source matrices"
     )
-    assert 'source_matrices.ensure("LUAD")' in stage_step["run"]
+    assert 'source_matrices.local_path("LUAD")' in stage_step["run"]
+    assert 'os.environ["CI_LUAD_SOURCE_URL"]' in stage_step["run"]
+    assert 'os.environ["CI_LUAD_SHA256"]' in stage_step["run"]
