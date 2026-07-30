@@ -127,6 +127,118 @@ def _synthetic_sra_salmon_source() -> expression_builders.SraSalmonSource:
     )
 
 
+def _synthetic_sra_salmon_registry_entry() -> dict:
+    return {
+        "id": "synthetic-sra-salmon",
+        "source_type": "sra-salmon",
+        "cancer_codes": ["SARC_MMNST"],
+        "accession": "PRJNA000000",
+        "sra_study": "SRP000000",
+        "source_cohort": "SYNTHETIC_SRA_SALMON",
+        "expected_samples_by_code": {"SARC_MMNST": 1},
+        "reference": {
+            "fastas": [
+                {
+                    "url": "https://example.org/ref.fa.gz",
+                    "file_name": "ref.fa.gz",
+                    "sha256": "a" * 64,
+                }
+            ],
+            "combined_file": "combined.fa.gz",
+            "combined_sha256": "b" * 64,
+        },
+        "runs": [
+            {
+                "accession": "SRR00000001",
+                "biosample": "SAMN00000001",
+                "sample_title": "Tumor-1",
+                "role": "tumor",
+                "cancer_code": "SARC_MMNST",
+                "read_urls": [
+                    "https://example.org/read_1.fastq.gz",
+                    "https://example.org/read_2.fastq.gz",
+                ],
+                "read_md5": ["c" * 32, "d" * 32],
+            }
+        ],
+    }
+
+
+def _write_synthetic_ncbi_assembly_report(tmp_path) -> Path:
+    report = tmp_path / "assembly_report.txt"
+    rows = [
+        [
+            "17",
+            "assembled-molecule",
+            "17",
+            "Chromosome",
+            "CM000679.2",
+            "=",
+            "NC_000017.11",
+            "Primary Assembly",
+            "83257441",
+            "chr17",
+        ],
+        [
+            "7",
+            "assembled-molecule",
+            "7",
+            "Chromosome",
+            "CM000669.2",
+            "=",
+            "NC_000007.14",
+            "Primary Assembly",
+            "159345973",
+            "chr7",
+        ],
+        [
+            "KI270706.1",
+            "unlocalized-scaffold",
+            "1",
+            "Chromosome",
+            "KI270706.1",
+            "=",
+            "NT_187361.1",
+            "Primary Assembly",
+            "175055",
+            "chr1_KI270706v1_random",
+        ],
+        [
+            "HG1342_PATCH",
+            "fix-patch",
+            "1",
+            "Chromosome",
+            "KQ031383.1",
+            "=",
+            "NW_012132914.1",
+            "PATCHES",
+            "467143",
+            "chr1_KQ031383v1_fix",
+        ],
+    ]
+    columns = [
+        "Sequence-Name",
+        "Sequence-Role",
+        "Assigned-Molecule",
+        "Assigned-Molecule-Location/Type",
+        "GenBank-Accn",
+        "Relationship",
+        "RefSeq-Accn",
+        "Assembly-Unit",
+        "Sequence-Length",
+        "UCSC-style-name",
+    ]
+    report.write_text(
+        "# synthetic assembly report\n"
+        + "# "
+        + "\t".join(columns)
+        + "\n"
+        + "\n".join("\t".join(row) for row in rows)
+        + "\n"
+    )
+    return report
+
+
 # ---------- source-matrix ingestion builders ----------
 
 
@@ -977,33 +1089,52 @@ def test_recount3_source_from_registry_loads_packaged_routes():
     assert source.sample_to_cancer_code({"origin": "lung"}, "") is None
 
 
-def test_sra_salmon_source_from_registry_loads_complete_mmnst_manifest():
-    source = expression_builders.sra_salmon_source_from_registry("prjna1083972-mmnst")
+def test_sra_ncbi_count_source_from_registry_loads_complete_mmnst_manifest():
+    source = expression_builders.sra_ncbi_count_source_from_registry("prjna1083972-mmnst")
 
     assert source.bioproject == "PRJNA1083972"
     assert source.sra_study == "SRP493407"
     assert source.cancer_code == "SARC_MMNST"
     assert source.expected_n == {"SARC_MMNST": 3}
-    assert source.combined_transcriptome_sha256 == (
-        "508706adb4e585b5f3d9544201db7aac0fa3b7be184bf2e3ae036a905935253d"
+    assert source.annotation_release == "GCF_000001405.40-RS_2025_08"
+    assert source.annotation_sha256 == (
+        "4920f0eae7e2197c50b67a201e06d657387137b49dd60f474b4f1d5b29334051"
     )
-    assert [reference.sha256 for reference in source.reference_fastas] == [
-        "0bb3012f45e2474b8ce79911c47de0fc216bd574c60f1ddc8a8d911cd8a32b4d",
-        "16b9e32d047653e42a5d3b8843b30eefea1a08f7984568746d8db15ada26540b",
-    ]
+    assert source.assembly_report_sha256 == (
+        "64318ddff470b69b261a667d813210044f60d4ce654253a547db80ff73638d38"
+    )
     assert len(source.runs) == 6
     assert [run.accession for run in source.runs if run.included_in_reference] == [
         "SRR28227826",
         "SRR28227825",
         "SRR28227824",
     ]
-    assert {run.role for run in source.runs if not run.included_in_reference} == {"matched_normal"}
+    assert {run.role for run in source.runs if not run.included_in_reference} == {"normal_control"}
 
-    manifest = expression_builders.sra_salmon_run_manifest(source)
+    manifest = expression_builders.sra_ncbi_count_run_manifest(source)
     assert manifest["included"].value_counts().to_dict() == {True: 3, False: 3}
     excluded = manifest.loc[~manifest["included"]]
     assert set(excluded["cancer_code"]) == {""}
-    assert set(excluded["exclusion_reason"]) == {"matched_normal_excluded_from_tumor_reference"}
+    assert set(excluded["exclusion_reason"]) == {
+        "independent_normal_control_excluded_from_tumor_reference"
+    }
+    assert set(manifest["analysis_accession"]) == {
+        "SRZ3595337",
+        "SRZ3709728",
+        "SRZ3615119",
+        "SRZ3647871",
+        "SRZ3665545",
+        "SRZ3633285",
+    }
+
+
+def test_sra_ncbi_count_source_rejects_a_control_routed_to_tumor():
+    entry = deepcopy(expression_builders.sra_ncbi_count_source_entries()[0])
+    control = next(run for run in entry["runs"] if run["role"] == "normal_control")
+    control["cancer_code"] = "SARC_MMNST"
+
+    with pytest.raises(ValueError, match=r"normal-control SRA run.*must not declare"):
+        expression_builders.sra_ncbi_count_source_from_entry(entry)
 
 
 def test_sra_salmon_source_rejects_a_control_routed_to_tumor():
@@ -1059,11 +1190,7 @@ def test_sra_salmon_source_rejects_a_control_routed_to_tumor():
     ],
 )
 def test_sra_salmon_source_rejects_builder_option_overrides(override):
-    entry = next(
-        dict(source)
-        for source in expression_builders.sra_salmon_source_entries()
-        if source["id"] == "prjna1083972-mmnst"
-    )
+    entry = _synthetic_sra_salmon_registry_entry()
     entry["salmon_args"] = ["--validateMappings", override]
 
     with pytest.raises(ValueError, match="override builder-owned options"):
@@ -1072,13 +1199,7 @@ def test_sra_salmon_source_rejects_builder_option_overrides(override):
 
 @pytest.mark.parametrize("file_kind", ["component", "combined"])
 def test_sra_salmon_source_requires_gzip_fasta_file_names(file_kind):
-    entry = deepcopy(
-        next(
-            source
-            for source in expression_builders.sra_salmon_source_entries()
-            if source["id"] == "prjna1083972-mmnst"
-        )
-    )
+    entry = deepcopy(_synthetic_sra_salmon_registry_entry())
     if file_kind == "component":
         entry["reference"]["fastas"][0]["file_name"] = "reference.fa"
     else:
@@ -2856,6 +2977,221 @@ def test_salmon_gene_tpm_matrix_rejects_unmapped_expression(tmp_path):
             {"SRR00000001": quant_path},
             {"ENST_MAPPED": "ENSG00000141510.1"},
         )
+
+
+def test_ncbi_gene_lengths_use_exon_union_gene_fallback_and_primary_assembly(tmp_path):
+    annotation = tmp_path / "annotation.gff.gz"
+    assembly_report = _write_synthetic_ncbi_assembly_report(tmp_path)
+    lines = [
+        "##gff-version 3",
+        (
+            "NC_000017.11\tRefSeq\tregion\t1\t83257441\t.\t+\t.\t"
+            "ID=NC_000017.11:1..83257441;Name=17;chromosome=17;genome=chromosome"
+        ),
+        (
+            "NC_000017.11\tRefSeq\tgene\t100\t300\t.\t+\t.\t"
+            "ID=gene-TP53;Dbxref=GeneID:7157;Name=TP53;gene=TP53"
+        ),
+        ("NC_000017.11\tRefSeq\texon\t100\t199\t.\t+\t.\tID=exon-1;Dbxref=GeneID:7157;gene=TP53"),
+        ("NC_000017.11\tRefSeq\texon\t150\t249\t.\t+\t.\tID=exon-2;Dbxref=GeneID:7157;gene=TP53"),
+        (
+            "NW_012132914.1\tRefSeq\tregion\t1\t467143\t.\t+\t.\t"
+            "ID=NW_012132914.1:1..467143;Name=1;genome=genomic;map=1p36.21"
+        ),
+        (
+            "NW_012132914.1\tRefSeq\texon\t1\t10000\t.\t+\t.\t"
+            "ID=alt-exon;Dbxref=GeneID:7157;gene=TP53"
+        ),
+        (
+            "NT_187361.1\tRefSeq\tregion\t1\t175055\t.\t+\t.\t"
+            "ID=NT_187361.1:1..175055;Name=1;genome=genomic;map=unlocalized"
+        ),
+        (
+            "NT_187361.1\tRefSeq\tgene\t10\t109\t.\t+\t.\t"
+            "ID=gene-LOC105379854;Dbxref=GeneID:105379854;Name=LOC105379854;"
+            "gene=LOC105379854"
+        ),
+        (
+            "NC_000007.14\tRefSeq\tregion\t1\t159345973\t.\t+\t.\t"
+            "ID=NC_000007.14:1..159345973;Name=7;chromosome=7;genome=chromosome"
+        ),
+        (
+            "NC_000007.14\tRefSeq\tgene\t1000\t3000\t.\t+\t.\t"
+            "ID=gene-EGFR;Dbxref=GeneID:1956;Name=EGFR;gene=EGFR"
+        ),
+    ]
+    with gzip.open(annotation, "wt") as handle:
+        handle.write("\n".join(lines) + "\n")
+
+    primary_sequences = expression_builders.ncbi_primary_assembly_sequences(assembly_report)
+    assert primary_sequences == {"NC_000017.11", "NC_000007.14", "NT_187361.1"}
+
+    lengths = expression_builders.ncbi_gene_lengths_from_gff(
+        annotation,
+        gene_ids=["7157", "1956", "105379854", "999999999"],
+        primary_sequences=primary_sequences,
+    ).set_index("Geneid")
+
+    assert lengths.loc["7157", "gene_length_bp"] == 150
+    assert lengths.loc["7157", "length_source"] == "exon_union"
+    assert lengths.loc["1956", "gene_length_bp"] == 2001
+    assert lengths.loc["1956", "length_source"] == "gene_span"
+    assert lengths.loc["105379854", "gene_length_bp"] == 100
+    assert pd.isna(lengths.loc["999999999", "gene_length_bp"])
+    assert lengths.loc["999999999", "length_source"] == "unresolved"
+
+
+def test_sra_ncbi_count_matrix_requires_exact_run_manifest_and_gene_order(tmp_path):
+    runs = tuple(
+        expression_builders.SraNcbiCountRun(
+            accession=accession,
+            biosample=f"SAMN{accession[-8:]}",
+            sample_title=accession,
+            role="tumor",
+            analysis_accession=f"SRZ{accession[-8:]}",
+            counts_md5="a" * 32,
+            cancer_code="SARC_MMNST",
+        )
+        for accession in ("SRR00000001", "SRR00000002")
+    )
+    source = expression_builders.SraNcbiCountSource(
+        source_id="synthetic-ncbi-counts",
+        bioproject="PRJNA000000",
+        sra_study="SRP000000",
+        source_cohort="SYNTHETIC_NCBI_COUNTS",
+        cancer_code="SARC_MMNST",
+        runs=runs,
+        annotation_url="https://example.org/annotation.gff.gz",
+        annotation_sha256="b" * 64,
+        annotation_release="synthetic",
+        assembly_report_url="https://example.org/assembly_report.txt",
+        assembly_report_sha256="c" * 64,
+        expected_gene_rows=2,
+    )
+    paths = {}
+    for run, gene_ids in zip(runs, (["7157", "1956"], ["1956", "7157"])):
+        path = tmp_path / f"{run.accession}.tsv"
+        pd.DataFrame({"Geneid": gene_ids, f"{run.accession}_count": [10.0, 20.0]}).to_csv(
+            path, sep="\t", index=False
+        )
+        paths[run.accession] = path
+
+    with pytest.raises(ValueError, match="GeneID rows differ"):
+        expression_builders.read_sra_ncbi_count_matrix(source, paths)
+
+    paths["SRR99999999"] = paths[runs[0].accession]
+    with pytest.raises(ValueError, match=r"unexpected=\['SRR99999999'\]"):
+        expression_builders.read_sra_ncbi_count_matrix(source, paths)
+
+
+def test_build_sra_ncbi_count_source_routes_only_tumor_and_audits_control(tmp_path):
+    annotation = tmp_path / "annotation.gff.gz"
+    assembly_report = _write_synthetic_ncbi_assembly_report(tmp_path)
+    lines = [
+        "##gff-version 3",
+        (
+            "NC_000017.11\tRefSeq\tregion\t1\t83257441\t.\t+\t.\t"
+            "ID=NC_000017.11:1..83257441;Name=17;chromosome=17;genome=chromosome"
+        ),
+        (
+            "NC_000017.11\tRefSeq\tgene\t100\t1099\t.\t+\t.\t"
+            "ID=gene-TP53;Dbxref=GeneID:7157;Name=TP53;gene=TP53"
+        ),
+        (
+            "NC_000017.11\tRefSeq\texon\t100\t1099\t.\t+\t.\t"
+            "ID=exon-TP53;Dbxref=GeneID:7157;gene=TP53"
+        ),
+        (
+            "NC_000007.14\tRefSeq\tregion\t1\t159345973\t.\t+\t.\t"
+            "ID=NC_000007.14:1..159345973;Name=7;chromosome=7;genome=chromosome"
+        ),
+        (
+            "NC_000007.14\tRefSeq\tgene\t2000\t3999\t.\t+\t.\t"
+            "ID=gene-EGFR;Dbxref=GeneID:1956;Name=EGFR;gene=EGFR"
+        ),
+        (
+            "NC_000007.14\tRefSeq\texon\t2000\t3999\t.\t+\t.\t"
+            "ID=exon-EGFR;Dbxref=GeneID:1956;gene=EGFR"
+        ),
+    ]
+    with gzip.open(annotation, "wt") as handle:
+        handle.write("\n".join(lines) + "\n")
+
+    count_paths = {}
+    runs = []
+    for accession, role, cancer_code, counts in (
+        ("SRR00000001", "tumor", "SARC_MMNST", [100.0, 50.0]),
+        ("SRR00000002", "normal_control", None, [20.0, 80.0]),
+    ):
+        count_path = tmp_path / f"{accession}.ncbi-gene-counts.tsv"
+        pd.DataFrame(
+            {
+                "Geneid": ["7157", "1956"],
+                f"{accession}_count": counts,
+            }
+        ).to_csv(count_path, sep="\t", index=False)
+        count_paths[accession] = count_path
+        runs.append(
+            expression_builders.SraNcbiCountRun(
+                accession=accession,
+                biosample=f"SAMN{accession[-8:]}",
+                sample_title=role,
+                role=role,
+                analysis_accession=f"SRZ{accession[-8:]}",
+                counts_md5=hashlib.md5(count_path.read_bytes()).hexdigest(),
+                cancer_code=cancer_code,
+            )
+        )
+
+    source = expression_builders.SraNcbiCountSource(
+        source_id="synthetic-ncbi-counts",
+        bioproject="PRJNA000000",
+        sra_study="SRP000000",
+        source_cohort="SYNTHETIC_NCBI_COUNTS",
+        cancer_code="SARC_MMNST",
+        runs=tuple(runs),
+        annotation_url="https://example.org/annotation.gff.gz",
+        annotation_sha256=hashlib.sha256(annotation.read_bytes()).hexdigest(),
+        annotation_release="synthetic",
+        assembly_report_url="https://example.org/assembly_report.txt",
+        assembly_report_sha256=hashlib.sha256(assembly_report.read_bytes()).hexdigest(),
+        expected_gene_rows=2,
+        expected_n={"SARC_MMNST": 1},
+    )
+    with pytest.raises(ValueError, match=r"unexpected=\['SRR99999999'\]"):
+        expression_builders.build_sra_ncbi_count_source_matrices(
+            source,
+            cache_dir=tmp_path / "rejected-cache",
+            count_paths={**count_paths, "SRR99999999": count_paths["SRR00000001"]},
+            annotation_path=annotation,
+            assembly_report_path=assembly_report,
+        )
+
+    result = expression_builders.build_sra_ncbi_count_source_matrices(
+        source,
+        cache_dir=tmp_path / "cache",
+        count_paths=count_paths,
+        annotation_path=annotation,
+        assembly_report_path=assembly_report,
+    )
+
+    matrix = result.matrices["SARC_MMNST"]
+    assert list(matrix.columns) == [
+        "Ensembl_Gene_ID",
+        "Symbol",
+        "SRR00000001",
+    ]
+    assert set(matrix["Symbol"]) == {"TP53", "EGFR"}
+    assert matrix["SRR00000001"].sum() == pytest.approx(1_000_000.0)
+    assert set(result.sample_qc["source_type"]) == {"sra-ncbi-counts"}
+    manifest = pd.read_csv(result.sidecar_paths["run_manifest"])
+    assert manifest["included"].tolist() == [True, False]
+    assert manifest.loc[1, "exclusion_reason"] == (
+        "independent_normal_control_excluded_from_tumor_reference"
+    )
+    coverage = pd.read_csv(result.sidecar_paths["ncbi_count_mapping_coverage"])
+    assert coverage["reference_input_count_fraction"].tolist() == [1.0, 1.0]
+    assert result.sidecar_paths["ncbi_gene_length_audit"].exists()
 
 
 def test_build_sra_salmon_source_routes_only_tumors_and_audits_controls(tmp_path):

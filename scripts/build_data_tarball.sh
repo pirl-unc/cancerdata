@@ -10,7 +10,7 @@
 #
 # Usage:
 #   scripts/build_data_tarball.sh <source-dir> [output-dir]
-#   ONCOREF_DATA_RELEASE_VERSION=5.23.13 \
+#   ONCOREF_DATA_RELEASE_VERSION=5.23.14 \
 #       scripts/build_data_tarball.sh <source-dir> [output-dir]
 #
 # Then: upload <output-dir>/oncoref-data-v<DATA_VERSION>.tar.gz plus the emitted

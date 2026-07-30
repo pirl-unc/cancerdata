@@ -74,6 +74,9 @@ jobs:
       PYENSEMBL_CACHE_DIR: ${{ github.workspace }}/.ci-cache/pyensembl
       # The real-cohort parity test requires the released LUAD source matrix.
       CANCERDATA_SOURCE_MATRICES: ${{ github.workspace }}/.ci-cache/source-matrices
+      # Pin the fixture by content, independently of an unreleased source-version bump.
+      CI_LUAD_SOURCE_URL: https://github.com/pirl-unc/oncoref/releases/download/source-v5.22.8/LUAD_per_sample_tpm.parquet
+      CI_LUAD_SHA256: 001ebb9ad18aea86599ff5d808851007523f6d8f0927dfdf2a2f39372f83ffc5
     strategy:
       fail-fast: true
       matrix:
@@ -98,15 +101,36 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .ci-cache/source-matrices
-          key: source-matrices-v5.22.8-luad
+          key: source-matrices-luad-${{ env.CI_LUAD_SHA256 }}
 
       - name: Stage required source matrices
         run: |
           python - <<'PY'
+          import hashlib
+          import os
+          import urllib.request
+
           from oncoref import source_matrices
 
-          path = source_matrices.ensure("LUAD")
-          assert path.is_file(), path
+          def sha256(path):
+              digest = hashlib.sha256()
+              with path.open("rb") as handle:
+                  for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          path = source_matrices.local_path("LUAD")
+          expected_sha256 = os.environ["CI_LUAD_SHA256"]
+          if path.is_file() and sha256(path) != expected_sha256:
+              path.unlink()
+
+          if not path.is_file():
+              temporary_path = path.with_suffix(".parquet.part")
+              urllib.request.urlretrieve(os.environ["CI_LUAD_SOURCE_URL"], temporary_path)
+              observed_sha256 = sha256(temporary_path)
+              assert observed_sha256 == expected_sha256, (observed_sha256, expected_sha256)
+              temporary_path.replace(path)
+
           print(path)
           PY
 

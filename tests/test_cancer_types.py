@@ -320,28 +320,28 @@ def test_astb_registry_row_for_trufflepig_parity():
     assert row["name"] == "Astroblastoma (MN1-altered)"
 
 
-def test_mmnst_registry_row_for_expression_source_candidate():
+def test_mmnst_registry_row_for_expression_reference():
     assert cancer_types.resolve_cancer_type("SARC_MMNST") == "SARC_MMNST"
     assert cancer_types.cancer_lineage_group("SARC_MMNST") == "Sarcoma"
 
     raw = cancer_types.cancer_type_registry().set_index("code").loc["SARC_MMNST"]
     assert raw["parent_code"] == "SARC"
     assert raw["primary_tissue"] == "nerve_sheath"
-    assert raw["expression_source"] == "curated"
-    assert raw["source_cohort"] == "LITERATURE_CURATED"
-    assert raw["source_pmid"] == "PMID:24145644"
+    assert raw["expression_source"] == "NCBI SRA Gene Feature counts"
+    assert raw["source_cohort"] == "SRP493407_MMNST_2024"
+    assert raw["source_pmid"] == "PMID:41995777"
     assert raw["fusion_driven"] == "none"
 
     row = cancer_types.cancer_type_records(["SARC_MMNST"]).iloc[0]
     assert row["name"] == "Malignant Melanotic Nerve Sheath Tumor"
     assert row["family"] == "sarcoma"
     assert row["primary_tissue"] == "nerve_sheath"
-    assert row["source_cohort"] == "LITERATURE_CURATED"
-    assert row["source_pmid"] == "PMID:24145644"
+    assert row["source_cohort"] == "SRP493407_MMNST_2024"
+    assert row["source_pmid"] == "PMID:41995777"
     assert row["lineage_group"] == "Sarcoma"
     assert row["normal_tissue_code"] == "soft_tissue"
     assert row["hpa_tissues"] == ()
-    assert bool(row["has_expression_matrix"]) is False
+    assert bool(row["has_expression_matrix"]) is True
 
 
 def test_mplps_registry_and_reference_gap_are_explicit():

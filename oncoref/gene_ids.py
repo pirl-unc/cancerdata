@@ -175,9 +175,10 @@ def _entrez_gene_index() -> dict[str, tuple[str, str, str]]:
 def resolve_entrez_id(entrez_id: str) -> tuple[str, str, str] | None:
     """Map an Entrez / NCBI GeneID to ``(canonical_ensg, symbol, method)``.
 
-    ``method`` is one of ``"entrez_dbxrefs"``, ``"entrez_current_symbol"``, or
-    ``"entrez_gene_history"``. Returns ``None`` when the ID is blank, non-numeric, or
-    absent from the shipped NCBI-derived mapping table.
+    ``method`` records direct Ensembl dbXrefs, current-symbol resolution, the
+    explicit NCBI-to-Ensembl mitochondrial-symbol translation, or GeneID history.
+    Returns ``None`` when the ID is blank, non-numeric, or absent from the shipped
+    NCBI-derived mapping table.
     """
     raw = str(entrez_id).strip()
     if not raw or not raw.isdigit():

@@ -124,6 +124,19 @@ def test_entrez_gene_mapping_helpers():
     assert oncoref.resolve_entrez_id("5728")[:2] == ("ENSG00000171862", "PTEN")
 
 
+def test_ncbi_mitochondrial_gene_ids_use_explicit_symbol_translation():
+    assert g.resolve_entrez_id("4512") == (
+        "ENSG00000198804",
+        "MT-CO1",
+        "entrez_mitochondrial_symbol",
+    )
+    assert g.resolve_entrez_id("4550") == (
+        "ENSG00000210082",
+        "MT-RNR2",
+        "entrez_mitochondrial_symbol",
+    )
+
+
 def test_gene_identifier_mapping_coverage_reports_shipped_mapping_boundaries():
     coverage = g.gene_identifier_mapping_coverage()
     expected = {

@@ -32,9 +32,9 @@ def test_expression_source_candidates():
     assert len(one) >= 1 and (one["cancer_code"] == "BRCA_Basal").all()
 
     mmnst = expression_source_candidates("SARC_MMNST").iloc[0]
-    assert mmnst["source_status"] == "bulk_candidate_ready"
+    assert mmnst["source_status"] == "direct_reference_available"
     assert mmnst["reference_code"] == "SARC"
-    assert mmnst["source_project"] == "SRA"
+    assert mmnst["source_project"] == "NCBI SRA Gene Feature counts"
     assert mmnst["source_cohort"] == "SRP493407_MMNST_2024"
     assert mmnst["accession"] == "PRJNA1083972"
     assert int(mmnst["estimated_samples"]) == 3
