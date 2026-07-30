@@ -11,6 +11,7 @@ import pandas as pd
 import oncoref
 from oncoref import expression_builders, samples
 from oncoref import expression_registry as es
+from oncoref.cancer_types import resolve_cancer_type
 from oncoref.load_dataset import get_data
 
 
@@ -194,6 +195,72 @@ def test_sample_manifest_loads():
     assert len(df) > 1000
     for col in ("cancer_code", "source_cohort", "sample_id", "included"):
         assert col in df.columns
+
+
+def test_sample_manifest_matches_availability_pipelines_and_canonical_lineages():
+    manifest = samples.sample_manifest()
+    availability = get_data("cancer-reference-expression-availability")
+    pipeline_counts = availability.groupby("source_cohort")["processing_pipeline"].nunique()
+    unique_pipeline_sources = pipeline_counts[pipeline_counts.eq(1)].index
+    expected_pipeline = (
+        availability[availability["source_cohort"].isin(unique_pipeline_sources)]
+        .drop_duplicates("source_cohort")
+        .set_index("source_cohort")["processing_pipeline"]
+    )
+    covered = manifest["source_cohort"].isin(expected_pipeline.index)
+
+    assert (
+        manifest.loc[covered, "processing_pipeline"]
+        == manifest.loc[covered, "source_cohort"].map(expected_pipeline)
+    ).all()
+
+    lineage_labels = manifest["lineage_label"].dropna().astype(str)
+    assert {resolve_cancer_type(label, strict=False) for label in lineage_labels} == set(
+        lineage_labels
+    )
+
+
+def test_expression_source_candidates_preserve_physical_source_boundaries():
+    candidates = es.expression_source_candidates()
+    availability = get_data("cancer-reference-expression-availability")
+    selected = availability[availability["selected"].astype(bool)].set_index("cancer_code")
+    direct = candidates[candidates["source_status"].eq("direct_reference_available")].set_index(
+        "cancer_code"
+    )
+
+    assert set(direct.index) == {
+        "ACINIC",
+        "ADCC",
+        "CHOL",
+        "NEC_MERKEL",
+        "SARC_MMNST",
+        "SARC_WDLPS",
+        "SCLC_ASCL1",
+        "SCLC_NEUROD1",
+        "SCLC_POU2F3",
+        "SCLC_YAP1",
+    }
+    assert set(direct.index) <= set(selected.index)
+    assert (direct["reference_code"] == direct.index).all()
+    assert (direct["source_cohort"] == selected.loc[direct.index, "source_cohort"]).all()
+    assert (
+        pd.to_numeric(direct["estimated_samples"])
+        == pd.to_numeric(selected.loc[direct.index, "n_reference_samples"])
+    ).all()
+
+    assert direct.loc["ADCC", "accession"] == "GSE294016"
+    assert direct.loc["ACINIC", "accession"] == "GSE294016"
+    assert direct.loc["NEC_MERKEL", "accession"] == "GSE235092"
+    assert direct.loc["CHOL", "source_cohort"] == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
+
+    gbc = candidates.set_index("cancer_code").loc["GBC"]
+    assert gbc["source_status"] == "bulk_candidate_ready"
+    assert gbc["accession"] == "GSE139682"
+    assert "GBC" not in selected.index
+
+    divergent = candidates.set_index("cancer_code").loc[["FL", "NPC", "SARC_ASPS", "SARC_MYXLPS"]]
+    assert not divergent["source_status"].eq("direct_reference_available").any()
+    assert (divergent["source_cohort"] != selected.loc[divergent.index, "source_cohort"]).all()
 
 
 def test_samples_for_cancer_code_included_only():

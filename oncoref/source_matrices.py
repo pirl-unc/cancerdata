@@ -36,6 +36,7 @@ import shutil
 import sys
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
@@ -61,6 +62,30 @@ _TREEHOUSE_POLYA_SAMPLE_NAMESPACE = "TREEHOUSE_POLYA_25_01"
 
 class SourceMatrixError(RuntimeError):
     """Unknown cohort or per-cohort download failure."""
+
+
+@dataclass(frozen=True)
+class SelectedSourceMatrix:
+    """One published matrix returned by a source-ID resolution."""
+
+    cancer_code: str
+    source_cohort: str
+    n_samples: int
+
+
+@dataclass(frozen=True)
+class SourceMatrixResolution:
+    """How an expression source maps to currently selected published matrices."""
+
+    source_id: str
+    resolution_method: str
+    matrices: tuple[SelectedSourceMatrix, ...]
+    availability_reason: str | None = None
+
+    @property
+    def codes(self) -> tuple[str, ...]:
+        """Selected cancer codes, in the source registry's declared order."""
+        return tuple(matrix.cancer_code for matrix in self.matrices)
 
 
 @lru_cache(maxsize=1)
@@ -91,6 +116,76 @@ def _resolve(code: str) -> str:
 def cohort_info(code: str) -> dict:
     """Registry row for a cohort (``source_cohort``, ``n_samples``)."""
     return _registry_index()[_resolve(code)]
+
+
+def _selected_matrices_for_codes(codes: tuple[str, ...]) -> tuple[SelectedSourceMatrix, ...]:
+    selected_by_code = _registry_index()
+    matrices = []
+    for declared_code in codes:
+        code = resolve_cancer_type(declared_code, strict=False) or declared_code
+        row = selected_by_code.get(code)
+        if row is None:
+            continue
+        matrices.append(
+            SelectedSourceMatrix(
+                cancer_code=code,
+                source_cohort=str(row["source_cohort"]),
+                n_samples=int(row["n_samples"]),
+            )
+        )
+    return tuple(matrices)
+
+
+def resolution_for_source(source_id: str) -> SourceMatrixResolution:
+    """Resolve an acquisition source to its selected published matrices.
+
+    An exact match requires both a declared cancer code and the same physical
+    ``source_cohort``. If no exact match exists, the source's declared cancer
+    codes are resolved to the matrices currently selected for those codes. The
+    latter is a routing result, not a provenance rewrite: each returned matrix
+    retains its actual ``source_cohort``.
+
+    Unknown source IDs raise :class:`SourceMatrixError`. A known source with no
+    selected matrix returns ``resolution_method="unavailable"`` and a stable
+    ``availability_reason``.
+    """
+    from .expression_registry import expression_source
+
+    source = expression_source(source_id)
+    if source is None:
+        raise SourceMatrixError(f"unknown expression source {source_id!r}")
+
+    selected = _selected_matrices_for_codes(source.cancer_codes)
+    physical_matches = tuple(
+        matrix for matrix in selected if matrix.source_cohort == source.source_cohort
+    )
+    if physical_matches:
+        return SourceMatrixResolution(
+            source_id=source_id,
+            resolution_method="physical_source",
+            matrices=physical_matches,
+        )
+    if selected:
+        return SourceMatrixResolution(
+            source_id=source_id,
+            resolution_method="declared_cancer_code",
+            matrices=selected,
+        )
+    return SourceMatrixResolution(
+        source_id=source_id,
+        resolution_method="unavailable",
+        matrices=(),
+        availability_reason="no_selected_matrix_for_declared_cancer_codes",
+    )
+
+
+def codes_for_source(source_id: str) -> list[str]:
+    """Cancer codes with selected matrices for an expression source ID.
+
+    Use :func:`resolution_for_source` when the caller must distinguish an exact
+    physical-source match from routing through the source's declared codes.
+    """
+    return list(resolution_for_source(source_id).codes)
 
 
 def source_sample_namespace(source_cohort: str) -> str:

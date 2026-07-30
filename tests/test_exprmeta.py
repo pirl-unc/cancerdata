@@ -33,7 +33,7 @@ def test_expression_source_candidates():
 
     mmnst = expression_source_candidates("SARC_MMNST").iloc[0]
     assert mmnst["source_status"] == "direct_reference_available"
-    assert mmnst["reference_code"] == "SARC"
+    assert mmnst["reference_code"] == "SARC_MMNST"
     assert mmnst["source_project"] == "NCBI SRA Gene Feature counts"
     assert mmnst["source_cohort"] == "SRP493407_MMNST_2024"
     assert mmnst["accession"] == "PRJNA1083972"
