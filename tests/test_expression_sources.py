@@ -133,8 +133,24 @@ def test_gse294016_source_uses_authoritative_histology_mapping():
         .loc[list(expected_counts), "n_reference_samples"]
         .to_dict()
     )
+    cohort_row = oncoref.cohort_registry_df().set_index("cohort_id").loc[source["source_cohort"]]
+    public_availability = oncoref.cancer_reference_expression_availability(
+        list(expected_counts),
+        reference_source="summary_rows_all",
+        sample_qc="all",
+        all_sources=True,
+    )
+    public_counts = (
+        public_availability.loc[public_availability["source_cohort"].eq(source["source_cohort"])]
+        .set_index("cancer_code")["n_reference_samples"]
+        .astype(int)
+        .to_dict()
+    )
     assert source_counts == expected_counts
     assert availability_counts == expected_counts
+    assert public_counts == expected_counts
+    assert int(cohort_row["n_samples"]) == source["expected_source_samples"]
+    assert int(cohort_row["n_codes"]) == len(source["cancer_codes"])
 
 
 def test_expression_sources_df_shape():

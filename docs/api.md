@@ -169,6 +169,20 @@ cancer_ontology.matched_normal_tissue_expression("COAD", genes=["ENSG00000141510
 cohorts.cohort_registry_df()
 ```
 
+### Cohort sample counts
+
+`cohort_registry_df()` describes physical source cohorts. For a non-computed
+cohort, `n_samples` is the number of matrix rows before diagnosis or histology
+routing, while `n_codes` is the number of canonical cancer codes receiving
+samples from that source. Per-code routed counts are available from
+`cancer_reference_expression_availability(..., reference_source="summary_rows_all",
+sample_qc="all", all_sources=True)`.
+
+For example, `GSE294016_BARTL_2025_SGC` contains 95 physical matrix rows and
+feeds two cancer codes. Its released histology-specific references contain 57
+ADCC samples and 3 ACINIC samples; the other 35 source rows are different
+histologies and are deliberately excluded from those two references.
+
 ### Consumer readiness
 
 `expression_reference_coverage()` is the ontology-wide readiness table for

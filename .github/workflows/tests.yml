@@ -72,6 +72,8 @@ jobs:
     env:
       # Keep pyensembl data under the workspace so actions/cache can archive it.
       PYENSEMBL_CACHE_DIR: ${{ github.workspace }}/.ci-cache/pyensembl
+      # The real-cohort parity test requires the released LUAD source matrix.
+      CANCERDATA_SOURCE_MATRICES: ${{ github.workspace }}/.ci-cache/source-matrices
     strategy:
       fail-fast: true
       matrix:
@@ -91,6 +93,22 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+
+      - name: Cache required source matrices
+        uses: actions/cache@v5
+        with:
+          path: .ci-cache/source-matrices
+          key: source-matrices-v5.22.8-luad
+
+      - name: Stage required source matrices
+        run: |
+          python - <<'PY'
+          from oncoref import source_matrices
+
+          path = source_matrices.ensure("LUAD")
+          assert path.is_file(), path
+          print(path)
+          PY
 
       - name: Cache Ensembl genome data
         uses: actions/cache@v5
