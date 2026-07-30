@@ -23,7 +23,7 @@ def test_registry_loads_all_sources():
 
 def test_source_types_cover_the_major_providers():
     types = {s.source_type for s in es.expression_sources()}
-    for t in ("gdc", "treehouse-compendium", "recount3", "sra-salmon", "broad-cllmap"):
+    for t in ("gdc", "treehouse-compendium", "recount3", "sra-ncbi-counts", "broad-cllmap"):
         assert t in types
 
 
@@ -63,16 +63,16 @@ def test_mbl_subgroup_source_has_typed_derivation_provenance():
     assert source.processing_pipeline
 
 
-def test_mmnst_source_has_typed_raw_read_provenance():
+def test_mmnst_source_has_typed_ncbi_count_provenance():
     source = es.expression_source("prjna1083972-mmnst")
 
     assert source is not None
     assert source.cancer_codes == ("SARC_MMNST",)
-    assert source.source_type == "sra-salmon"
+    assert source.source_type == "sra-ncbi-counts"
     assert source.accession == "PRJNA1083972"
     assert source.source_cohort == "SRP493407_MMNST_2024"
-    assert source.source_project == "NCBI SRA / ENA"
-    assert source.unit == "Salmon gene TPM"
+    assert source.source_project == "NCBI SRA Gene Feature counts"
+    assert source.unit == "NCBI Gene Feature count-derived TPM"
     assert source.tumor_origin == "primary"
     assert source.processing_pipeline
 
@@ -201,6 +201,19 @@ def test_samples_for_cancer_code_included_only():
     allrows = samples.samples_for_cancer_code("BL", included_only=False)
     assert len(inc) <= len(allrows)
     assert (inc["included"].astype(str).str.lower() == "true").all()
+
+
+def test_mmnst_sample_manifest_preserves_controls_without_routing_them():
+    cohort = samples.samples_for_cohort("SRP493407_MMNST_2024", included_only=False)
+    included = samples.samples_for_cancer_code("SARC_MMNST")
+
+    assert len(cohort) == 6
+    assert included["sample_id"].tolist() == ["SRR28227826", "SRR28227825", "SRR28227824"]
+    controls = cohort.loc[~cohort["included"].astype(bool)]
+    assert controls["sample_id"].tolist() == ["SRR28227823", "SRR28227822", "SRR28227821"]
+    assert set(controls["exclusion_reason"]) == {
+        "independent_normal_control_excluded_from_tumor_reference"
+    }
 
 
 def test_sample_counts_sum():

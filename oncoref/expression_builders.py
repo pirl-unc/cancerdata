@@ -37,6 +37,7 @@ referenced and documented as the public build-time API.
 
 from __future__ import annotations
 
+import csv
 import gzip
 import hashlib
 import json
@@ -48,6 +49,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from functools import lru_cache
@@ -71,6 +73,7 @@ SourceExpressionUnit = Literal["TPM", "FPKM", "RPKM", "log2(TPM+1)", "raw_counts
 GDC_SOURCE_TYPE = "gdc"
 GEO_MATRIX_SOURCE_TYPE = "geo-matrix"
 RECOUNT3_SOURCE_TYPE = "recount3"
+SRA_NCBI_COUNTS_SOURCE_TYPE = "sra-ncbi-counts"
 SRA_SALMON_SOURCE_TYPE = "sra-salmon"
 TREEHOUSE_SOURCE_TYPE = "treehouse-compendium"
 MEDULLOBLASTOMA_SUBGROUP_MARKER_GENE_IDS: dict[str, str] = {
@@ -98,6 +101,7 @@ _RECOUNT3_S3_BASE = "https://recount-opendata.s3.amazonaws.com/recount3/release/
 _RECOUNT3_ANNOTATION_GTF = (
     f"{_RECOUNT3_S3_BASE}/annotations/gene_sums/human.gene_sums.{RECOUNT3_ANNOTATION}.gtf.gz"
 )
+_NCBI_SRA_COUNTS_BASE = "https://sra-rnaseq-analysis.s3.amazonaws.com"
 
 GDC_PRIMARY_SAMPLE_TYPES: tuple[str, ...] = (
     "Primary Tumor",
@@ -374,6 +378,72 @@ class SraSalmonSource:
 
 
 @dataclass(frozen=True)
+class SraNcbiCountRun:
+    """One NCBI SRA Gene Feature count table and its cohort role."""
+
+    accession: str
+    biosample: str
+    sample_title: str
+    role: str
+    analysis_accession: str
+    counts_md5: str
+    cancer_code: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.role not in {"tumor", "normal_control"}:
+            raise ValueError(f"SRA run {self.accession} has unsupported role {self.role!r}")
+        if self.role == "tumor" and self.cancer_code is None:
+            raise ValueError(f"tumor SRA run {self.accession} must declare a cancer_code")
+        if self.role == "normal_control" and self.cancer_code is not None:
+            raise ValueError(
+                f"normal-control SRA run {self.accession} must not declare a cancer_code"
+            )
+
+    @property
+    def included_in_reference(self) -> bool:
+        """Whether this is an explicitly routed tumor run."""
+        return self.role == "tumor"
+
+
+@dataclass(frozen=True)
+class SraNcbiCountSource:
+    """One SRA study built from checksum-pinned NCBI gene-count tables.
+
+    NCBI has already aligned the reads and generated gene-level counts. The
+    oncoref builder downloads only those count tables plus a pinned RefSeq GFF
+    and assembly report, converts counts to gene TPM, and routes explicitly
+    labeled tumor runs into reference artifacts. Control runs remain in the
+    provenance audit.
+    """
+
+    source_id: str
+    bioproject: str
+    sra_study: str
+    source_cohort: str
+    cancer_code: str | list[str]
+    runs: tuple[SraNcbiCountRun, ...]
+    annotation_url: str
+    annotation_sha256: str
+    annotation_release: str
+    assembly_report_url: str
+    assembly_report_sha256: str
+    expected_gene_rows: int
+    counts_base_url: str = _NCBI_SRA_COUNTS_BASE
+    source_project: str | None = "NCBI SRA Gene Feature counts"
+    citation: str | None = None
+    notes: str = ""
+    pipeline_stem: str = ""
+    source_version: str | None = None
+    processing_pipeline: str | None = None
+    tumor_origin: str = "primary"
+    metastasis_site: str | None = None
+    source_scale_class: str | None = "ncbi_gene_feature_count_tpm"
+    linear_tpm_comparable: bool | None = True
+    tpm_proxy: bool | None = False
+    expected_n: Mapping[str, int] | None = None
+
+
+@dataclass(frozen=True)
 class TreehouseCohort:
     """One cohort routed from a Treehouse compendium clinical table."""
 
@@ -418,7 +488,14 @@ class TreehouseSource:
 class SourceMatrixBuildResult:
     """Artifacts produced by :func:`build_source_matrices`."""
 
-    source: GdcSource | GeoMatrixSource | Recount3Source | SraSalmonSource | TreehouseSource
+    source: (
+        GdcSource
+        | GeoMatrixSource
+        | Recount3Source
+        | SraNcbiCountSource
+        | SraSalmonSource
+        | TreehouseSource
+    )
     matrices: dict[str, pd.DataFrame]
     matrix_paths: dict[str, Path]
     summary_rows: pd.DataFrame
@@ -1021,6 +1098,162 @@ def recount3_source_from_registry(
     for entry in _source_entries_from_registry(registry_path):
         if entry.get("id") == source_id:
             return recount3_source_from_entry(entry)
+    raise KeyError(f"source id {source_id!r} not found in expression source registry")
+
+
+def sra_ncbi_count_source_entries(registry_path: str | Path | None = None) -> list[dict]:
+    """Raw ``source_type: sra-ncbi-counts`` registry entries."""
+    return [
+        entry
+        for entry in _source_entries_from_registry(registry_path)
+        if entry.get("source_type") == SRA_NCBI_COUNTS_SOURCE_TYPE
+    ]
+
+
+def _sra_ncbi_count_run_from_entry(
+    entry: Mapping,
+    *,
+    allowed_codes: set[str],
+) -> SraNcbiCountRun:
+    accession = str(entry.get("accession") or "").strip()
+    biosample = str(entry.get("biosample") or "").strip()
+    sample_title = str(entry.get("sample_title") or "").strip()
+    role = str(entry.get("role") or "").strip()
+    analysis_accession = str(entry.get("analysis_accession") or "").strip()
+    cancer_code = _coerce_optional_text(entry.get("cancer_code"))
+
+    if re.fullmatch(r"[SED]RR\d+", accession) is None:
+        raise ValueError(f"invalid SRA run accession {accession!r}")
+    if not biosample:
+        raise ValueError(f"SRA run {accession} lacks a BioSample accession")
+    if not sample_title:
+        raise ValueError(f"SRA run {accession} lacks a sample title")
+    if role not in {"tumor", "normal_control"}:
+        raise ValueError(f"SRA run {accession} has unsupported role {role!r}")
+    if role == "tumor" and cancer_code is None:
+        raise ValueError(f"tumor SRA run {accession} must declare a cancer_code")
+    if role == "normal_control" and cancer_code is not None:
+        raise ValueError(f"normal-control SRA run {accession} must not declare a cancer_code")
+    if cancer_code is not None and cancer_code not in allowed_codes:
+        raise ValueError(f"SRA run {accession} routes to undeclared cancer code {cancer_code!r}")
+    if re.fullmatch(r"SRZ\d+", analysis_accession) is None:
+        raise ValueError(
+            f"SRA run {accession} has invalid NCBI analysis accession {analysis_accession!r}"
+        )
+
+    return SraNcbiCountRun(
+        accession=accession,
+        biosample=biosample,
+        sample_title=sample_title,
+        role=role,
+        analysis_accession=analysis_accession,
+        counts_md5=_validated_checksum(
+            entry.get("counts_md5"),
+            algorithm="md5",
+            description=f"SRA run {accession} count-table checksum",
+        ),
+        cancer_code=cancer_code,
+    )
+
+
+def sra_ncbi_count_source_from_entry(entry: Mapping) -> SraNcbiCountSource:
+    """Convert one registry entry into an NCBI processed-count source."""
+    if entry.get("source_type") != SRA_NCBI_COUNTS_SOURCE_TYPE:
+        raise ValueError(
+            f"source {entry.get('id')!r} has source_type={entry.get('source_type')!r}, "
+            f"not {SRA_NCBI_COUNTS_SOURCE_TYPE!r}"
+        )
+
+    cancer_codes = [str(code) for code in entry.get("cancer_codes", [])]
+    if not cancer_codes:
+        raise ValueError(f"source {entry.get('id')!r} has no cancer_codes")
+    runs = tuple(
+        _sra_ncbi_count_run_from_entry(run, allowed_codes=set(cancer_codes))
+        for run in entry.get("runs", [])
+    )
+    if not runs:
+        raise ValueError(f"source {entry.get('id')!r} has no SRA runs")
+    accessions = [run.accession for run in runs]
+    if len(set(accessions)) != len(accessions):
+        duplicates = sorted({run for run in accessions if accessions.count(run) > 1})
+        raise ValueError(f"source {entry.get('id')!r} repeats SRA runs: {duplicates}")
+    analyses = [run.analysis_accession for run in runs]
+    if len(set(analyses)) != len(analyses):
+        raise ValueError(f"source {entry.get('id')!r} repeats NCBI analysis accessions")
+
+    expected = _expected_samples_by_code(entry, cancer_codes)
+    routed_counts = {code: sum(run.cancer_code == code for run in runs) for code in cancer_codes}
+    _validate_routed_sample_counts(
+        str(entry.get("source_cohort") or entry.get("id")),
+        {code: [""] * count for code, count in routed_counts.items()},
+        expected,
+    )
+
+    annotation = dict(entry.get("annotation") or {})
+    annotation_url = str(annotation.get("url") or "").strip()
+    if not annotation_url.startswith("https://") or not annotation_url.endswith(".gff.gz"):
+        raise ValueError(f"source {entry.get('id')!r} annotation must be an HTTPS .gff.gz URL")
+    annotation_release = str(annotation.get("release") or "").strip()
+    if not annotation_release:
+        raise ValueError(f"source {entry.get('id')!r} lacks an annotation release")
+    assembly_report_url = str(annotation.get("assembly_report_url") or "").strip()
+    if not assembly_report_url.startswith("https://") or not assembly_report_url.endswith(".txt"):
+        raise ValueError(f"source {entry.get('id')!r} assembly report must be an HTTPS .txt URL")
+
+    counts_base_url = str(entry.get("counts_base_url") or _NCBI_SRA_COUNTS_BASE).rstrip("/")
+    if not counts_base_url.startswith("https://"):
+        raise ValueError(f"source {entry.get('id')!r} has a non-HTTPS count-table base URL")
+    expected_gene_rows = int(entry.get("expected_gene_rows") or 0)
+    if expected_gene_rows <= 0:
+        raise ValueError(f"source {entry.get('id')!r} must declare expected_gene_rows")
+
+    cancer_code: str | list[str] = cancer_codes[0] if len(cancer_codes) == 1 else cancer_codes
+    return SraNcbiCountSource(
+        source_id=str(entry["id"]),
+        bioproject=str(entry["accession"]),
+        sra_study=str(entry["sra_study"]),
+        source_cohort=str(entry["source_cohort"]),
+        cancer_code=cancer_code,
+        runs=runs,
+        annotation_url=annotation_url,
+        annotation_sha256=_validated_checksum(
+            annotation.get("sha256"),
+            algorithm="sha256",
+            description=f"source {entry.get('id')!r} annotation checksum",
+        ),
+        annotation_release=annotation_release,
+        assembly_report_url=assembly_report_url,
+        assembly_report_sha256=_validated_checksum(
+            annotation.get("assembly_report_sha256"),
+            algorithm="sha256",
+            description=f"source {entry.get('id')!r} assembly-report checksum",
+        ),
+        expected_gene_rows=expected_gene_rows,
+        counts_base_url=counts_base_url,
+        source_project=entry.get("source_project") or "NCBI SRA Gene Feature counts",
+        citation=entry.get("citation"),
+        expected_n=expected,
+        notes=str(entry.get("notes") or entry.get("special_handling") or ""),
+        pipeline_stem=str(entry.get("pipeline_stem") or ""),
+        source_version=_coerce_optional_text(entry.get("source_version")),
+        processing_pipeline=_coerce_optional_text(entry.get("processing_pipeline")),
+        tumor_origin=_coerce_tumor_origin(entry.get("tumor_origin")),
+        metastasis_site=_coerce_optional_text(entry.get("metastasis_site")),
+        source_scale_class=_coerce_optional_text(entry.get("source_scale_class"))
+        or "ncbi_gene_feature_count_tpm",
+        linear_tpm_comparable=entry.get("linear_tpm_comparable", True),
+        tpm_proxy=entry.get("tpm_proxy", False),
+    )
+
+
+def sra_ncbi_count_source_from_registry(
+    source_id: str,
+    registry_path: str | Path | None = None,
+) -> SraNcbiCountSource:
+    """Load one ``source_type: sra-ncbi-counts`` registry entry."""
+    for entry in _source_entries_from_registry(registry_path):
+        if entry.get("id") == source_id:
+            return sra_ncbi_count_source_from_entry(entry)
     raise KeyError(f"source id {source_id!r} not found in expression source registry")
 
 
@@ -2449,6 +2682,549 @@ def download_verified_file(
             tmp.unlink()
         raise
     return path
+
+
+def sra_ncbi_count_url(source: SraNcbiCountSource, run: SraNcbiCountRun) -> str:
+    """Immutable NCBI Gene Feature count-table URL for one analysis/run pair."""
+    return (
+        f"{source.counts_base_url}/tsv/{run.analysis_accession}/"
+        f"{run.accession}.ncbi-gene-counts.tsv"
+    )
+
+
+def sra_ncbi_count_run_manifest(source: SraNcbiCountSource) -> pd.DataFrame:
+    """Complete NCBI count inventory, including controls excluded from tumor output."""
+    rows = []
+    for run in source.runs:
+        rows.append(
+            {
+                "cancer_code": run.cancer_code or "",
+                "source_cohort": source.source_cohort,
+                "source_project": source.source_project or "",
+                "bioproject": source.bioproject,
+                "sra_study": source.sra_study,
+                "run_accession": run.accession,
+                "analysis_accession": run.analysis_accession,
+                "biosample": run.biosample,
+                "sample_title": run.sample_title,
+                "sample_role": run.role,
+                "counts_url": sra_ncbi_count_url(source, run),
+                "counts_md5": run.counts_md5,
+                "included": run.included_in_reference,
+                "exclusion_reason": (
+                    ""
+                    if run.included_in_reference
+                    else "independent_normal_control_excluded_from_tumor_reference"
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _verify_local_file(
+    path: str | Path,
+    *,
+    checksum: str,
+    algorithm: str,
+    description: str,
+) -> Path:
+    resolved = Path(path)
+    if not resolved.is_file():
+        raise FileNotFoundError(f"{description} is missing: {resolved}")
+    observed = _file_digest(resolved, algorithm)
+    if observed != checksum:
+        raise RuntimeError(f"{algorithm} mismatch for {description}: {observed} != {checksum}")
+    return resolved
+
+
+def _read_sra_ncbi_count_table(
+    path: str | Path,
+    run: SraNcbiCountRun,
+    *,
+    expected_gene_rows: int,
+) -> pd.DataFrame:
+    """Read and validate one two-column NCBI Gene Feature count table."""
+    expected_count_column = f"{run.accession}_count"
+    table = pd.read_csv(path, sep="\t", dtype={"Geneid": "string"})
+    if list(table.columns) != ["Geneid", expected_count_column]:
+        raise ValueError(
+            f"{run.accession} count table columns are {list(table.columns)!r}; "
+            f"expected ['Geneid', {expected_count_column!r}]"
+        )
+    if len(table) != expected_gene_rows:
+        raise ValueError(
+            f"{run.accession} count table has {len(table)} gene rows; expected {expected_gene_rows}"
+        )
+    gene_ids = table["Geneid"].astype(str).str.strip()
+    if not gene_ids.str.fullmatch(r"\d+").all():
+        raise ValueError(f"{run.accession} count table contains a nonnumeric NCBI GeneID")
+    if gene_ids.duplicated().any():
+        raise ValueError(f"{run.accession} count table repeats NCBI GeneIDs")
+    counts = pd.to_numeric(table[expected_count_column], errors="coerce")
+    if counts.isna().any() or (~np.isfinite(counts)).any() or (counts < 0).any():
+        raise ValueError(f"{run.accession} count table contains invalid count values")
+    return pd.DataFrame({"Geneid": gene_ids, run.accession: counts.astype(float)})
+
+
+def read_sra_ncbi_count_matrix(
+    source: SraNcbiCountSource,
+    count_paths: Mapping[str, str | Path],
+) -> pd.DataFrame:
+    """Read all declared NCBI count tables and require one identical gene universe."""
+    declared_runs = {run.accession for run in source.runs}
+    supplied_runs = set(count_paths)
+    missing = sorted(declared_runs - supplied_runs)
+    unexpected = sorted(supplied_runs - declared_runs)
+    if missing or unexpected:
+        raise ValueError(
+            "NCBI count paths must exactly match the declared run manifest; "
+            f"missing={missing}, unexpected={unexpected}"
+        )
+
+    tables = [
+        _read_sra_ncbi_count_table(
+            count_paths[run.accession],
+            run,
+            expected_gene_rows=source.expected_gene_rows,
+        )
+        for run in source.runs
+    ]
+    expected_gene_ids = tables[0]["Geneid"].tolist()
+    for run, table in zip(source.runs[1:], tables[1:]):
+        if table["Geneid"].tolist() != expected_gene_ids:
+            raise ValueError(f"{run.accession} NCBI GeneID rows differ from the first declared run")
+
+    matrix = tables[0]
+    for table in tables[1:]:
+        matrix = matrix.merge(table, on="Geneid", how="inner", validate="one_to_one")
+    return matrix
+
+
+def _gff_attributes(value: str) -> dict[str, str]:
+    attributes: dict[str, str] = {}
+    for item in value.split(";"):
+        key, separator, raw_value = item.partition("=")
+        if separator and key:
+            attributes[key] = urllib.parse.unquote(raw_value)
+    return attributes
+
+
+def _merged_interval_length(intervals: Iterable[tuple[int, int]]) -> int:
+    ordered = sorted(intervals)
+    if not ordered:
+        return 0
+    total = 0
+    current_start, current_end = ordered[0]
+    for start, end in ordered[1:]:
+        if start > current_end + 1:
+            total += current_end - current_start + 1
+            current_start, current_end = start, end
+        else:
+            current_end = max(current_end, end)
+    return total + current_end - current_start + 1
+
+
+def ncbi_primary_assembly_sequences(assembly_report_path: str | Path) -> set[str]:
+    """Return RefSeq accessions assigned to the primary or mitochondrial assembly."""
+    header: list[str] | None = None
+    selected: set[str] = set()
+    with Path(assembly_report_path).open(encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.rstrip("\r\n")
+            if line.startswith("# Sequence-Name\t"):
+                header = line.removeprefix("# ").split("\t")
+                missing = {"RefSeq-Accn", "Assembly-Unit"} - set(header)
+                if missing:
+                    raise ValueError(
+                        "NCBI assembly report header lacks required columns: "
+                        + ", ".join(sorted(missing))
+                    )
+                continue
+            if not line or line.startswith("#"):
+                continue
+            if header is None:
+                raise ValueError(
+                    f"NCBI assembly report lacks a sequence header: {assembly_report_path}"
+                )
+            fields = next(csv.reader([line], delimiter="\t"))
+            if len(fields) != len(header):
+                raise ValueError(f"malformed NCBI assembly-report row in {assembly_report_path}")
+            row = dict(zip(header, fields))
+            if row["Assembly-Unit"] not in {"Primary Assembly", "non-nuclear"}:
+                continue
+            refseq_accession = row["RefSeq-Accn"].strip()
+            if refseq_accession and refseq_accession != "na":
+                selected.add(refseq_accession)
+    if not selected:
+        raise ValueError(
+            f"NCBI assembly report contains no primary-assembly RefSeq accessions: "
+            f"{assembly_report_path}"
+        )
+    return selected
+
+
+def ncbi_gene_lengths_from_gff(
+    path: str | Path,
+    *,
+    gene_ids: Iterable[str],
+    primary_sequences: Iterable[str],
+) -> pd.DataFrame:
+    """Derive NCBI-compatible gene lengths from a pinned RefSeq GFF.
+
+    The parser streams the compressed annotation and retains intervals only for
+    requested GeneIDs. Length is the union of a gene's exons. Genes without exon
+    records, including many pseudogenes, use their annotated gene span instead.
+    ``primary_sequences`` comes from the checksum-pinned NCBI assembly report.
+    Primary plus mitochondrial accessions reproduce NCBI's own count-to-TPM
+    lengths; alternate loci and patch scaffolds are excluded.
+    """
+    requested = {str(gene_id).strip() for gene_id in gene_ids}
+    if not requested:
+        raise ValueError("gene_ids must not be empty")
+    allowed_sequences = {str(accession).strip() for accession in primary_sequences}
+    if not allowed_sequences:
+        raise ValueError("primary_sequences must not be empty")
+
+    exon_intervals: dict[str, dict[str, list[tuple[int, int]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    gene_intervals: dict[str, dict[str, list[tuple[int, int]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    symbols: dict[str, str] = {}
+
+    with gzip.open(path, "rt", encoding="utf-8") as handle:
+        for line in handle:
+            if not line or line.startswith("#"):
+                continue
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) != 9:
+                raise ValueError(f"malformed NCBI GFF row in {path}")
+            seqname, _, feature, start_text, end_text, _, _, _, attribute_text = fields
+            if seqname not in allowed_sequences:
+                continue
+            if feature != "exon" and feature not in {"gene", "pseudogene"}:
+                continue
+
+            gene_id_match = re.search(
+                r"(?:^|[^A-Za-z0-9_])GeneID:(\d+)(?=[,;]|$)",
+                attribute_text,
+            )
+            if gene_id_match is None:
+                continue
+            gene_id = gene_id_match.group(1)
+            if gene_id not in requested:
+                continue
+
+            start = int(start_text)
+            end = int(end_text)
+            intervals = exon_intervals if feature == "exon" else gene_intervals
+            intervals[gene_id][seqname].append((start, end))
+            if feature != "exon":
+                attributes = _gff_attributes(attribute_text)
+                symbol = attributes.get("gene") or attributes.get("Name")
+                if symbol:
+                    symbols.setdefault(gene_id, symbol)
+
+    rows = []
+    for gene_id in sorted(requested, key=int):
+        per_sequence = exon_intervals.get(gene_id)
+        length_source = "exon_union"
+        if not per_sequence:
+            per_sequence = gene_intervals.get(gene_id)
+            length_source = "gene_span"
+        length_bp = sum(_merged_interval_length(values) for values in (per_sequence or {}).values())
+        rows.append(
+            {
+                "Geneid": gene_id,
+                "Symbol": symbols.get(gene_id, ""),
+                "gene_length_bp": length_bp if length_bp > 0 else pd.NA,
+                "gene_length_kb": length_bp / 1000.0 if length_bp > 0 else np.nan,
+                "length_source": length_source if length_bp > 0 else "unresolved",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _ncbi_count_gene_lengths(
+    annotation_path: str | Path,
+    *,
+    assembly_report_path: str | Path,
+    count_gene_ids: Iterable[str],
+) -> pd.DataFrame:
+    """Resolve count-table GeneIDs to current RefSeq lengths, including retired IDs."""
+    count_ids = [str(gene_id).strip() for gene_id in count_gene_ids]
+    mappings = entrez_gene_mappings()
+    live_by_source = dict(zip(mappings["entrez_id"], mappings["live_entrez_id"]))
+    canonical_symbol_by_source = dict(zip(mappings["entrez_id"], mappings["canonical_symbol"]))
+    live_ids = {live_by_source[gene_id] for gene_id in count_ids if gene_id in live_by_source}
+    primary_sequences = ncbi_primary_assembly_sequences(assembly_report_path)
+    annotation_lengths = ncbi_gene_lengths_from_gff(
+        annotation_path,
+        gene_ids=[*count_ids, *live_ids],
+        primary_sequences=primary_sequences,
+    ).set_index("Geneid")
+
+    rows = []
+    for gene_id in count_ids:
+        direct = annotation_lengths.loc[gene_id]
+        live_id = live_by_source.get(gene_id, gene_id)
+        selected = direct
+        used_gene_history = False
+        if pd.isna(direct["gene_length_kb"]) and live_id in annotation_lengths.index:
+            live = annotation_lengths.loc[live_id]
+            if pd.notna(live["gene_length_kb"]):
+                selected = live
+                used_gene_history = live_id != gene_id
+
+        length_source = str(selected["length_source"])
+        if used_gene_history:
+            length_source = f"gene_history_{length_source}"
+        symbol = str(selected["Symbol"] or "")
+        if not symbol:
+            symbol = str(canonical_symbol_by_source.get(gene_id, "") or "")
+        rows.append(
+            {
+                "Geneid": gene_id,
+                "live_Geneid": live_id,
+                "Symbol": symbol,
+                "gene_length_bp": selected["gene_length_bp"],
+                "gene_length_kb": selected["gene_length_kb"],
+                "length_source": length_source,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _sra_ncbi_count_input_paths(
+    source: SraNcbiCountSource,
+    *,
+    cache_dir: Path,
+    count_paths: Mapping[str, str | Path] | None,
+    annotation_path: str | Path | None,
+    assembly_report_path: str | Path | None,
+    force_download: bool,
+) -> tuple[dict[str, Path], Path, Path]:
+    if count_paths is not None:
+        declared_runs = {run.accession for run in source.runs}
+        supplied_runs = set(count_paths)
+        missing = sorted(declared_runs - supplied_runs)
+        unexpected = sorted(supplied_runs - declared_runs)
+        if missing or unexpected:
+            raise ValueError(
+                "NCBI count paths must exactly match the declared run manifest; "
+                f"missing={missing}, unexpected={unexpected}"
+            )
+
+    resolved_counts: dict[str, Path] = {}
+    for run in source.runs:
+        if count_paths is not None:
+            resolved_counts[run.accession] = _verify_local_file(
+                count_paths[run.accession],
+                checksum=run.counts_md5,
+                algorithm="md5",
+                description=f"{run.accession} NCBI count table",
+            )
+            continue
+        destination = cache_dir / "counts" / f"{run.accession}.ncbi-gene-counts.tsv"
+        resolved_counts[run.accession] = download_verified_file(
+            sra_ncbi_count_url(source, run),
+            destination,
+            checksum=run.counts_md5,
+            algorithm="md5",
+            force_download=force_download,
+        )
+
+    if annotation_path is not None:
+        annotation = _verify_local_file(
+            annotation_path,
+            checksum=source.annotation_sha256,
+            algorithm="sha256",
+            description=f"{source.annotation_release} NCBI annotation",
+        )
+    else:
+        annotation = download_verified_file(
+            source.annotation_url,
+            cache_dir / "annotation" / Path(source.annotation_url).name,
+            checksum=source.annotation_sha256,
+            algorithm="sha256",
+            force_download=force_download,
+        )
+    if assembly_report_path is not None:
+        assembly_report = _verify_local_file(
+            assembly_report_path,
+            checksum=source.assembly_report_sha256,
+            algorithm="sha256",
+            description=f"{source.annotation_release} NCBI assembly report",
+        )
+    else:
+        assembly_report = download_verified_file(
+            source.assembly_report_url,
+            cache_dir / "annotation" / Path(source.assembly_report_url).name,
+            checksum=source.assembly_report_sha256,
+            algorithm="sha256",
+            force_download=force_download,
+        )
+    return resolved_counts, annotation, assembly_report
+
+
+def build_sra_ncbi_count_source_matrices(
+    source: SraNcbiCountSource,
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    count_paths: Mapping[str, str | Path] | None = None,
+    annotation_path: str | Path | None = None,
+    assembly_report_path: str | Path | None = None,
+    force_download: bool = False,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build canonical artifacts from NCBI-generated SRA gene-count tables."""
+    cache = Path(cache_dir)
+    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    resolved_counts, annotation, assembly_report = _sra_ncbi_count_input_paths(
+        source,
+        cache_dir=cache,
+        count_paths=count_paths,
+        annotation_path=annotation_path,
+        assembly_report_path=assembly_report_path,
+        force_download=force_download,
+    )
+    raw_counts = read_sra_ncbi_count_matrix(source, resolved_counts)
+    lengths = _ncbi_count_gene_lengths(
+        annotation,
+        assembly_report_path=assembly_report,
+        count_gene_ids=raw_counts["Geneid"],
+    )
+    annotated_counts = raw_counts.merge(
+        lengths[["Geneid", "Symbol"]],
+        on="Geneid",
+        how="left",
+        validate="one_to_one",
+    )
+    value_columns = [run.accession for run in source.runs]
+    annotated_counts = annotated_counts[["Geneid", "Symbol", *value_columns]]
+
+    _, complete_mapping_audit = canonicalize_source_gene_matrix(
+        annotated_counts,
+        row_id_col="Geneid",
+        symbol_col="Symbol",
+        value_cols=value_columns,
+        high_expression_threshold=high_expression_threshold,
+    )
+    resolved_gene_ids = set(
+        complete_mapping_audit.loc[
+            complete_mapping_audit["mapping_status"].eq("resolved"),
+            "source_row_id",
+        ].astype(str)
+    )
+    length_by_gene = lengths.set_index("Geneid")["gene_length_kb"]
+    has_length = annotated_counts["Geneid"].map(length_by_gene).notna()
+    is_mapped = annotated_counts["Geneid"].isin(resolved_gene_ids)
+    reference_input = annotated_counts.loc[has_length & is_mapped].copy()
+    if reference_input.empty:
+        raise ValueError("no NCBI count rows have both a canonical mapping and a gene length")
+    reference_tpm = normalize_source_matrix_to_tpm(
+        reference_input,
+        unit="raw_counts",
+        row_id_col="Geneid",
+        symbol_col="Symbol",
+        value_cols=value_columns,
+        gene_lengths_kb=length_by_gene,
+    )
+
+    stem = _artifact_stem(source.source_cohort)
+    tpm_matrix_path = cache / f"{stem}_ncbi_gene_tpm.tsv"
+    _atomic_write(
+        tpm_matrix_path,
+        lambda tmp_path: reference_tpm.to_csv(tmp_path, sep="\t", index=False),
+    )
+
+    run_to_code = {run.accession: run.cancer_code for run in source.runs}
+    generic_source = GeoMatrixSource(
+        cancer_code=source.cancer_code,
+        source_cohort=source.source_cohort,
+        source_project=source.source_project,
+        citation=source.citation,
+        file_name=tpm_matrix_path.name,
+        unit="TPM",
+        gene_id_col="Geneid",
+        symbol_col="Symbol",
+        sep="\t",
+        sample_to_cancer_code=lambda accession: run_to_code.get(str(accession)),
+        expected_source_samples=len(source.runs),
+        expected_samples_by_code=source.expected_n,
+        source_scale_class=source.source_scale_class,
+        linear_tpm_comparable=source.linear_tpm_comparable,
+        tpm_proxy=source.tpm_proxy,
+        notes=source.notes,
+        pipeline_stem=source.pipeline_stem,
+        source_version=source.source_version,
+        processing_pipeline=source.processing_pipeline,
+        tumor_origin=source.tumor_origin,
+        metastasis_site=source.metastasis_site,
+        source_type=SRA_NCBI_COUNTS_SOURCE_TYPE,
+    )
+    result = build_source_matrices(
+        generic_source,
+        cache_dir=cache,
+        output_dir=out_dir,
+        source_path=tpm_matrix_path,
+        high_expression_threshold=high_expression_threshold,
+    )
+
+    mapped_rows = annotated_counts["Geneid"].isin(resolved_gene_ids)
+    reference_rows = mapped_rows & has_length
+    coverage_rows = []
+    for run in source.runs:
+        total_counts = float(annotated_counts[run.accession].sum())
+        mapped_counts = float(annotated_counts.loc[mapped_rows, run.accession].sum())
+        reference_counts = float(annotated_counts.loc[reference_rows, run.accession].sum())
+        coverage_rows.append(
+            {
+                "run_accession": run.accession,
+                "analysis_accession": run.analysis_accession,
+                "sample_role": run.role,
+                "cancer_code": run.cancer_code or "",
+                "included": run.included_in_reference,
+                "n_source_gene_rows": len(annotated_counts),
+                "n_mapped_gene_rows": int(mapped_rows.sum()),
+                "n_length_resolved_gene_rows": int(has_length.sum()),
+                "n_reference_input_gene_rows": int(reference_rows.sum()),
+                "total_source_counts": total_counts,
+                "mapped_source_counts": mapped_counts,
+                "mapped_count_fraction": mapped_counts / total_counts if total_counts else 0.0,
+                "reference_input_counts": reference_counts,
+                "reference_input_count_fraction": (
+                    reference_counts / total_counts if total_counts else 0.0
+                ),
+            }
+        )
+
+    manifest = sra_ncbi_count_run_manifest(source)
+    coverage = pd.DataFrame(coverage_rows)
+    manifest_path = out_dir / f"{stem}_run_manifest.csv"
+    coverage_path = out_dir / f"{stem}_ncbi_count_mapping_coverage.csv"
+    lengths_path = out_dir / f"{stem}_ncbi_gene_length_audit.csv"
+    mapping_audit_path = result.sidecar_paths["mapping_audit"]
+    _write_csv_atomic(manifest, manifest_path)
+    _write_csv_atomic(coverage, coverage_path)
+    _write_csv_atomic(lengths, lengths_path)
+    _write_csv_atomic(complete_mapping_audit, mapping_audit_path)
+    sidecar_paths = {
+        **result.sidecar_paths,
+        "run_manifest": manifest_path,
+        "ncbi_count_mapping_coverage": coverage_path,
+        "ncbi_gene_length_audit": lengths_path,
+    }
+    return replace(
+        result,
+        source=source,
+        mapping_audit=complete_mapping_audit,
+        sidecar_paths=sidecar_paths,
+    )
 
 
 def sra_salmon_run_manifest(source: SraSalmonSource) -> pd.DataFrame:

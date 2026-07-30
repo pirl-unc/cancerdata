@@ -398,13 +398,20 @@ different unit.
   `recount3_gene_sums_to_tpm`, `build_recount3_source_matrices`, and
   `scripts/build_recount3_source.py` do the same for `source_type: recount3`
   entries, including run-to-sample aggregation and metadata-based routing before
-  writing the standard source-matrix artifact set. `SraSalmonSource`,
+  writing the standard source-matrix artifact set. `SraNcbiCountSource`,
+  `sra_ncbi_count_source_from_registry`,
+  `build_sra_ncbi_count_source_matrices`, and
+  `scripts/build_sra_ncbi_counts_source.py` own the preferred processed-count
+  path for SRA studies with NCBI Gene Feature RNA-seq counts. The registry pins
+  NCBI analysis and run accessions, count-file checksums, sample roles, and a
+  RefSeq GFF; only explicitly routed tumor runs enter reference matrices.
+  `SraSalmonSource`,
   `sra_salmon_source_from_registry`, `build_sra_salmon_source_matrices`, and
-  `scripts/build_sra_salmon_source.py` own raw-read-only SRA studies: the
+  `scripts/build_sra_salmon_source.py` provide the raw-read fallback: the
   registry pins run roles, read checksums, and the Ensembl transcriptome; all
   declared runs are audited while only explicitly routed tumor runs enter
   reference matrices. See
-  [Raw SRA Expression Sources](sra-salmon-integration.md). `TreehouseSource`,
+  [SRA Expression Sources](sra-expression-integration.md). `TreehouseSource`,
   `treehouse_source_from_registry`, `treehouse_cohorts_for_group`, and
   `scripts/build_treehouse_source.py` own the direct Treehouse-compendium path:
   clinical disease-label routing, log2(TPM+1) inverse transform, symbol
