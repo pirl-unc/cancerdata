@@ -43,7 +43,10 @@ class ExpressionSource:
     source_type: str
     builder: str | None = None
     builder_args: tuple[str, ...] = ()
+    external_build_exemption: str | None = None
+    routed_samples_may_overlap: bool = False
     project_id: str | None = None
+    project_ids: tuple[str, ...] = ()
     accession: str | None = None
     url: str | None = None
     unit: str | None = None
@@ -76,6 +79,14 @@ def _coerce_float(value) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _coerce_bool(value, *, field: str) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    raise ValueError(f"{field} must be a YAML boolean")
 
 
 def _clean(value):
@@ -134,7 +145,13 @@ def load_registry() -> tuple[ExpressionSource, ...]:
                 source_type=str(entry.get("source_type", "")),
                 builder=_clean(entry.get("builder")),
                 builder_args=_coerce_tuple(entry.get("builder_args")),
+                external_build_exemption=_clean(entry.get("external_build_exemption")),
+                routed_samples_may_overlap=_coerce_bool(
+                    entry.get("routed_samples_may_overlap"),
+                    field=f"{entry['id']}.routed_samples_may_overlap",
+                ),
                 project_id=_clean(entry.get("project_id")),
+                project_ids=_coerce_tuple(entry.get("project_ids")),
                 accession=_clean(entry.get("accession")),
                 url=_clean(entry.get("url")),
                 unit=_clean(entry.get("unit")),
@@ -186,13 +203,17 @@ def expression_sources_df() -> pd.DataFrame:
             "source_version": s.source_version,
             "unit": s.unit,
             "library_prep": s.library_prep,
-            "project_id": s.project_id or s.accession or s.recount3_srp,
+            "project_id": ";".join(s.project_ids) or s.project_id or s.accession or s.recount3_srp,
             "tumor_origin": s.tumor_origin,
             "metastasis_site": s.metastasis_site,
             "processing_pipeline": s.processing_pipeline,
             "notes": s.notes,
             "expected_size_gb": s.expected_size_gb,
             "citation": s.citation,
+            "builder": s.builder,
+            "builder_args": " ".join(s.builder_args),
+            "external_build_exemption": s.external_build_exemption,
+            "routed_samples_may_overlap": s.routed_samples_may_overlap,
         }
         for s in load_registry()
     )

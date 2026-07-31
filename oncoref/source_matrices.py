@@ -88,6 +88,17 @@ class SourceMatrixResolution:
         return tuple(matrix.cancer_code for matrix in self.matrices)
 
 
+REGENERATION_AUDIT_COLUMNS = (
+    "cancer_code",
+    "source_cohort",
+    "source_id",
+    "builder",
+    "builder_args",
+    "external_build_exemption",
+    "status",
+)
+
+
 @lru_cache(maxsize=1)
 def registry() -> pd.DataFrame:
     """The per-cohort registry (``cancer_code``, ``source_cohort``, ``n_samples``)
@@ -186,6 +197,114 @@ def codes_for_source(source_id: str) -> list[str]:
     physical-source match from routing through the source's declared codes.
     """
     return list(resolution_for_source(source_id).codes)
+
+
+def source_matrix_regeneration_audit(
+    project_root: str | Path | None = None,
+) -> pd.DataFrame:
+    """Audit exact build ownership for every published source matrix.
+
+    Ownership is physical-source specific: both ``cancer_code`` and
+    ``source_cohort`` must match one expression-registry entry. An owner must
+    declare exactly one of:
+
+    - an existing repository-relative ``builder`` script; or
+    - a nonempty ``external_build_exemption`` explaining why public
+      regeneration is impossible.
+
+    ``project_root`` defaults to the source checkout root containing
+    ``oncoref/`` and ``scripts/``. Passing it explicitly is useful when auditing
+    an unpacked source distribution.
+    """
+    from .expression_registry import expression_source_registry_entries
+
+    root = (
+        Path(project_root).expanduser().resolve()
+        if project_root is not None
+        else Path(__file__).resolve().parents[1]
+    )
+    entries = expression_source_registry_entries()
+    rows = []
+    for matrix in registry().itertuples(index=False):
+        cancer_code = str(matrix.cancer_code)
+        source_cohort = str(matrix.source_cohort)
+        candidates = [
+            entry
+            for entry in entries
+            if cancer_code in {str(code) for code in entry.get("cancer_codes", ())}
+            and str(entry.get("source_cohort") or "") == source_cohort
+        ]
+        owners = [
+            entry
+            for entry in candidates
+            if str(entry.get("builder") or "").strip()
+            or str(entry.get("external_build_exemption") or "").strip()
+        ]
+
+        source_id = ""
+        builder = ""
+        builder_args = ""
+        exemption = ""
+        if not owners:
+            status = "missing_owner"
+        elif len(owners) > 1:
+            source_id = ";".join(sorted(str(entry["id"]) for entry in owners))
+            status = "ambiguous_owner"
+        else:
+            owner = owners[0]
+            source_id = str(owner["id"])
+            builder = str(owner.get("builder") or "").strip()
+            raw_builder_args = owner.get("builder_args") or ()
+            if isinstance(raw_builder_args, str):
+                builder_args = raw_builder_args
+            else:
+                builder_args = " ".join(str(arg) for arg in raw_builder_args)
+            exemption = str(owner.get("external_build_exemption") or "").strip()
+            if builder and exemption:
+                status = "invalid_owner"
+            elif exemption:
+                status = "external_build_exemption"
+            elif not builder:
+                status = "missing_owner"
+            else:
+                builder_path = (root / builder).resolve()
+                try:
+                    builder_path.relative_to(root)
+                except ValueError:
+                    status = "invalid_builder_path"
+                else:
+                    status = (
+                        "executable_builder" if builder_path.is_file() else "missing_builder_script"
+                    )
+
+        rows.append(
+            {
+                "cancer_code": cancer_code,
+                "source_cohort": source_cohort,
+                "source_id": source_id,
+                "builder": builder,
+                "builder_args": builder_args,
+                "external_build_exemption": exemption,
+                "status": status,
+            }
+        )
+    return pd.DataFrame(rows, columns=REGENERATION_AUDIT_COLUMNS)
+
+
+def validate_source_matrix_regeneration(
+    project_root: str | Path | None = None,
+) -> pd.DataFrame:
+    """Return the regeneration audit or raise for missing/ambiguous ownership."""
+    audit = source_matrix_regeneration_audit(project_root)
+    acceptable = {"executable_builder", "external_build_exemption"}
+    invalid = audit.loc[~audit["status"].isin(acceptable)]
+    if not invalid.empty:
+        details = ", ".join(
+            f"{row.cancer_code}/{row.source_cohort}: {row.status}"
+            for row in invalid.itertuples(index=False)
+        )
+        raise SourceMatrixError(f"source-matrix regeneration ownership is incomplete: {details}")
+    return audit
 
 
 def source_sample_namespace(source_cohort: str) -> str:

@@ -243,6 +243,7 @@ class GdcSource:
     primary_diagnosis_contains: tuple[str, ...] = ()
     sample_id_include_match: str | None = None
     sample_to_cancer_code: Callable[[Mapping], str | None] | None = None
+    sample_lineage_evidence: Callable[[Mapping], str | None] | None = None
     expected_n: Mapping[str, int] | None = None
     notes: str = ""
     pipeline_stem: str = ""
@@ -263,7 +264,10 @@ class GeoMatrixSource:
     source download, raw parse diagnostics, unit-to-TPM conversion, canonical gene
     mapping, per-code routing, per-sample QC, and oncoref-style per-sample parquet
     output. Source-specific wrappers should supply the routing/filter functions;
-    the identity/QC contract remains here.
+    the identity/QC contract remains here. ``unit`` is the generic parser's raw
+    normalization input; adapters that supply an already-canonical matrix use
+    ``native_unit`` to retain a more specific provenance label such as
+    ``TPM proxy`` or ``nTPM (pseudobulk)``.
     """
 
     cancer_code: str | list[str]
@@ -285,6 +289,7 @@ class GeoMatrixSource:
     source_scale_class: str | None = None
     linear_tpm_comparable: bool | None = None
     tpm_proxy: bool | None = None
+    native_unit: str | None = None
     notes: str = ""
     pipeline_stem: str = ""
     source_version: str | None = None
@@ -741,6 +746,43 @@ def gdc_source_entries(registry_path: str | Path | None = None) -> list[dict]:
     ]
 
 
+def _compile_gdc_primary_diagnosis_router(
+    entry: Mapping,
+    *,
+    allowed_codes: Iterable[str],
+) -> Callable[[Mapping], str | None] | None:
+    """Compile exact GDC diagnosis labels into one deterministic code router."""
+    routes = entry.get("gdc_primary_diagnosis_routes") or {}
+    if not routes:
+        return None
+    allowed = {str(code) for code in allowed_codes}
+    unexpected = sorted({str(code) for code in routes} - allowed)
+    if unexpected:
+        raise ValueError(
+            f"source {entry.get('id')!r} routes diagnoses to undeclared cancer codes: {unexpected}"
+        )
+
+    diagnosis_to_code: dict[str, str] = {}
+    for code, diagnoses in routes.items():
+        for diagnosis in _coerce_string_tuple(diagnoses):
+            diagnosis = diagnosis.strip()
+            if not diagnosis:
+                raise ValueError(
+                    f"source {entry.get('id')!r} has a blank GDC primary diagnosis route"
+                )
+            previous = diagnosis_to_code.setdefault(diagnosis, str(code))
+            if previous != str(code):
+                raise ValueError(
+                    f"source {entry.get('id')!r} routes GDC diagnosis {diagnosis!r} "
+                    f"to both {previous!r} and {str(code)!r}"
+                )
+
+    def _route(row: Mapping) -> str | None:
+        return diagnosis_to_code.get(str(row.get("primary_diagnosis") or ""))
+
+    return _route
+
+
 def gdc_source_from_entry(entry: Mapping) -> GdcSource:
     """Convert one registry YAML entry into an executable :class:`GdcSource`."""
     if entry.get("source_type") != GDC_SOURCE_TYPE:
@@ -775,6 +817,11 @@ def gdc_source_from_entry(entry: Mapping) -> GdcSource:
             entry.get("gdc_primary_diagnosis_contains")
         ),
         sample_id_include_match=_coerce_optional_text(entry.get("gdc_sample_id_include_match")),
+        sample_to_cancer_code=_compile_gdc_primary_diagnosis_router(
+            entry,
+            allowed_codes=cancer_codes,
+        ),
+        sample_lineage_evidence=None,
         expected_n=expected,
         notes=str(entry.get("notes") or entry.get("special_handling") or ""),
         pipeline_stem=str(entry.get("pipeline_stem") or ""),
@@ -1700,9 +1747,23 @@ def read_source_expression_matrix(
         df = df.rename(columns={"index": row_id_col})
         symbol_col = None
     else:
-        row_id_col = gene_id_col or str(df.columns[0])
-        if row_id_col not in df.columns:
-            raise ValueError(f"gene_id_col={row_id_col!r} is not in columns: {list(df.columns)}")
+        if isinstance(df.index, pd.RangeIndex):
+            row_id_col = gene_id_col or str(df.columns[0])
+            if row_id_col not in df.columns:
+                raise ValueError(
+                    f"gene_id_col={row_id_col!r} is not in columns: {list(df.columns)}"
+                )
+        else:
+            # Some GEO matrices omit the gene-ID header while every data row
+            # still begins with a gene ID. Pandas preserves that leading field
+            # as the index.
+            row_id_col = gene_id_col or "source_row_id"
+            if row_id_col in df.columns:
+                raise ValueError(
+                    f"source matrix has both an implicit gene index and a {row_id_col!r} column"
+                )
+            df.insert(0, row_id_col, df.index)
+            df = df.reset_index(drop=True)
         df, row_id_col = _rename_unnamed_row_id(df, row_id_col)
         symbol_col = _detect_symbol_col(df, row_id_col, symbol_col)
 
@@ -1786,6 +1847,46 @@ def normalize_source_matrix_to_tpm(
     out.attrs["symbol_col"] = symbol_col
     out.attrs["source_expression_unit"] = unit
     return out
+
+
+def ensembl_gene_lengths_kb(
+    gene_ids: Iterable[str],
+    *,
+    release: int = 112,
+) -> pd.Series:
+    """Resolve canonical Ensembl gene IDs to genomic lengths in kilobases.
+
+    This build-time helper loads pyensembl lazily. Runtime accessors do not
+    require the optional genome dependency.
+    """
+    try:
+        from pyensembl import EnsemblRelease
+    except ImportError as error:
+        raise RuntimeError(
+            "raw-count source builds require pyensembl; install oncoref[genome]"
+        ) from error
+
+    genome = EnsemblRelease(release)
+    lengths: dict[str, float] = {}
+    last_error: Exception | None = None
+    for raw_id in gene_ids:
+        gene_id = unversioned(str(raw_id).strip())
+        if not gene_id:
+            continue
+        try:
+            length_kb = float(genome.gene_by_id(gene_id).length) / 1000.0
+        except Exception as error:
+            last_error = error
+            continue
+        if np.isfinite(length_kb) and length_kb > 0:
+            lengths[gene_id] = length_kb
+    if not lengths:
+        detail = f": {last_error}" if last_error is not None else ""
+        raise RuntimeError(
+            f"Ensembl release {release} has no usable gene lengths; "
+            f"install its pyensembl data first{detail}"
+        )
+    return pd.Series(lengths, dtype=float, name="gene_length_kb")
 
 
 def source_metadata(
@@ -2552,9 +2653,15 @@ def build_gdc_sample_manifest(source: GdcSource, hits: Iterable[Mapping]) -> pd.
     row_codes = manifest.apply(lambda row: _gdc_default_cancer_code(source, row.to_dict()), axis=1)
     manifest["cancer_code"] = row_codes.fillna("").astype(str)
     manifest["lineage_label"] = manifest["cancer_code"]
-    manifest["lineage_evidence_source"] = (
-        "GDC STAR-counts project/sample metadata routed by oncoref.expression_builders"
-    )
+    if source.sample_lineage_evidence is None:
+        manifest["lineage_evidence_source"] = (
+            "GDC STAR-counts project/sample metadata routed by oncoref.expression_builders"
+        )
+    else:
+        manifest["lineage_evidence_source"] = manifest.apply(
+            lambda row: str(source.sample_lineage_evidence(row.to_dict()) or ""),
+            axis=1,
+        )
 
     eligible = row_codes.notna() & row_codes.astype(str).ne("")
     if source.primary_sample_types:
@@ -3978,6 +4085,123 @@ def medulloblastoma_subgroup_matrices(matrix: pd.DataFrame) -> dict[str, pd.Data
     return {code: matrix[[*identifiers, *samples]].copy() for code, samples in groups.items()}
 
 
+SCLC_SUBTYPE_MARKERS = {
+    "SCLC_ASCL1": "ASCL1",
+    "SCLC_NEUROD1": "NEUROD1",
+    "SCLC_POU2F3": "POU2F3",
+    "SCLC_YAP1": "YAP1",
+}
+
+
+def sclc_subtype_sample_ids(matrix: pd.DataFrame) -> dict[str, list[str]]:
+    """Route SCLC samples by the largest source-row value for four markers.
+
+    The UCologne source contains duplicate rows for some HUGO symbols. Its
+    historical TF-dominance contract first takes the maximum row per symbol,
+    then selects the largest marker per sample. Classification must therefore
+    happen before duplicate rows are summed during canonical gene mapping.
+    """
+    marker_col = "Symbol" if "Symbol" in matrix.columns else matrix.attrs.get("row_id_col")
+    if marker_col is None or marker_col not in matrix.columns:
+        raise ValueError("SCLC source matrix lacks a marker-symbol column")
+    samples = (
+        sample_columns(matrix)
+        if "Symbol" in matrix.columns
+        else source_expression_value_columns(
+            matrix,
+            row_id_col=str(marker_col),
+            symbol_col=matrix.attrs.get("symbol_col"),
+        )
+    )
+    if not samples:
+        raise ValueError("SCLC source matrix has no sample columns")
+
+    marker_rows = matrix.loc[
+        matrix[marker_col].astype(str).isin(SCLC_SUBTYPE_MARKERS.values()),
+        [marker_col, *samples],
+    ]
+    marker_counts = marker_rows[marker_col].astype(str).value_counts()
+    invalid = sorted(
+        marker for marker in SCLC_SUBTYPE_MARKERS.values() if marker_counts.get(marker, 0) == 0
+    )
+    if invalid:
+        raise ValueError(
+            "SCLC source matrix must contain each subtype marker; missing: " + ", ".join(invalid)
+        )
+
+    expression = (
+        marker_rows.set_index(marker_col)[samples]
+        .apply(
+            pd.to_numeric,
+            errors="coerce",
+        )
+        .groupby(level=0)
+        .max()
+        .T
+    )
+    finite = np.isfinite(expression.to_numpy(dtype=float))
+    if not finite.all():
+        invalid_samples = expression.index[~finite.all(axis=1)].tolist()
+        raise ValueError(
+            "SCLC subtype-marker expression is missing, nonnumeric, or non-finite "
+            "for sample(s): " + ", ".join(invalid_samples[:5])
+        )
+    winners = expression.eq(expression.max(axis=1), axis=0)
+    tied = winners.index[winners.sum(axis=1) != 1].tolist()
+    if tied:
+        raise ValueError(
+            "SCLC subtype-marker maximum is tied for sample(s): " + ", ".join(tied[:5])
+        )
+
+    winning_symbol = winners.idxmax(axis=1)
+    groups = {"SCLC": samples}
+    groups.update(
+        {
+            code: winning_symbol.index[winning_symbol.eq(marker)].tolist()
+            for code, marker in SCLC_SUBTYPE_MARKERS.items()
+        }
+    )
+    return groups
+
+
+def build_sclc_source_matrices(
+    source: GeoMatrixSource,
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    source_path: str | Path | None = None,
+    force_download: bool = False,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build the parent SCLC matrix and its four TF-dominance views."""
+    cache = Path(cache_dir)
+    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
+    matrix, audit, diagnostics = prepare_source_matrix(
+        source,
+        cache_dir=cache,
+        source_path=source_path,
+        force_download=force_download,
+        high_expression_threshold=high_expression_threshold,
+    )
+    source_file = Path(source_path) if source_path is not None else cache / source.file_name
+    source_rows = read_source_expression_matrix(
+        source_file,
+        sep=source.sep,
+        gene_id_col=source.gene_id_col,
+        symbol_col=source.symbol_col,
+        drop_cols=source.drop_cols,
+        transposed=source.transposed,
+    )
+    return build_canonical_source_matrices(
+        source,
+        matrix,
+        routed_samples=sclc_subtype_sample_ids(source_rows),
+        output_dir=out_dir,
+        mapping_audit=audit,
+        parse_diagnostics=diagnostics,
+    )
+
+
 def _reconcile_per_code_artifacts(out_dir: Path, current_codes: Iterable[str]) -> None:
     """Remove stale per-code matrix/QC sidecars from a per-source output directory."""
     current_stems = {_artifact_stem(code) for code in current_codes}
@@ -4032,31 +4256,149 @@ def _validate_source_sample_count(source: GeoMatrixSource, actual_count: int) ->
         )
 
 
-def build_source_matrices(
+def build_canonical_source_matrices(
+    source: GeoMatrixSource,
+    matrix: pd.DataFrame,
+    *,
+    routed_samples: Mapping[str, Iterable[str]],
+    output_dir: str | Path,
+    mapping_audit: pd.DataFrame | None = None,
+    parse_diagnostics: pd.DataFrame | None = None,
+) -> SourceMatrixBuildResult:
+    """Write the standard artifacts for an already-canonical TPM matrix.
+
+    Source-specific adapters use this after their raw-source parsing and sample
+    routing. ``routed_samples`` may intentionally place one physical sample in
+    both a parent and a molecular-subtype cohort; every listed code must be
+    declared by ``source.cancer_code`` and every listed sample must be a matrix
+    column.
+    """
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    identifiers = id_columns(matrix)
+    if not identifiers:
+        raise ValueError("canonical source matrix has no identifier columns")
+    available_samples = set(sample_columns(matrix))
+    routed = {
+        str(code): [str(sample) for sample in samples] for code, samples in routed_samples.items()
+    }
+    declared_codes = (
+        {str(source.cancer_code)}
+        if isinstance(source.cancer_code, str)
+        else {str(code) for code in source.cancer_code}
+    )
+    unexpected_codes = sorted(set(routed) - declared_codes)
+    if unexpected_codes:
+        raise ValueError(f"samples routed to undeclared cancer codes: {unexpected_codes}")
+    missing_samples = sorted(
+        {
+            sample
+            for samples in routed.values()
+            for sample in samples
+            if sample not in available_samples
+        }
+    )
+    if missing_samples:
+        raise ValueError(f"routed samples are absent from the canonical matrix: {missing_samples}")
+    for code, samples in routed.items():
+        duplicates = sorted(
+            sample
+            for sample, count in pd.Series(samples, dtype=str).value_counts().items()
+            if count > 1
+        )
+        if duplicates:
+            raise ValueError(f"{code} contains duplicate routed samples: {duplicates}")
+    _validate_routed_sample_counts(
+        source.source_cohort,
+        routed,
+        source.expected_samples_by_code,
+    )
+
+    audit = mapping_audit.copy() if mapping_audit is not None else pd.DataFrame()
+    diagnostics = parse_diagnostics.copy() if parse_diagnostics is not None else pd.DataFrame()
+    stem = _artifact_stem(source.source_cohort)
+    sidecar_paths: dict[str, Path] = {}
+    audit_path = out_dir / f"{stem}_mapping_audit.csv"
+    parse_path = out_dir / f"{stem}_parse_diagnostics.csv"
+    _write_csv_atomic(audit, audit_path)
+    _write_csv_atomic(diagnostics, parse_path)
+    sidecar_paths["mapping_audit"] = audit_path
+    sidecar_paths["parse_diagnostics"] = parse_path
+
+    provenance_unit = source.native_unit or source.unit
+    meta = source_metadata(
+        source_cohort=source.source_cohort,
+        source_type=source.source_type or source.source_project,
+        unit=provenance_unit,
+        source_scale_class=source.source_scale_class,
+        linear_tpm_comparable=source.linear_tpm_comparable,
+        tpm_proxy=source.tpm_proxy,
+    )
+    from .expression import sample_expression_qc_from_matrix
+
+    matrices: dict[str, pd.DataFrame] = {}
+    matrix_paths: dict[str, Path] = {}
+    qc_frames: list[pd.DataFrame] = []
+    summary_frames: list[pd.DataFrame] = []
+    for code, samples in routed.items():
+        if not samples:
+            continue
+        sub = matrix[[*identifiers, *samples]].copy()
+        sub.attrs = {}
+        path = out_dir / f"{_artifact_stem(code)}_per_sample_tpm.parquet"
+        _write_parquet_atomic(sub, path)
+        qc = sample_expression_qc_from_matrix(sub, cancer_type=code, source_metadata=meta)
+        qc_path = out_dir / f"{_artifact_stem(code)}_sample_qc.csv"
+        _write_csv_atomic(qc, qc_path)
+        matrices[code] = sub
+        matrix_paths[code] = path
+        sidecar_paths[f"{code}_sample_qc"] = qc_path
+        qc_frames.append(qc)
+        summary_frames.append(
+            summarize_source_matrix(
+                sub,
+                cancer_code=code,
+                source=source,
+                native_unit=provenance_unit,
+            )
+        )
+
+    if not matrices:
+        raise ValueError("no samples were routed to a cancer code")
+    sample_qc = pd.concat(qc_frames, ignore_index=True) if qc_frames else pd.DataFrame()
+    summary_rows = (
+        pd.concat(summary_frames, ignore_index=True)
+        if summary_frames
+        else pd.DataFrame(columns=list(REFERENCE_EXPRESSION_COLUMNS))
+    )
+    summary_path = out_dir / f"{stem}_summary_rows.csv"
+    _write_csv_atomic(summary_rows, summary_path)
+    _reconcile_per_code_artifacts(out_dir, matrices)
+    sidecar_paths["summary_rows"] = summary_path
+    return SourceMatrixBuildResult(
+        source=source,
+        matrices=matrices,
+        matrix_paths=matrix_paths,
+        summary_rows=summary_rows,
+        mapping_audit=audit,
+        parse_diagnostics=diagnostics,
+        sample_qc=sample_qc,
+        sidecar_paths=sidecar_paths,
+    )
+
+
+def prepare_source_matrix(
     source: GeoMatrixSource,
     *,
     cache_dir: str | Path,
-    output_dir: str | Path | None = None,
     source_path: str | Path | None = None,
     force_download: bool = False,
     gene_lengths_kb: pd.Series | Mapping[str, float] | None = None,
+    ensembl_release: int = 112,
     high_expression_threshold: float = 1.0,
-) -> SourceMatrixBuildResult:
-    """Build oncoref source-matrix artifacts for one generic expression source.
-
-    Output matrices are written as ``<CODE>_per_sample_tpm.parquet`` under
-    ``output_dir`` (default ``cache_dir / "derived"``), matching the layout that
-    :mod:`scripts.stage_source_matrices` consumes before release upload. Sidecars
-    include source-row mapping audit, source-value parse diagnostics, and per-sample
-    QC manifests. Samples are not dropped here; read/build-time consumers choose
-    ``all``/``pass``/``pass_or_warn`` filtering from the QC manifest.
-    ``output_dir`` is treated as this source's derived-artifact directory; after a
-    successful build, stale per-code matrix/QC sidecars in it are removed.
-    """
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Download, parse, normalize, and canonicalize one generic source matrix."""
     cache = Path(cache_dir)
-    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
     file_path = Path(source_path) if source_path is not None else cache / source.file_name
     if not file_path.exists() or force_download:
         if not source.file_url:
@@ -4092,6 +4434,31 @@ def build_source_matrices(
     _, parse_diagnostics = coerce_source_expression_values(
         raw, value_cols=raw_value_cols, row_id_col=row_id_col, symbol_col=symbol_col
     )
+    if source.unit == "raw_counts" and gene_lengths_kb is None:
+        canonical_counts, audit = canonicalize_source_gene_matrix(
+            raw,
+            row_id_col=row_id_col,
+            symbol_col=symbol_col,
+            value_cols=raw_value_cols,
+            high_expression_threshold=high_expression_threshold,
+        )
+        canonical_lengths = ensembl_gene_lengths_kb(
+            canonical_counts["Ensembl_Gene_ID"],
+            release=ensembl_release,
+        )
+        has_length = canonical_counts["Ensembl_Gene_ID"].isin(canonical_lengths.index)
+        canonical_counts = canonical_counts.loc[has_length].reset_index(drop=True)
+        matrix = normalize_source_matrix_to_tpm(
+            canonical_counts,
+            unit="raw_counts",
+            row_id_col="Ensembl_Gene_ID",
+            symbol_col="Symbol",
+            value_cols=raw_value_cols,
+            gene_lengths_kb=canonical_lengths,
+        )
+        matrix.attrs["source_value_parse_diagnostics"] = parse_diagnostics
+        return matrix, audit, parse_diagnostics
+
     tpm = normalize_source_matrix_to_tpm(
         raw,
         unit=source.unit,
@@ -4108,94 +4475,56 @@ def build_source_matrices(
         high_expression_threshold=high_expression_threshold,
     )
     matrix.attrs["source_value_parse_diagnostics"] = parse_diagnostics
+    return matrix, audit, parse_diagnostics
 
-    meta = source_metadata(
-        source_cohort=source.source_cohort,
-        source_type=source.source_type or source.source_project,
-        unit=source.unit,
-        source_scale_class=source.source_scale_class,
-        linear_tpm_comparable=source.linear_tpm_comparable,
-        tpm_proxy=source.tpm_proxy,
+
+def build_source_matrices(
+    source: GeoMatrixSource,
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    source_path: str | Path | None = None,
+    force_download: bool = False,
+    gene_lengths_kb: pd.Series | Mapping[str, float] | None = None,
+    ensembl_release: int = 112,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build oncoref source-matrix artifacts for one generic expression source.
+
+    Output matrices are written as ``<CODE>_per_sample_tpm.parquet`` under
+    ``output_dir`` (default ``cache_dir / "derived"``), matching the layout that
+    :mod:`scripts.stage_source_matrices` consumes before release upload. Sidecars
+    include source-row mapping audit, source-value parse diagnostics, and per-sample
+    QC manifests. Samples are not dropped here; read/build-time consumers choose
+    ``all``/``pass``/``pass_or_warn`` filtering from the QC manifest.
+    ``output_dir`` is treated as this source's derived-artifact directory; after a
+    successful build, stale per-code matrix/QC sidecars in it are removed.
+    """
+    cache = Path(cache_dir)
+    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    matrix, audit, parse_diagnostics = prepare_source_matrix(
+        source,
+        cache_dir=cache,
+        source_path=source_path,
+        force_download=force_download,
+        gene_lengths_kb=gene_lengths_kb,
+        ensembl_release=ensembl_release,
+        high_expression_threshold=high_expression_threshold,
     )
-
-    from .expression import sample_expression_qc_from_matrix
 
     routed = split_source_matrix_by_code(
         matrix,
         source.cancer_code,
         sample_to_cancer_code=source.sample_to_cancer_code,
     )
-    declared_codes = (
-        {str(source.cancer_code)}
-        if isinstance(source.cancer_code, str)
-        else {str(code) for code in source.cancer_code}
-    )
-    unexpected_codes = sorted(set(routed) - declared_codes)
-    if unexpected_codes:
-        raise ValueError(f"samples routed to undeclared cancer codes: {unexpected_codes}")
-    _validate_routed_sample_counts(
-        source.source_cohort,
-        routed,
-        source.expected_samples_by_code,
-    )
-
-    stem = _artifact_stem(source.source_cohort)
-    sidecar_paths: dict[str, Path] = {}
-    audit_path = out_dir / f"{stem}_mapping_audit.csv"
-    parse_path = out_dir / f"{stem}_parse_diagnostics.csv"
-    _write_csv_atomic(audit, audit_path)
-    _write_csv_atomic(parse_diagnostics, parse_path)
-    sidecar_paths["mapping_audit"] = audit_path
-    sidecar_paths["parse_diagnostics"] = parse_path
-
-    matrices: dict[str, pd.DataFrame] = {}
-    matrix_paths: dict[str, Path] = {}
-    qc_frames: list[pd.DataFrame] = []
-    summary_frames: list[pd.DataFrame] = []
-    for code, cols in routed.items():
-        if not cols:
-            continue
-        sub = matrix[[*id_columns(matrix), *cols]].copy()
-        sub.attrs = {}
-        path = out_dir / f"{_artifact_stem(code)}_per_sample_tpm.parquet"
-        _write_parquet_atomic(sub, path)
-        qc = sample_expression_qc_from_matrix(sub, cancer_type=code, source_metadata=meta)
-        qc_path = out_dir / f"{_artifact_stem(code)}_sample_qc.csv"
-        _write_csv_atomic(qc, qc_path)
-        matrices[code] = sub
-        matrix_paths[code] = path
-        sidecar_paths[f"{code}_sample_qc"] = qc_path
-        qc_frames.append(qc)
-        summary_frames.append(
-            summarize_source_matrix(
-                sub,
-                cancer_code=code,
-                source=source,
-                native_unit=source.unit,
-            )
-        )
-
-    if not matrices:
-        raise ValueError("no samples were routed to a cancer code")
-    sample_qc = pd.concat(qc_frames, ignore_index=True) if qc_frames else pd.DataFrame()
-    summary_rows = (
-        pd.concat(summary_frames, ignore_index=True)
-        if summary_frames
-        else pd.DataFrame(columns=list(REFERENCE_EXPRESSION_COLUMNS))
-    )
-    summary_path = out_dir / f"{stem}_summary_rows.csv"
-    _write_csv_atomic(summary_rows, summary_path)
-    _reconcile_per_code_artifacts(out_dir, matrices)
-    sidecar_paths["summary_rows"] = summary_path
-    return SourceMatrixBuildResult(
-        source=source,
-        matrices=matrices,
-        matrix_paths=matrix_paths,
-        summary_rows=summary_rows,
+    return build_canonical_source_matrices(
+        source,
+        matrix,
+        routed_samples=routed,
+        output_dir=out_dir,
         mapping_audit=audit,
         parse_diagnostics=parse_diagnostics,
-        sample_qc=sample_qc,
-        sidecar_paths=sidecar_paths,
     )
 
 

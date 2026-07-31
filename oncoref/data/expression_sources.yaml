@@ -11,6 +11,12 @@
 #   source_type        — builder/loader contract, such as gdc, geo-matrix,
 #                        recount3, sra-ncbi-counts, or treehouse-compendium.
 #   builder            — build-time script that emits canonical source matrices.
+#   external_build_exemption
+#                      — nonempty reason a selected matrix cannot be rebuilt from
+#                        public inputs. Mutually exclusive with builder.
+#   routed_samples_may_overlap
+#                      — true only when parent and child matrices intentionally
+#                        reuse physical samples; otherwise routes are disjoint.
 #   project_id         — GDC project, when source_type == gdc.
 #   accession          — repository accession (GEO, BioProject, etc.).
 #   url                — Direct download URL for single-file sources.
@@ -78,25 +84,43 @@ sources:
     category: expression
     cancer_codes: [B_ALL, T_ALL]
     source_type: gdc
-    project_id: TARGET-ALL-P1+P2+P3
+    project_ids: [TARGET-ALL-P1, TARGET-ALL-P2, TARGET-ALL-P3]
+    source_cohort: TARGET_ALL_2018
+    source_project: TARGET ALL
     builder: scripts/build_target_all_reference_expression.py
+    expected_samples_by_code: {B_ALL: 154, T_ALL: 264}
+    gdc_sample_types:
+      [Primary Blood Derived Cancer - Bone Marrow,
+       Primary Blood Derived Cancer - Peripheral Blood]
+    gdc_primary_diagnosis_contains: [acute lymphocytic leukemia]
     unit: TPM
     library_prep: polyA RNA-seq   # TARGET Illumina TruSeq mRNA (polyA)
     expected_size_gb: 6
     citation: https://portal.gdc.cancer.gov/projects/TARGET-ALL-P2
     special_handling: >
-      Three TARGET ALL phases merged; split B-cell vs T-cell ALL by
-      diagnosis fields.
+      Three TARGET ALL phases merged. GDC diagnoses do not encode B/T
+      lineage; the builder routes cases from the public Phase 1/2
+      sample-matrix "Cell of origin" comments.
 
   # ---- existing non-GDC builders ----
 
   - id: cllmap
     category: expression
     cancer_codes: [CLL]
-    source_type: broad-cllmap
+    source_type: geo-matrix
+    source_cohort: CLLMAP_2022
+    source_project: CLL-map
     url: https://data.broadinstitute.org/cllmap/data/downloads/cllmap_rnaseq_tpms_full.tsv.gz
-    builder: scripts/build_cllmap_reference_expression.py
+    file_url: https://data.broadinstitute.org/cllmap/data/downloads/cllmap_rnaseq_tpms_full.tsv.gz
+    file_name: cllmap_rnaseq_tpms_full.tsv.gz
+    builder: scripts/build_geo_matrix.py
     unit: TPM
+    gene_id_col: Name
+    symbol_col: Description
+    sample_filter:
+      exclude_match: "^(CRC-0007|CRC-0011|CRC-0028|CRC-0033|DFCI-5053|JB-0010|GCLL-0136)$"
+    expected_source_samples: 715
+    expected_samples_by_code: {CLL: 708}
     library_prep: polyA RNA-seq   # CLL-map Broad Illumina TruSeq mRNA (polyA)
     expected_size_gb: 1
     citation: https://data.broadinstitute.org/cllmap/downloads.html
@@ -106,10 +130,19 @@ sources:
   - id: gse100026-cml
     category: expression
     cancer_codes: [CML]
-    source_type: geo
+    source_type: geo-matrix
     accession: GSE100026
     source_cohort: GSE100026_DING_2017
-    builder: scripts/build_geo_heme_reference_expression.py
+    source_project: GEO
+    builder: scripts/build_geo_matrix.py
+    file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE100nnn/GSE100026/suppl/GSE100026_expressed_gene_RPKM.txt.gz
+    file_name: GSE100026_expressed_gene_RPKM.txt.gz
+    gene_id_col: Gene
+    drop_cols: [Gene_len]
+    sample_filter:
+      include_match: "^CML-CP"
+    expected_source_samples: 15
+    expected_samples_by_code: {CML: 5}
     unit: RPKM
     expected_size_gb: 0.1
     citation: GSE100026 (Ding 2017)
@@ -141,11 +174,18 @@ sources:
   - id: gse271664-mcl
     category: expression
     cancer_codes: [MCL]
-    source_type: geo
+    source_type: geo-matrix
     accession: GSE271664
     source_cohort: GSE271664_BODOR_2025
-    builder: scripts/build_geo_heme_reference_expression.py
-    unit: HTSeq counts
+    source_project: GEO
+    builder: scripts/build_geo_matrix.py
+    file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE271nnn/GSE271664/suppl/GSE271664_HTSeq_counts.csv.gz
+    file_name: GSE271664_HTSeq_counts.csv.gz
+    unit: raw_counts
+    gene_id_col: Gene
+    sep: ","
+    expected_source_samples: 51
+    expected_samples_by_code: {MCL: 51}
     expected_size_gb: 0.1
     citation: GSE271664 (Bodor 2025)
     special_handling: >
@@ -155,10 +195,19 @@ sources:
   - id: gse283710-mpn
     category: expression
     cancer_codes: [MPN]
-    source_type: geo
+    source_type: geo-matrix
     accession: GSE283710
     source_cohort: GSE283710_WASHU_2024
-    builder: scripts/build_geo_heme_reference_expression.py
+    source_project: GEO
+    builder: scripts/build_geo_matrix.py
+    file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE283nnn/GSE283710/suppl/GSE283710_CD34_rawcounts.csv.gz
+    file_name: GSE283710_CD34_rawcounts.csv.gz
+    gene_id_col: external_gene_name
+    sep: ","
+    sample_filter:
+      include_match: "^(ET|MF|PV)[0-9]+_CD34$"
+    expected_source_samples: 90
+    expected_samples_by_code: {MPN: 45}
     unit: raw counts
     expected_size_gb: 0.1
     citation: GSE283710 (WashU 2024)
@@ -171,8 +220,15 @@ sources:
     cancer_codes: [CTCL]
     source_type: geo
     accession: GSE171811
+    source_cohort: GSE171811_ECCITE_CTCL
+    source_project: GEO
     builder: scripts/build_ctcl_scrna_reference_expression.py
     unit: nTPM (pseudobulk)
+    expected_samples_by_code: {CTCL: 7}
+    source_scale_class: scrna_tcr_pseudobulk_ntpm
+    linear_tpm_comparable: false
+    tpm_proxy: true
+    tumor_origin: primary
     expected_size_gb: 1
     citation: GSE171811 (ECCITE-seq CTCL)
     special_handling: >
@@ -193,6 +249,7 @@ sources:
        SARC_ANGIO, SARC_ASPS, SARC_DSRCT, SARC_EPITH, SARC_IMT, SARC_IFS,
        SARC_MPNST, SARC_EHE, SARC_LGFMS, NPC, SARC_GIST]
     source_type: treehouse-compendium
+    accession: GSE294351
     source_cohort: TREEHOUSE_POLYA_25_01
     source_project: Treehouse
     url: https://public.gi.ucsc.edu/~ekephart/public-data/#tumor_25.01_polya
@@ -259,6 +316,7 @@ sources:
     category: expression
     cancer_codes: [MBL_WNT, MBL_SHH, MBL_G3, MBL_G4]
     source_type: treehouse-derived
+    accession: GSE294351
     source_cohort: TREEHOUSE_POLYA_25_01_MBL_SUBGROUP_MARKERS
     source_project: Treehouse
     source_version: "25.01"
@@ -284,6 +342,7 @@ sources:
        KIRC, KIRP, LAML, LIHC, LUAD, LUSC, MESO, OV, PAAD, PCPG,
        PRAD, READ, SKCM, STAD, TGCT, THCA, THYM, UCEC, UCS, UVM]
     source_type: treehouse-compendium
+    accession: GSE294351
     source_cohort: TREEHOUSE_POLYA_25_01_TCGA_SAMPLES
     source_project: Treehouse (TCGA samples)
     url: https://public.gi.ucsc.edu/~ekephart/public-data/#tumor_25.01_polya
@@ -599,6 +658,7 @@ sources:
     category: expression
     cancer_codes: [GBM, LGG]
     source_type: treehouse-compendium
+    accession: GSE294351
     source_cohort: TREEHOUSE_POLYA_25_01_TCGA_SAMPLES
     source_project: Treehouse (TCGA samples)
     url: https://public.gi.ucsc.edu/~ekephart/public-data/#tumor_25.01_polya
@@ -634,6 +694,7 @@ sources:
     category: expression
     cancer_codes: [SARC_CHOR, RB]
     source_type: treehouse-compendium
+    accession: GSE294353
     source_cohort: TREEHOUSE_RIBOD_25_01
     source_project: Treehouse
     url: https://public.gi.ucsc.edu/~ekephart/public-data/#tumor_25.01_ribodeplete
@@ -668,9 +729,38 @@ sources:
   - id: beataml-ohsu-2022
     category: expression
     cancer_codes: [LAML_APL, LAML_ELNadv, LAML_ELNfav, LAML_ELNint]
-    source_type: summary-only-import
+    source_type: gdc
+    source_cohort: BEATAML_OHSU_2022
+    source_project: BeatAML 1.0
+    project_id: BEATAML1.0-COHORT
     url: https://biodev.github.io/BeatAML2/
-    builder: scripts/build_beataml_reference_expression.py
+    builder: scripts/build_gdc_source.py
+    expected_samples_by_code:
+      {LAML_APL: 20, LAML_ELNadv: 189, LAML_ELNfav: 238, LAML_ELNint: 154}
+    gdc_primary_diagnosis_routes:
+      LAML_APL:
+        - Acute promyelocytic leukaemia, PML-RAR-alpha
+      LAML_ELNfav:
+        - Acute myeloid leukemia with mutated CEBPA
+        - Acute myeloid leukemia, CBF-beta/MYH11
+        - Acute myeloid leukemia with t(8;21)(q22;q22); RUNX1-RUNX1T1
+        - Acute myeloid leukemia with mutated NPM1
+      LAML_ELNadv:
+        - Acute myeloid leukemia with myelodysplasia-related changes
+        - Therapy related myeloid neoplasm
+        - Acute myeloid leukemia with inv(3)(q21q26.2) or t(3;3)(q21;q26.2); RPN1-EVI1
+        - Acute myeloid leukemia with t(6;9)(p23;q34); DEK-NUP214
+        - Acute erythroid leukaemia
+      LAML_ELNint:
+        - Acute myeloid leukemia, NOS
+        - Acute myelomonocytic leukemia
+        - Acute monoblastic and monocytic leukemia
+        - Acute myeloid leukemia, minimal differentiation
+        - Acute myeloid leukemia without maturation
+        - Acute myeloid leukemia with maturation
+        - Acute myeloid leukemia with t(9;11)(p22;q23); MLLT3-MLL
+        - Acute megakaryoblastic leukaemia
+        - Myeloid sarcoma
     unit: TPM
     library_prep: polyA RNA-seq   # OHSU BeatAML Illumina TruSeq stranded mRNA (polyA)
     expected_size_gb: 0
@@ -703,10 +793,17 @@ sources:
   - id: gse299759-chon
     category: expression
     cancer_codes: [SARC_CHON]
-    source_type: summary-only-import
+    source_type: geo-matrix
     accession: GSE299759
-    builder: scripts/build_chon_reference_expression.py
-    unit: raw counts   # builder is raw_counts→TPM (GEO supplementary counts)
+    source_cohort: GSE299759_MEIJER_2026
+    source_project: GEO
+    builder: scripts/build_geo_matrix.py
+    file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE299nnn/GSE299759/suppl/GSE299759_raw_counts.tsv.gz
+    file_name: GSE299759_raw_counts.tsv.gz
+    gene_id_col: ""
+    unit: raw_counts
+    expected_source_samples: 54
+    expected_samples_by_code: {SARC_CHON: 54}
     expected_size_gb: 0
     citation: GSE299759 (Meijer 2026)
     special_handling: Chondrosarcoma.
@@ -714,10 +811,17 @@ sources:
   - id: gse239531-chordoma
     category: expression
     cancer_codes: [SARC_CHOR]
-    source_type: summary-only-import
+    source_type: geo-matrix
     accession: GSE239531
-    builder: scripts/build_chordoma_gse239531_reference_expression.py
-    unit: raw counts   # builder is raw_counts→TPM (GEO supplementary counts)
+    source_cohort: GSE239531_VANOOST_2024
+    source_project: GEO
+    builder: scripts/build_geo_matrix.py
+    file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE239nnn/GSE239531/suppl/GSE239531_raw_counts.tsv.gz
+    file_name: GSE239531_raw_counts.tsv.gz
+    gene_id_col: ""
+    unit: raw_counts
+    expected_source_samples: 20
+    expected_samples_by_code: {SARC_CHOR: 20}
     expected_size_gb: 0
     citation: GSE239531 (van Oost 2024, PMID 38272563)
     special_handling: >
@@ -730,6 +834,8 @@ sources:
     cancer_codes: [SARC_DDLPS, SARC_LGFMS, SARC_PLEOLPS]
     source_type: geo-rnaseq
     accession: GSE75885
+    source_cohort: GSE75885_DELESPAUL_2017
+    source_project: GEO
     builder: scripts/build_gse75885_sarc_reference_expression.py
     unit: RPKM   # processed matrix is RPKM-like; builder renormalizes to TPM
     expected_size_gb: 0.02
@@ -744,35 +850,60 @@ sources:
 
   - id: sclc-ucologne-2015
     category: expression
-    cancer_codes: [SCLC]
-    source_type: summary-only-import
+    cancer_codes: [SCLC, SCLC_ASCL1, SCLC_NEUROD1, SCLC_POU2F3, SCLC_YAP1]
+    source_type: geo-matrix
+    source_cohort: SCLC_UCOLOGNE_2015
+    source_project: University of Cologne
     url: https://www.nature.com/articles/nature14664
     builder: scripts/build_sclc_reference_expression.py
-    unit: FPKM   # George 2015 published FPKM; our builder is fpkm_to_tpm
+    file_url: https://media.githubusercontent.com/media/cBioPortal/datahub/master/public/sclc_ucologne_2015/data_mrna_seq_fpkm.txt
+    file_name: data_mrna_seq_fpkm.txt
+    unit: FPKM
+    gene_id_col: Hugo_Symbol
+    drop_cols: [Entrez_Gene_Id]
+    expected_source_samples: 81
+    expected_samples_by_code:
+      {SCLC: 81, SCLC_ASCL1: 61, SCLC_NEUROD1: 8, SCLC_POU2F3: 10, SCLC_YAP1: 2}
+    routed_samples_may_overlap: true
     expected_size_gb: 0
     citation: SCLC U.Cologne 2015 (George 2015, PMID 26168399)
     special_handling: Small-cell lung cancer summary import.
 
   - id: target-nbl
     category: expression
-    cancer_codes: [NBL_MYCNamp, NBL_MYCNnonamp]
-    source_type: summary-only-import
+    cancer_codes: [NBL, NBL_MYCNamp, NBL_MYCNnonamp]
+    source_type: gdc
     project_id: TARGET-NBL
+    source_cohort: TARGET_NBL_2018
+    source_project: TARGET Neuroblastoma
     builder: scripts/build_target_subprojects.py
+    expected_samples_by_code: {NBL: 155, NBL_MYCNamp: 33, NBL_MYCNnonamp: 122}
+    expected_source_samples: 155
+    routed_samples_may_overlap: true
+    gdc_primary_diagnosis_contains: [neuroblastoma, ganglioneuroblastoma]
+    tumor_origin: mixed
     unit: TPM
     library_prep: polyA RNA-seq   # TARGET Illumina TruSeq mRNA (polyA)
     expected_size_gb: 0
     citation: TARGET Neuroblastoma 2018
     special_handling: >
-      Neuroblastoma split by MYCN amplification status. Per-sample
-      data is on GDC — backfill candidate.
+      One deterministic GDC sample per case: 153 primary tumors plus
+      two recurrent samples required to reproduce the published
+      155-sample matrix. MYCN status comes from cBioPortal
+      nbl_target_2018_pub; the one explicit Unknown call stays in the
+      non-amplified child to preserve the published 33/122 split.
 
   - id: target-rt
     category: expression
     cancer_codes: [RT]
-    source_type: summary-only-import
+    source_type: gdc
     project_id: TARGET-RT
-    builder: scripts/build_target_subprojects.py
+    source_cohort: TARGET_RT_2017
+    source_project: TARGET Rhabdoid Tumor
+    builder: scripts/build_gdc_source.py
+    expected_samples_by_code: {RT: 63}
+    gdc_sample_types: [Primary Tumor]
+    gdc_primary_diagnosis_contains: [rhabdoid]
     unit: TPM
     library_prep: polyA RNA-seq   # TARGET Illumina TruSeq mRNA (polyA)
     expected_size_gb: 0
@@ -782,9 +913,14 @@ sources:
   - id: target-wt
     category: expression
     cancer_codes: [WILMS]
-    source_type: summary-only-import
+    source_type: gdc
     project_id: TARGET-WT
-    builder: scripts/build_target_subprojects.py
+    source_cohort: TARGET_WT_2015
+    source_project: TARGET Wilms Tumor
+    builder: scripts/build_gdc_source.py
+    expected_samples_by_code: {WILMS: 125}
+    gdc_sample_types: [Primary Tumor]
+    gdc_primary_diagnosis_contains: [nephroblastoma, wilms]
     unit: TPM
     library_prep: polyA RNA-seq   # TARGET Illumina TruSeq mRNA (polyA)
     expected_size_gb: 0
@@ -1159,6 +1295,7 @@ sources:
     category: expression
     cancer_codes: [FL]
     source_type: geo-matrix
+    accession: GSE142334
     builder: scripts/build_geo_matrix.py
     file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE142nnn/GSE142334/suppl/GSE142334_Proj_3970_htseq_all_samples.txt.gz
     file_name: GSE142334_Proj_3970_htseq_all_samples.txt.gz
@@ -1181,6 +1318,7 @@ sources:
     category: expression
     cancer_codes: [SARC_CCS]
     source_type: geo-matrix
+    accession: GSE248751
     builder: scripts/build_geo_matrix.py
     file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE248nnn/GSE248751/suppl/GSE248751_human_CCS_counts.txt.gz
     file_name: GSE248751_human_CCS_counts.txt.gz
@@ -1289,6 +1427,7 @@ sources:
     category: expression
     cancer_codes: [SARC_PEC]
     source_type: geo-matrix
+    accession: GSE328026
     builder: scripts/build_geo_matrix.py
     file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE328nnn/GSE328026/suppl/GSE328026_TPMs_all_Samples.txt.gz
     file_name: GSE328026_TPMs_all_Samples.txt.gz
@@ -1309,6 +1448,7 @@ sources:
     category: expression
     cancer_codes: [SARC_KS]
     source_type: geo-matrix
+    accession: GSE241095
     builder: scripts/build_geo_matrix.py
     file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE241nnn/GSE241095/suppl/GSE241095_Final_skin_asperpapersamplecode.csv.gz
     file_name: GSE241095_Final_skin_asperpapersamplecode.csv.gz
@@ -1369,6 +1509,7 @@ sources:
     category: expression
     cancer_codes: [NEC_MERKEL]
     source_type: geo-matrix
+    accession: GSE235092
     builder: scripts/build_geo_matrix.py
     file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE235nnn/GSE235092/suppl/GSE235092_all_bulk_counts.csv.gz
     file_name: GSE235092_all_bulk_counts.csv.gz
@@ -1488,6 +1629,8 @@ sources:
     category: expression
     cancer_codes: [SARC_ESS_LG, SARC_ESS_HG]
     source_type: geo-microarray
+    builder: scripts/build_v5_5_microarray_cohorts.py
+    builder_args: ["--only", "ess"]
     accession: GSE85383
     source_project: GEO
     source_cohort: GSE85383_YOSHIDA_2017_ESS
@@ -1513,6 +1656,11 @@ sources:
     unit: TPM
     tumor_origin: primary
     processing_pipeline: Whole-transcriptome RNA-seq gene-level TPM renormalized to 1e6; Ensembl 112
+    external_build_exemption: >
+      The three-case matrix was generated from controlled UNC case-series
+      RNA-seq files that are not publicly downloadable. The released matrix
+      remains auditable by its sample manifest and checksums, but a public
+      registry-backed downloader cannot reproduce it.
     special_handling: >
       Three primary NUT carcinoma cases. This is the only per-sample NUTM
       expression cohort; public NUT data are otherwise cell-line or

@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import tarfile
 from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
@@ -21,7 +22,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from oncoref import expression_builders
+from oncoref import expression_builders, expression_source_adapters
 from oncoref.cancer_types import cohort_registry
 
 _SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
@@ -420,6 +421,38 @@ def test_geo_matrix_builder_writes_canonical_per_sample_matrix_and_sidecars(tmp_
     )
 
 
+def test_canonical_source_builder_preserves_nonstandard_native_unit(tmp_path):
+    matrix = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG00000141510", "ENSG00000146648"],
+            "Symbol": ["TP53", "EGFR"],
+            "sample_1": [600_000.0, 400_000.0],
+        }
+    )
+    source = expression_builders.GeoMatrixSource(
+        cancer_code="X",
+        source_cohort="TEST_PROXY",
+        source_project="GEO",
+        file_name="already_canonical.parquet",
+        unit="TPM",
+        native_unit="TPM proxy",
+        source_scale_class="microarray_tpm_proxy",
+        linear_tpm_comparable=False,
+        tpm_proxy=True,
+    )
+
+    result = expression_builders.build_canonical_source_matrices(
+        source,
+        matrix,
+        routed_samples={"X": ["sample_1"]},
+        output_dir=tmp_path,
+    )
+
+    assert set(result.sample_qc["unit"]) == {"TPM proxy"}
+    assert result.summary_rows["source_version"].str.contains("unit=TPM proxy").all()
+    assert result.summary_rows["processing_pipeline"].str.contains("tpm_proxy_to_tpm").all()
+
+
 def test_geo_matrix_builder_reconciles_stale_per_code_artifacts(tmp_path):
     out_dir = tmp_path / "derived"
     out_dir.mkdir()
@@ -543,6 +576,21 @@ def test_transposed_matrix_uses_implicit_sample_index_and_uniquifies_duplicates(
     assert matrix[["P-1", "P-1.2", "P-1.1"]].astype(float).to_numpy().tolist() == [
         [1.0, 3.0, 5.0],
         [2.0, 4.0, 6.0],
+    ]
+
+
+def test_nontransposed_matrix_preserves_implicit_gene_index(tmp_path):
+    path = tmp_path / "implicit_gene_ids.tsv"
+    path.write_text("sample_a\tsample_b\nENSG1\t1\t2\nENSG2\t3\t4\n")
+
+    matrix = expression_builders.read_source_expression_matrix(path)
+
+    assert matrix.attrs["row_id_col"] == "source_row_id"
+    assert list(matrix.columns) == ["source_row_id", "sample_a", "sample_b"]
+    assert matrix["source_row_id"].tolist() == ["ENSG1", "ENSG2"]
+    assert matrix[["sample_a", "sample_b"]].astype(float).to_numpy().tolist() == [
+        [1.0, 2.0],
+        [3.0, 4.0],
     ]
 
 
@@ -1030,6 +1078,7 @@ def test_build_gdc_source_matrices_writes_canonical_artifacts(tmp_path):
         source_project="GDC synthetic",
         primary_sample_types=("Primary Tumor",),
         primary_diagnosis_contains=("Synthetic",),
+        sample_lineage_evidence=lambda row: f"synthetic evidence for {row['case_id']}",
         pipeline_stem="synthetic_gdc",
         notes="synthetic GDC source notes",
     )
@@ -1061,6 +1110,11 @@ def test_build_gdc_source_matrices_writes_canonical_artifacts(tmp_path):
         "sample-b",
     }
     assert "duplicate_sample_for_case_code" in set(selected_manifest["exclusion_reason"])
+    assert set(selected_manifest["lineage_evidence_source"]) == {
+        "synthetic evidence for case-a",
+        "synthetic evidence for case-b",
+        "synthetic evidence for case-normal",
+    }
     assert result.sidecar_paths["mapping_audit"].exists()
     assert result.sidecar_paths["parse_diagnostics"].exists()
     assert result.sidecar_paths["summary_rows"].exists()
@@ -1274,6 +1328,301 @@ def test_medulloblastoma_subgroup_assignment_rejects_ties_and_missing_markers():
     non_finite.loc[non_finite["Symbol"].eq("MYC"), "g3_sample"] = np.inf
     with pytest.raises(ValueError, match=r"non-finite.*g3_sample"):
         expression_builders.medulloblastoma_subgroup_sample_ids(non_finite)
+
+
+def test_sclc_subtype_assignment_keeps_parent_and_routes_one_marker_winner():
+    matrix = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG1", "ENSG2", "ENSG3", "ENSG4"],
+            "Symbol": ["ASCL1", "NEUROD1", "POU2F3", "YAP1"],
+            "S1": [9.0, 2.0, 1.0, 0.0],
+            "S2": [0.0, 8.0, 2.0, 1.0],
+            "S3": [1.0, 0.0, 7.0, 2.0],
+            "S4": [1.0, 2.0, 0.0, 6.0],
+        }
+    )
+
+    assert expression_builders.sclc_subtype_sample_ids(matrix) == {
+        "SCLC": ["S1", "S2", "S3", "S4"],
+        "SCLC_ASCL1": ["S1"],
+        "SCLC_NEUROD1": ["S2"],
+        "SCLC_POU2F3": ["S3"],
+        "SCLC_YAP1": ["S4"],
+    }
+
+
+def test_sclc_subtype_assignment_rejects_ties():
+    matrix = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG1", "ENSG2", "ENSG3", "ENSG4"],
+            "Symbol": ["ASCL1", "NEUROD1", "POU2F3", "YAP1"],
+            "S1": [9.0, 9.0, 1.0, 0.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="maximum is tied"):
+        expression_builders.sclc_subtype_sample_ids(matrix)
+
+
+def test_sclc_subtype_assignment_takes_maximum_duplicate_source_row():
+    matrix = pd.DataFrame(
+        {
+            "Hugo_Symbol": ["ASCL1", "NEUROD1", "POU2F3", "POU2F3", "YAP1"],
+            "S1": [1.0, 10.0, 6.0, 6.0, 0.0],
+        }
+    )
+    matrix.attrs["row_id_col"] = "Hugo_Symbol"
+    matrix.attrs["symbol_col"] = None
+
+    routed = expression_builders.sclc_subtype_sample_ids(matrix)
+
+    assert routed["SCLC_NEUROD1"] == ["S1"]
+    assert routed["SCLC_POU2F3"] == []
+
+
+def test_gse75885_titles_route_only_owned_histologies(tmp_path):
+    series_matrix = tmp_path / "series.txt.gz"
+    with gzip.open(series_matrix, "wt") as handle:
+        handle.write(
+            '!Sample_title\t"S1 - Liposarcoma - dedifferentiated"'
+            '\t"S2 - Low grade fibromyxoid sarcoma"'
+            '\t"S3 - Liposarcoma - pleomorphic"'
+            '\t"S4 - Leiomyosarcoma"\n'
+        )
+
+    titles = expression_source_adapters.geo_sample_titles(series_matrix)
+
+    assert expression_source_adapters.gse75885_routed_samples(
+        ["S1", "S2", "S3", "S4"],
+        titles,
+    ) == {
+        "SARC_DDLPS": ["S1"],
+        "SARC_PLEOLPS": ["S3"],
+        "SARC_LGFMS": ["S2"],
+    }
+
+
+def test_gse75885_routing_requires_metadata_for_every_expression_sample():
+    with pytest.raises(ValueError, match="has no GEO title"):
+        expression_source_adapters.gse75885_routed_samples(
+            ["S1", "S2"],
+            {"S1": "Liposarcoma - pleomorphic"},
+        )
+
+
+def test_drmetrics_histology_routing_excludes_sclc():
+    attributes = pd.DataFrame(
+        {
+            "Sample_ID": ["T1", "T2", "T3", "T4", "T5", "SCLC1"],
+            "Histopathology_simplified": [
+                "Typical",
+                "Atypical",
+                "Carcinoid",
+                "Supra_carcinoid",
+                "LCNEC",
+                "SCLC",
+            ],
+        }
+    )
+
+    assert expression_source_adapters.drmetrics_routed_samples(
+        attributes["Sample_ID"],
+        attributes,
+    ) == {
+        "NET_LUNG": ["T1", "T2", "T3", "T4"],
+        "NEC_LUNG_LARGECELL": ["T5"],
+    }
+
+
+def test_drmetrics_histology_routing_rejects_missing_or_duplicate_metadata():
+    duplicate = pd.DataFrame(
+        {
+            "Sample_ID": ["T1", "T1"],
+            "Histopathology_simplified": ["Typical", "Atypical"],
+        }
+    )
+    with pytest.raises(ValueError, match="duplicate Sample_ID"):
+        expression_source_adapters.drmetrics_routed_samples(["T1"], duplicate)
+
+    attributes = duplicate.drop_duplicates("Sample_ID")
+    with pytest.raises(ValueError, match="has no attributes row"):
+        expression_source_adapters.drmetrics_routed_samples(["T2"], attributes)
+
+
+def test_geo_microarray_parsers_keep_characteristics_and_multi_gene_probes(tmp_path):
+    series = tmp_path / "series.txt.gz"
+    with gzip.open(series, "wt") as handle:
+        handle.write('!Sample_title\t"T1"\t"T2"\n')
+        handle.write('!Sample_characteristics_ch1\t"subtype: low-grade"\t"subtype: high-grade"\n')
+        handle.write("!series_matrix_table_begin\n")
+        handle.write('"ID_REF"\t"T1"\t"T2"\n')
+        handle.write('"P1"\t"2"\t"3"\n')
+        handle.write('"P2"\t"4"\t"1"\n')
+        handle.write("!series_matrix_table_end\n")
+    platform = tmp_path / "platform.txt"
+    platform.write_text(
+        "!platform_table_begin\n"
+        "ID\tGene Symbol\tENTREZ_GENE_ID\n"
+        "P1\tGENE1\t1\n"
+        "P2\tGENE2 /// GENE3\t2 /// 3\n"
+        "!platform_table_end\n"
+    )
+
+    intensities, metadata = expression_source_adapters.parse_geo_series_matrix(series)
+    annotations = expression_source_adapters.parse_geo_platform_annotations(platform)
+
+    assert metadata["T1"]["char_subtype"] == "low-grade"
+    assert metadata["T2"]["char_subtype"] == "high-grade"
+    assert annotations.loc[annotations["probe_id"].eq("P2"), "gene_symbol"].tolist() == [
+        "GENE2",
+        "GENE3",
+    ]
+    proxy = expression_source_adapters.microarray_tpm_proxy(
+        intensities,
+        annotations,
+        log2_transformed=True,
+    )
+    assert np.allclose(proxy.sum(axis=0), 1_000_000.0)
+    assert proxy.loc["GENE2", "T1"] > proxy.loc["GENE1", "T1"]
+
+
+def test_geo_microarray_routing_is_explicit_and_mutually_exclusive():
+    metadata = {
+        "LG": {"char_subtype": "low-grade endometrial stromal sarcoma"},
+        "HG": {"char_subtype": "high-grade endometrial stromal sarcoma"},
+        "UUS": {"char_subtype": "undifferentiated uterine sarcoma"},
+    }
+    patterns = {
+        "SARC_ESS_LG": r"(?i)low.?grade",
+        "SARC_ESS_HG": r"(?i)high.?grade",
+    }
+
+    assert expression_source_adapters.microarray_routed_samples(metadata, patterns) == {
+        "SARC_ESS_LG": ["LG"],
+        "SARC_ESS_HG": ["HG"],
+    }
+
+    with pytest.raises(ValueError, match="matches multiple codes"):
+        expression_source_adapters.microarray_routed_samples(
+            {"S1": {"subtype": "mixed"}},
+            {"A": "mixed", "B": "mixed"},
+        )
+
+
+@pytest.mark.parametrize(
+    ("comment", "expected"),
+    [
+        ("Cell of origin: B-precursor; Risk: standard", ("B-precursor", "B_ALL")),
+        ("Cell of origin: T cell", ("T cell", "T_ALL")),
+        ("Cell of origin: Indeterminate", ("Indeterminate", "")),
+        ("Risk: standard", ("", "")),
+    ],
+)
+def test_target_all_lineage_labels_are_explicit(comment, expected):
+    assert expression_source_adapters.parse_target_all_lineage_label(comment) == expected
+
+
+def test_target_all_registry_uses_complete_gdc_project_ids():
+    source = expression_builders.gdc_source_from_registry("target-all")
+
+    assert source.project_ids == ("TARGET-ALL-P1", "TARGET-ALL-P2", "TARGET-ALL-P3")
+
+
+def test_target_all_lineage_assignments_preserve_evidence(monkeypatch, tmp_path):
+    matrix = pd.DataFrame(
+        {
+            "Case USI": ["TARGET-10-A", "TARGET-10-B", "TARGET-10-X"],
+            "Comments": [
+                "Cell of origin: B-precursor; other",
+                "Cell of origin: T cell",
+                "Cell of origin: Indeterminate",
+            ],
+        }
+    )
+    monkeypatch.setattr(expression_source_adapters.pd, "read_excel", lambda *_a, **_k: matrix)
+
+    assignments = expression_source_adapters.target_all_lineage_assignments(
+        [("TARGET phase sample matrix", tmp_path / "lineage.xlsx")]
+    )
+
+    assert assignments["TARGET-10-A"].cancer_code == "B_ALL"
+    assert assignments["TARGET-10-B"].cancer_code == "T_ALL"
+    assert "Cell of origin: B-precursor" in assignments["TARGET-10-A"].evidence_source
+    assert "TARGET-10-X" not in assignments
+
+
+def test_nbl_mycn_routing_keeps_parent_and_one_child():
+    routed = expression_source_adapters.nbl_mycn_routed_samples(
+        ["TARGET-30-AMPCASE-01A", "TARGET-30-NONCASE-01A", "TARGET-30-UNKNOWN-02A"],
+        {
+            "TARGET-30-AMPCASE": "amp",
+            "TARGET-30-NONCASE": "nonamp",
+            "TARGET-30-UNKNOWN": "unknown",
+        },
+    )
+
+    assert routed == {
+        "NBL": [
+            "TARGET-30-AMPCASE-01A",
+            "TARGET-30-NONCASE-01A",
+            "TARGET-30-UNKNOWN-02A",
+        ],
+        "NBL_MYCNamp": ["TARGET-30-AMPCASE-01A"],
+        "NBL_MYCNnonamp": ["TARGET-30-NONCASE-01A", "TARGET-30-UNKNOWN-02A"],
+    }
+    with pytest.raises(ValueError, match="lacks a supported MYCN call"):
+        expression_source_adapters.nbl_mycn_routed_samples(["TARGET-30-MISSING-01A"], {})
+
+
+def test_ctcl_pseudobulk_selects_each_cases_dominant_blood_clone(tmp_path):
+    raw_tar = tmp_path / "GSE171811_RAW.tar"
+    with tarfile.open(raw_tar, "w") as tar:
+        for index, case_id in enumerate(["HC1", "SS1", "SS2", "SS3", "SS4", "SS5", "SS6", "MFIV1"]):
+            gsm = f"GSM{index + 1}"
+            prefix = f"{gsm}_{case_id}_Blood"
+            tcr = f"clone\tcell1\tcell2\n{case_id}_dominant\t2\t0\n{case_id}_other\t0\t1\n"
+            gex = "gene\tcell1\tcell2\nGENE1\t10\t0\nGENE2\t2\t8\n"
+            for suffix, content in (("TCRb", tcr), ("GEX", gex)):
+                compressed = gzip.compress(content.encode())
+                info = tarfile.TarInfo(f"{prefix}_{suffix}.tsv.gz")
+                info.size = len(compressed)
+                tar.addfile(info, io.BytesIO(compressed))
+
+    counts, manifest = expression_source_adapters.ctcl_case_pseudobulk(raw_tar)
+
+    assert list(counts.columns) == [
+        "source_symbol",
+        "MFIV1",
+        "SS1",
+        "SS2",
+        "SS3",
+        "SS4",
+        "SS5",
+        "SS6",
+    ]
+    assert set(counts["source_symbol"]) == {"GENE1", "GENE2"}
+    assert set(counts.set_index("source_symbol").loc["GENE1"]) == {10.0}
+    assert manifest["included"].value_counts().to_dict() == {True: 7, False: 1}
+    healthy = manifest.loc[~manifest["included"]].iloc[0]
+    assert healthy["case_id"] == "HC1"
+    assert healthy["exclusion_reason"] == "healthy_control"
+
+
+def test_ctcl_pseudobulk_requires_identical_gex_and_tcr_cell_columns(tmp_path):
+    raw_tar = tmp_path / "GSE171811_RAW.tar"
+    with tarfile.open(raw_tar, "w") as tar:
+        contents = {
+            "GSM1_SS1_Blood_TCRb.tsv.gz": "clone\tcell1\tcell2\ndominant\t1\t0\n",
+            "GSM1_SS1_Blood_GEX.tsv.gz": "gene\tcell2\tcell1\nGENE1\t10\t0\n",
+        }
+        for name, content in contents.items():
+            compressed = gzip.compress(content.encode())
+            info = tarfile.TarInfo(name)
+            info.size = len(compressed)
+            tar.addfile(info, io.BytesIO(compressed))
+
+    with pytest.raises(ValueError, match="different cell columns"):
+        expression_source_adapters.ctcl_case_pseudobulk(raw_tar)
 
 
 def test_derive_mbl_subgroup_source_matrices_writes_cache_and_release_assets(tmp_path):
@@ -3541,7 +3890,17 @@ def test_build_gdc_script_uses_registry_config(tmp_path, monkeypatch, capsys):
     assert '"CODE_A": 1' in stdout
 
 
-def test_build_geo_matrix_script_requires_gene_lengths_for_raw_counts(tmp_path):
+def test_build_geo_matrix_script_derives_gene_lengths_for_raw_counts(
+    tmp_path,
+    monkeypatch,
+):
+    source_path = tmp_path / "source.tsv"
+    pd.DataFrame(
+        {
+            "gene": ["ENSG00000141510", "ENSG00000146648"],
+            "sample_1": [60, 80],
+        }
+    ).to_csv(source_path, sep="\t", index=False)
     registry_path = tmp_path / "expression_sources.yaml"
     registry_path.write_text(
         """
@@ -3557,18 +3916,46 @@ sources:
 """.lstrip()
     )
     mod = _load_script("build_geo_matrix")
+    observed = {}
 
-    with pytest.raises(SystemExit, match="raw_counts"):
-        mod.main(
-            [
-                "--source-id",
-                "synthetic-counts",
-                "--registry",
-                str(registry_path),
-                "--cache-dir",
-                str(tmp_path / "cache"),
-            ]
+    def fake_gene_lengths(gene_ids, *, release):
+        observed["gene_ids"] = list(gene_ids)
+        observed["release"] = release
+        return pd.Series(
+            {
+                "ENSG00000141510": 1.0,
+                "ENSG00000146648": 2.0,
+            }
         )
+
+    monkeypatch.setattr(expression_builders, "ensembl_gene_lengths_kb", fake_gene_lengths)
+
+    status = mod.main(
+        [
+            "--source-id",
+            "synthetic-counts",
+            "--registry",
+            str(registry_path),
+            "--cache-dir",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(tmp_path / "out"),
+            "--source-path",
+            str(source_path),
+            "--ensembl-release",
+            "112",
+        ]
+    )
+
+    assert status == 0
+    assert observed == {
+        "gene_ids": ["ENSG00000141510", "ENSG00000146648"],
+        "release": 112,
+    }
+    matrix = pd.read_parquet(tmp_path / "out" / "CODE_A_per_sample_tpm.parquet")
+    by_gene = matrix.set_index("Ensembl_Gene_ID")
+    assert by_gene.loc["ENSG00000141510", "sample_1"] == pytest.approx(600_000.0)
+    assert by_gene.loc["ENSG00000146648", "sample_1"] == pytest.approx(400_000.0)
 
 
 # ---------- cohort_percentile_vectors ----------

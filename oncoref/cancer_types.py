@@ -2383,7 +2383,18 @@ def _expression_source_cohort_counts() -> dict[str, dict[str, int]]:
                 f"expression source {source['id']!r} routed counts must match cancer_codes"
             )
         physical_samples = int(source["expected_source_samples"])
-        if sum(routed_counts.values()) > physical_samples:
+        routed_samples_may_overlap = source.get("routed_samples_may_overlap", False)
+        if not isinstance(routed_samples_may_overlap, bool):
+            raise ValueError(
+                f"expression source {source['id']!r} "
+                "routed_samples_may_overlap must be a YAML boolean"
+            )
+        routed_total = (
+            max(routed_counts.values(), default=0)
+            if routed_samples_may_overlap
+            else sum(routed_counts.values())
+        )
+        if routed_total > physical_samples:
             raise ValueError(
                 f"expression source {source['id']!r} routes more samples than it contains"
             )

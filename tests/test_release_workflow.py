@@ -22,6 +22,12 @@ def test_build_backend_supports_declared_pep_639_license_metadata():
     assert 'license-files = ["LICENSE"]' in pyproject
 
 
+def test_source_distribution_includes_regeneration_scripts():
+    manifest = Path("MANIFEST.in").read_text()
+
+    assert "recursive-include scripts *.py" in manifest
+
+
 def test_release_classifier_accepts_only_unpublished_package_tag():
     package_version = "1.2.3"
     cases = [

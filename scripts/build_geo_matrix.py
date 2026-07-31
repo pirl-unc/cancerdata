@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from oncoref.expression_builders import build_source_matrices, geo_matrix_source_from_registry
 
@@ -80,10 +83,11 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help=(
-            "CSV mapping source row ids to positive gene lengths in kb. Required for "
-            "unit=raw_counts sources."
+            "Optional CSV mapping source row ids to positive gene lengths in kb. "
+            "Raw-count builds otherwise derive Ensembl gene lengths with pyensembl."
         ),
     )
+    parser.add_argument("--ensembl-release", type=int, default=112)
     parser.add_argument("--force-download", action="store_true")
     parser.add_argument("--high-expression-threshold", type=float, default=1.0)
     args = parser.parse_args(argv)
@@ -93,9 +97,6 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("provide --source-id <id>")
 
     source = geo_matrix_source_from_registry(source_id, registry_path=args.registry)
-    if source.unit == "raw_counts" and args.gene_lengths_kb is None:
-        raise SystemExit("unit='raw_counts' sources require --gene-lengths-kb")
-
     cache_dir = args.cache_dir or Path.home() / ".cache" / "oncoref" / "expression" / source_id
     result = build_source_matrices(
         source,
@@ -104,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
         source_path=args.source_path,
         force_download=args.force_download,
         gene_lengths_kb=_load_gene_lengths_kb(args.gene_lengths_kb),
+        ensembl_release=args.ensembl_release,
         high_expression_threshold=args.high_expression_threshold,
     )
     summary = {

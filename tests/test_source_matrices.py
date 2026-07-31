@@ -23,9 +23,24 @@ def test_registry_and_available_cohorts():
     assert info["source_cohort"] and info["n_samples"] > 0
 
 
+def test_every_published_matrix_has_one_executable_or_exempt_owner():
+    audit = sm.validate_source_matrix_regeneration()
+
+    assert len(audit) == len(sm.registry())
+    assert audit[["cancer_code", "source_cohort"]].duplicated().sum() == 0
+    assert audit["status"].value_counts().to_dict() == {
+        "executable_builder": len(audit) - 1,
+        "external_build_exemption": 1,
+    }
+    exemption = audit.loc[audit["status"].eq("external_build_exemption")].iloc[0]
+    assert exemption["cancer_code"] == "NUTM"
+    assert exemption["source_cohort"] == "UNC_NUTM1"
+    assert "controlled" in exemption["external_build_exemption"].lower()
+
+
 def test_source_id_resolver_distinguishes_physical_and_declared_code_routes():
     beataml = sm.resolution_for_source("beataml-ohsu-2022")
-    assert beataml.resolution_method == "declared_cancer_code"
+    assert beataml.resolution_method == "physical_source"
     assert beataml.codes == ("LAML_APL", "LAML_ELNadv", "LAML_ELNfav", "LAML_ELNint")
     assert {matrix.source_cohort for matrix in beataml.matrices} == {"BEATAML_OHSU_2022"}
 
