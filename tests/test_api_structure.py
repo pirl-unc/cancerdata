@@ -72,6 +72,14 @@ def test_ici_response_facade_delegates_to_compatibility_api():
     pd.testing.assert_frame_equal(
         ici_response.ici_response_anchor_df(), ici.cancer_ici_response_df()
     )
+    pd.testing.assert_frame_equal(
+        ici_response.ici_response_estimates_df(),
+        ici.cancer_ici_response_estimates_df(),
+    )
+    pd.testing.assert_frame_equal(
+        ici_response.ici_source_locator_audit_df(),
+        ici.cancer_ici_source_locator_audit_df(),
+    )
 
 
 def test_cta_peptides_clear_count_map_name(monkeypatch):

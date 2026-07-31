@@ -62,7 +62,8 @@ def test_ici_anchor_table_exposes_evidence_schema():
     assert crc["response_ci_high_status"] == "numeric"
     assert crc["response_value_status"] == "numeric"
     assert crc["source_estimate_id"].startswith("ICI-")
-    assert crc["source_locator_status"] == "not_extracted"
+    assert crc["source_locator"] == "Table 2"
+    assert crc["source_locator_status"] == "verified"
     assert crc["therapy_regimen_class"] == "anti_pd1_monotherapy"
     assert crc["evidence_type"] == "direct_reported"
     assert crc["histology_match"] == "direct"
@@ -95,11 +96,53 @@ def test_ici_estimates_expose_structured_source_and_ci_provenance():
     assert expected <= set(df.columns)
     assert df["estimate_id"].is_unique
     assert df["estimate_id"].str.match(r"^ICI-[0-9a-f]{10}-[0-9]{2}$").all()
-    assert set(df["source_locator_status"]) == {"not_extracted"}
-    assert set(df["value_status"]) <= {"numeric", "not_reached", "not_estimable", "not_extracted"}
-    assert set(df["ci_low_status"]) <= {"numeric", "NR", "NE", "not_extracted"}
-    assert set(df["ci_high_status"]) <= {"numeric", "NR", "NE", "not_extracted"}
-    assert set(df["ci_basis"]) <= {"reported", "not_applicable", "not_extracted"}
+    assert set(df["source_locator_status"]) == {
+        "citation_only",
+        "located_unverified",
+        "not_applicable",
+        "not_verified",
+        "source_section",
+        "verified",
+    }
+    assert set(df["value_status"]) <= {
+        "not_estimable",
+        "not_reached",
+        "not_reported",
+        "not_verified",
+        "numeric",
+    }
+    assert set(df["ci_low_status"]) <= {
+        "not_applicable",
+        "not_reported",
+        "not_verified",
+        "numeric",
+        "source_unavailable",
+    }
+    assert set(df["ci_high_status"]) <= {
+        "NE",
+        "NR",
+        "not_applicable",
+        "not_reported",
+        "not_verified",
+        "numeric",
+        "source_unavailable",
+    }
+    assert set(df["ci_basis"]) <= {
+        "computed_wilson",
+        "not_applicable",
+        "not_reported",
+        "not_verified",
+        "reported",
+        "source_unavailable",
+    }
+    provenance_columns = [
+        "source_locator_status",
+        "value_status",
+        "ci_low_status",
+        "ci_high_status",
+        "ci_basis",
+    ]
+    assert not df[provenance_columns].eq("not_extracted").any().any()
 
     adcc_os = df[
         (df["cancer_code"] == "ADCC") & (df["regimen"] == "PD-1+CTLA-4") & (df["metric"] == "OS")
@@ -132,6 +175,64 @@ def test_ici_estimates_expose_structured_source_and_ci_provenance():
         & (df["value_basis"] == "derived_blend")
     ].iloc[0]
     assert coad_blend["ci_basis"] == "not_applicable"
+
+
+def test_ici_source_locator_audit_is_complete_and_matches_estimates():
+    estimates = ici.cancer_ici_response_estimates_df()
+    audit = ici.cancer_ici_source_locator_audit_df()
+
+    assert audit["estimate_id"].is_unique
+    assert set(audit["estimate_id"]) == set(estimates["estimate_id"])
+    assert audit["source_document_kind"].notna().all()
+    assert audit["audited_on"].astype(str).str.fullmatch(r"\d{4}-\d{2}-\d{2}").all()
+    cited = audit["ref"].fillna("").astype(str).str.strip().ne("")
+    assert audit.loc[cited, "source_document_url"].fillna("").str.strip().ne("").all()
+    assert audit.loc[cited, "source_document_kind"].ne("missing_citation").all()
+
+    joined = estimates[["estimate_id", "ref", "source_locator", "source_locator_status"]].merge(
+        audit[["estimate_id", "ref", "source_locator", "source_locator_status"]],
+        on="estimate_id",
+        suffixes=("_estimate", "_audit"),
+        validate="one_to_one",
+    )
+    for column in ("ref", "source_locator", "source_locator_status"):
+        assert joined[f"{column}_estimate"].equals(joined[f"{column}_audit"])
+
+    located = audit["source_locator_status"].isin(
+        {"located_unverified", "source_section", "verified"}
+    )
+    assert audit.loc[located, "source_locator"].astype(str).str.strip().ne("").all()
+    citation_only = audit["source_locator_status"].eq("citation_only")
+    assert audit.loc[citation_only, "source_locator"].fillna("").str.strip().eq("").all()
+
+
+def test_ici_source_audit_corrections_and_computed_ci():
+    df = ici.cancer_ici_response_estimates_df().set_index("estimate_id")
+
+    meningioma_os = df.loc["ICI-784f9b8f57-01"]
+    assert meningioma_os["value"] == 20.2
+    assert meningioma_os["ci_low"] == 14.8
+    assert meningioma_os["ci_high"] == 25.8
+    assert meningioma_os["source_locator"] == "Supplementary Figure 2"
+
+    kirc_hr = df.loc["ICI-7be940d63d-01"]
+    assert kirc_hr["metric"] == "PFS_HR"
+    assert kirc_hr["unit"] == "hazard_ratio"
+    assert kirc_hr["value"] == 1.03
+
+    assert df.loc["ICI-cb72c7e2fd-01", "metric"] == "CBR"
+    assert df.loc["ICI-c8a3a23b71-01", "metric"] == "CBR"
+    assert df.loc["ICI-727d3fda5e-01", "metric"] == "UNCONFIRMED_ORR"
+
+    bcc_crr = df.loc["ICI-4398a82d1e-01"]
+    assert bcc_crr["value"] == 3.7
+    assert bcc_crr["ci_basis"] == "computed_wilson"
+    assert bcc_crr["ci_low"] == 1.0
+    assert bcc_crr["ci_high"] == 12.5
+
+    unavailable_dor = df.loc["ICI-de9e5a30cc-01"]
+    assert unavailable_dor["value_status"] == "not_reported"
+    assert unavailable_dor["ci_basis"] == "not_applicable"
 
 
 def test_apd1_anchor_table_uses_same_evidence_schema_for_fallback_targets():

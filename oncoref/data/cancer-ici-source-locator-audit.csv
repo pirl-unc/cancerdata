@@ -1,0 +1,783 @@
+estimate_id,ref,source_document_url,source_document_kind,source_locator,source_locator_status,locator_match_basis,match_score,audited_on
+ICI-9593cb18be-01,PMID:39067873,https://pmc.ncbi.nlm.nih.gov/articles/PMC11284838/,pmc_full_text,"Abstract, Results",verified,"endpoint,numerator/denominator,value,denominator",22,2026-07-31
+ICI-3fbfdb14f2-01,PMID:39067873,https://pmc.ncbi.nlm.nih.gov/articles/PMC11284838/,pmc_full_text,"Abstract, Results",verified,"endpoint,numerator/denominator,value,denominator",22,2026-07-31
+ICI-cf2834da47-01,PMID:39067873,https://pmc.ncbi.nlm.nih.gov/articles/PMC11284838/,pmc_full_text,Results > Outcomes,verified,"endpoint,numerator/denominator,value,denominator,population:2",23,2026-07-31
+ICI-3cd8dbda4b-01,PMID:39067873,https://pmc.ncbi.nlm.nih.gov/articles/PMC11284838/,pmc_full_text,"Abstract, Results",verified,"endpoint,numerator/denominator,value,denominator",22,2026-07-31
+ICI-093ba1859e-01,PMID:39067873,https://pmc.ncbi.nlm.nih.gov/articles/PMC11284838/,pmc_full_text,Figure 2,verified,"endpoint,value,denominator,ci,timepoint,population:2",22,2026-07-31
+ICI-0d56b8bd7a-01,PMID:39067873,https://pmc.ncbi.nlm.nih.gov/articles/PMC11284838/,pmc_full_text,Figure 2,verified,"endpoint,value,denominator,ci,timepoint,population:2",22,2026-07-31
+ICI-741bacb100-01,PMID:39067873,https://pmc.ncbi.nlm.nih.gov/articles/PMC11284838/,pmc_full_text,Figure 2,verified,"endpoint,value,denominator,ci,timepoint,population:2",22,2026-07-31
+ICI-c9a6b61402-01,PMID:39067873,https://pmc.ncbi.nlm.nih.gov/articles/PMC11284838/,pmc_full_text,Results > Outcomes,verified,"endpoint,value,denominator,ci,timepoint,population:2",22,2026-07-31
+ICI-90a426d967-01,PMID:39067873,https://pmc.ncbi.nlm.nih.gov/articles/PMC11284838/,pmc_full_text,Figure 2,verified,"endpoint,value,denominator,ci,timepoint,population:2",22,2026-07-31
+ICI-1b0fbb70fb-01,PMID:35777186,https://pubmed.ncbi.nlm.nih.gov/35777186/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-9bfcbfbb51-01,PMID:35777186,https://pubmed.ncbi.nlm.nih.gov/35777186/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-071eb5e3c9-01,PMID:35777186,https://pubmed.ncbi.nlm.nih.gov/35777186/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-ace3bf531f-01,PMID:35777186,https://pubmed.ncbi.nlm.nih.gov/35777186/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-7c006ed354-01,PMID:35777186,https://pubmed.ncbi.nlm.nih.gov/35777186/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value_status,timepoint",15,2026-07-31
+ICI-94ff54ffd3-01,PMID:35777186,https://pubmed.ncbi.nlm.nih.gov/35777186/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-be1bcca24f-01,PMID:35777186,https://pubmed.ncbi.nlm.nih.gov/35777186/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-2d5cb04e92-01,DOI:10.1038/s41591-023-02518-x,https://pmc.ncbi.nlm.nih.gov/articles/PMC11293616/,pmc_full_text,Results > Study treatment efficacy and toxicity,verified,"endpoint,value,population:3",14,2026-07-31
+ICI-59bed8bbec-01,DOI:10.1038/s41591-023-02518-x,https://pmc.ncbi.nlm.nih.gov/articles/PMC11293616/,pmc_full_text,Abstract,verified,"endpoint,value,denominator,ci,timepoint,population:3",24,2026-07-31
+ICI-5c19d1d9a0-01,DOI:10.1038/s41591-023-02518-x,https://pmc.ncbi.nlm.nih.gov/articles/PMC11293616/,pmc_full_text,Results > Study treatment efficacy and toxicity,verified,"endpoint,value,population:1",12,2026-07-31
+ICI-9cbaa71858-01,DOI:10.1038/s41591-023-02518-x,https://pmc.ncbi.nlm.nih.gov/articles/PMC11293616/,pmc_full_text,Abstract,verified,"endpoint,value,denominator,ci,timepoint,population:5",24,2026-07-31
+ICI-cf3b5df820-01,PMID:40166913,https://pmc.ncbi.nlm.nih.gov/articles/PMC11959299/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-b5cfd95674-01,PMID:40166913,https://pmc.ncbi.nlm.nih.gov/articles/PMC11959299/,pmc_full_text,"Abstract, Results",verified,"endpoint,numerator/denominator,value,denominator",22,2026-07-31
+ICI-ceb9c89967-01,PMID:40166913,https://pmc.ncbi.nlm.nih.gov/articles/PMC11959299/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-6ec9bc0a01-01,PMID:40166913,https://pmc.ncbi.nlm.nih.gov/articles/PMC11959299/,pmc_full_text,"Abstract, Results",verified,"endpoint,denominator,timepoint",13,2026-07-31
+ICI-c99b80b7ea-01,PMID:35777186,https://pubmed.ncbi.nlm.nih.gov/35777186/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-8624416b0e-01,PMID:28223062,https://pmc.ncbi.nlm.nih.gov/articles/PMC5809128/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-8cd76d5098-01,PMID:28223062,https://pmc.ncbi.nlm.nih.gov/articles/PMC5809128/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-943547eb15-01,PMID:28223062,https://pmc.ncbi.nlm.nih.gov/articles/PMC5809128/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-cfb30dbca5-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-024f42b18c-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,Results,verified,"endpoint,value,denominator,population:4",16,2026-07-31
+ICI-6cea9b0699-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,Results,verified,"endpoint,value,denominator,population:4",16,2026-07-31
+ICI-3cfe88d14b-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,Results,verified,"endpoint,value,denominator,timepoint,population:4",19,2026-07-31
+ICI-6222fb6317-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,Results,verified,"endpoint,denominator,timepoint,population:4",15,2026-07-31
+ICI-31b195fdd0-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,Results,verified,"endpoint,value,denominator,ci,timepoint,population:4",23,2026-07-31
+ICI-12f399f520-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,Results,verified,"endpoint,value,denominator,ci,timepoint,population:4",23,2026-07-31
+ICI-f98669fce1-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,Results,verified,"endpoint,value,denominator,ci,timepoint,population:4",23,2026-07-31
+ICI-f9b0039eaa-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,Results,verified,"endpoint,value_status,denominator,timepoint,population:4",19,2026-07-31
+ICI-ccc536e5e5-01,PMID:35114169,https://pmc.ncbi.nlm.nih.gov/articles/PMC12012850/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-deeb11dc2d-01,DOI:10.1200/JCO.2020.38.15_suppl.6513,https://doi.org/10.1200/JCO.2020.38.15_suppl.6513,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-cb72c7e2fd-01,DOI:10.1200/JCO.2020.38.15_suppl.6513,https://doi.org/10.1200/JCO.2020.38.15_suppl.6513,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-966148cfb1-01,DOI:10.1200/JCO.2020.38.15_suppl.6513,https://doi.org/10.1200/JCO.2020.38.15_suppl.6513,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-52dbc5d599-01,PMID:34000246,https://pubmed.ncbi.nlm.nih.gov/34000246/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-8b2190adfe-01,PMID:34000246,https://pubmed.ncbi.nlm.nih.gov/34000246/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-48975a9625-01,PMID:34000246,https://pubmed.ncbi.nlm.nih.gov/34000246/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-9394b751d8-01,PMID:34000246,https://pubmed.ncbi.nlm.nih.gov/34000246/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-6eab5da93b-01,PMID:34000246,https://pubmed.ncbi.nlm.nih.gov/34000246/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-d465ee2e25-01,PMID:34000246,https://pubmed.ncbi.nlm.nih.gov/34000246/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-895dd9d929-01,PMID:34000246,https://pubmed.ncbi.nlm.nih.gov/34000246/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-19956d182d-01,DOI:10.1016/j.annonc.2023.10.123,https://doi.org/10.1016/j.annonc.2023.10.123,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-4398a82d1e-01,DOI:10.1016/j.annonc.2023.10.123,https://doi.org/10.1016/j.annonc.2023.10.123,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-143d70f5e9-01,DOI:10.1016/j.annonc.2023.10.123,https://doi.org/10.1016/j.annonc.2023.10.123,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-cb7e1bb636-01,DOI:10.1016/j.annonc.2023.10.123,https://doi.org/10.1016/j.annonc.2023.10.123,doi_record,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-ed94d6f902-01,DOI:10.1016/j.annonc.2023.10.123,https://doi.org/10.1016/j.annonc.2023.10.123,doi_record,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-5b1e201a99-01,PMID:32552471,https://pubmed.ncbi.nlm.nih.gov/32552471/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value",12,2026-07-31
+ICI-278a4de643-01,PMID:32552471,https://pubmed.ncbi.nlm.nih.gov/32552471/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-ef83e86663-01,PMID:32552471,https://pubmed.ncbi.nlm.nih.gov/32552471/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value",12,2026-07-31
+ICI-5a7d2cb428-01,PMID:32552471,https://pubmed.ncbi.nlm.nih.gov/32552471/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-06eac5a1cb-01,PMID:32552471,https://pubmed.ncbi.nlm.nih.gov/32552471/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci,timepoint",19,2026-07-31
+ICI-acb3b19314-01,PMID:32552471,https://pubmed.ncbi.nlm.nih.gov/32552471/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value",12,2026-07-31
+ICI-2e11cec466-01,PMID:32552471,https://pubmed.ncbi.nlm.nih.gov/32552471/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-def378bec0-01,PMID:32552471,https://pubmed.ncbi.nlm.nih.gov/32552471/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value",12,2026-07-31
+ICI-9ef67e9b93-01,PMID:32552471,https://pubmed.ncbi.nlm.nih.gov/32552471/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci,timepoint",19,2026-07-31
+ICI-22d7ca6935-01,PMID:28131785,https://pubmed.ncbi.nlm.nih.gov/28131785/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-1c4c4cfa84-01,PMID:28131785,https://pubmed.ncbi.nlm.nih.gov/28131785/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-bde6ff938a-01,PMID:28131785,https://pubmed.ncbi.nlm.nih.gov/28131785/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c4d53723ca-01,PMID:28131785,https://pubmed.ncbi.nlm.nih.gov/28131785/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-79dcf4f7b4-01,PMID:28131785,https://pubmed.ncbi.nlm.nih.gov/28131785/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,denominator,timepoint",13,2026-07-31
+ICI-9177ece704-01,PMID:27939400,https://pmc.ncbi.nlm.nih.gov/articles/PMC5568632/,pmc_full_text,"Abstract, Findings",verified,"endpoint,value,denominator,ci,population:1",19,2026-07-31
+ICI-ecf5c23723-01,PMID:27939400,https://pmc.ncbi.nlm.nih.gov/articles/PMC5568632/,pmc_full_text,"Abstract, Findings",verified,"endpoint,value,denominator,population:1",15,2026-07-31
+ICI-2fcd0d8682-01,PMID:27939400,https://pmc.ncbi.nlm.nih.gov/articles/PMC5568632/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3532954092-01,PMID:27939400,https://pmc.ncbi.nlm.nih.gov/articles/PMC5568632/,pmc_full_text,"Abstract, Findings",verified,"endpoint,denominator,timepoint,population:1",14,2026-07-31
+ICI-e1c1959728-01,PMID:27939400,https://pmc.ncbi.nlm.nih.gov/articles/PMC5568632/,pmc_full_text,"Abstract, Findings",verified,"endpoint,denominator,timepoint,population:1",14,2026-07-31
+ICI-e52143e1a0-01,PMID:26952546,https://pmc.ncbi.nlm.nih.gov/articles/PMC5480242/,pmc_full_text,Results,verified,"endpoint,value,ci",15,2026-07-31
+ICI-2d8a335e01-01,PMID:28817753,https://pmc.ncbi.nlm.nih.gov/articles/PMC5824288/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-9e11d8b7bd-01,PMID:29217288,https://pmc.ncbi.nlm.nih.gov/articles/PMC7984727/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-02e900249c-01,PMID:30475950,https://pubmed.ncbi.nlm.nih.gov/30475950/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-00a12fc413-01,PMID:30475950,https://pubmed.ncbi.nlm.nih.gov/30475950/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-56d7f8d4cf-01,PMID:30475950,https://pubmed.ncbi.nlm.nih.gov/30475950/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-b2835651b5-01,PMID:30475950,https://pubmed.ncbi.nlm.nih.gov/30475950/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value_status,denominator,timepoint",17,2026-07-31
+ICI-0f0e089271-01,PMID:30475950,https://pubmed.ncbi.nlm.nih.gov/30475950/,pubmed_abstract,"Abstract, Results",verified,"endpoint,denominator,timepoint",13,2026-07-31
+ICI-a5299960c5-01,PMID:30475950,https://pubmed.ncbi.nlm.nih.gov/30475950/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-e229a8f185-01,PMID:30475950,https://pubmed.ncbi.nlm.nih.gov/30475950/,pubmed_abstract,"Abstract, Results",verified,"endpoint,denominator,ci,timepoint",17,2026-07-31
+ICI-d6cf87e9e5-01,PMID:30475947,https://pubmed.ncbi.nlm.nih.gov/30475947/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-9fc9ca17f2-01,PMID:30475947,https://pubmed.ncbi.nlm.nih.gov/30475947/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3a751ea034-01,PMID:30475947,https://pubmed.ncbi.nlm.nih.gov/30475947/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-b8438e7460-01,PMID:30475947,https://pubmed.ncbi.nlm.nih.gov/30475947/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-ba47635e7b-01,PMID:30475947,https://pubmed.ncbi.nlm.nih.gov/30475947/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-2a0f370265-01,PMID:30475947,https://pubmed.ncbi.nlm.nih.gov/30475947/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-3792c43928-01,PMID:30242306,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439773/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-54fd4a7840-01,PMID:30242306,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439773/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,timepoint,population:1",16,2026-07-31
+ICI-7353d7284b-01,PMID:30242306,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439773/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-1bc1f2c450-01,PMID:30242306,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439773/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,timepoint,population:1",16,2026-07-31
+ICI-6bbe217c59-01,PMID:30242306,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439773/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-dd8d58275c-01,PMID:30242306,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439773/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c5947bad6b-01,PMID:30943124,https://pubmed.ncbi.nlm.nih.gov/30943124/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci",16,2026-07-31
+ICI-ac4b7c47c2-01,PMID:30943124,https://pubmed.ncbi.nlm.nih.gov/30943124/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci",16,2026-07-31
+ICI-ddd8d6f347-01,PMID:30943124,https://pubmed.ncbi.nlm.nih.gov/30943124/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-2e11ae750c-01,PMID:30943124,https://pubmed.ncbi.nlm.nih.gov/30943124/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c596c96a12-01,PMID:30943124,https://pubmed.ncbi.nlm.nih.gov/30943124/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value_status,timepoint",15,2026-07-31
+ICI-e2686c8669-01,PMID:38858106,https://pubmed.ncbi.nlm.nih.gov/38858106/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci,population:1",17,2026-07-31
+ICI-e1b1f63c42-01,PMID:38858106,https://pubmed.ncbi.nlm.nih.gov/38858106/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci,timepoint,population:1",20,2026-07-31
+ICI-98dca50d7c-01,PMID:38858106,https://pubmed.ncbi.nlm.nih.gov/38858106/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci,timepoint,population:1",20,2026-07-31
+ICI-13c6b42ce9-01,PMID:38858106,https://pubmed.ncbi.nlm.nih.gov/38858106/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-489d075019-01,PMID:38858106,https://pubmed.ncbi.nlm.nih.gov/38858106/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:2",23,2026-07-31
+ICI-6ea87b002f-01,PMID:38858106,https://pubmed.ncbi.nlm.nih.gov/38858106/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:2",23,2026-07-31
+ICI-2814c8c5da-01,PMID:38858106,https://pubmed.ncbi.nlm.nih.gov/38858106/,pubmed_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-06e6f755ae-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,verified,"endpoint,numerator/denominator,value,denominator,ci,population:2",28,2026-07-31
+ICI-ffb31451ac-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,verified,"endpoint,value_status,denominator,timepoint,population:2",19,2026-07-31
+ICI-95f2890cf3-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,verified,"endpoint,value,denominator,ci,timepoint,population:2",23,2026-07-31
+ICI-6ea6de466b-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,verified,"endpoint,value,denominator,ci,timepoint,population:2",23,2026-07-31
+ICI-1545ffe3c3-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,verified,"endpoint,numerator/denominator,value,denominator,population:2",24,2026-07-31
+ICI-78b32558b8-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,verified,"endpoint,numerator/denominator,value,denominator,population:2",24,2026-07-31
+ICI-d1d318d5fd-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,verified,"endpoint,numerator/denominator,value,ci,population:2",26,2026-07-31
+ICI-bafeb33323-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,located_unverified,"endpoint,value_status,timepoint,population:2",17,2026-07-31
+ICI-784ad2abd2-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,located_unverified,"endpoint,value,ci,timepoint,population:2",21,2026-07-31
+ICI-45d73edf58-01,PMID:32359091,https://pubmed.ncbi.nlm.nih.gov/32359091/,pubmed_abstract,Abstract,located_unverified,"endpoint,value,ci,timepoint,population:2",21,2026-07-31
+ICI-a9bc719db3-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,RESULTS > Efficacy > Durvalumab monotherapy,verified,"endpoint,numerator/denominator,value,denominator",21,2026-07-31
+ICI-1a2bac306d-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-8892fb2c2f-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,RESULTS > Efficacy > Durvalumab monotherapy,verified,"endpoint,value,denominator,timepoint",16,2026-07-31
+ICI-01b8ec043a-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,RESULTS > Efficacy > Durvalumab monotherapy,verified,"endpoint,value,denominator,ci,timepoint",20,2026-07-31
+ICI-29df11bed9-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,RESULTS > Efficacy > Durvalumab monotherapy,verified,"endpoint,value,denominator,ci,timepoint",20,2026-07-31
+ICI-8c1c82b596-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,RESULTS > Efficacy > Durvalumab plus tremelimumab,verified,"endpoint,numerator/denominator,value,denominator",21,2026-07-31
+ICI-37635ad717-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-d6adf64029-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,RESULTS > Efficacy > Durvalumab plus tremelimumab,verified,"endpoint,value,denominator,timepoint",16,2026-07-31
+ICI-7fa8a24816-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,RESULTS > Efficacy > Durvalumab plus tremelimumab,verified,"endpoint,value,denominator,ci,timepoint",20,2026-07-31
+ICI-c340520250-01,PMID:35611499,https://pmc.ncbi.nlm.nih.gov/articles/PMC9249982/,pmc_full_text,RESULTS > Efficacy > Durvalumab plus tremelimumab,verified,"endpoint,value,denominator,ci,timepoint",20,2026-07-31
+ICI-4f6402b639-01,DOI:10.1182/blood-2017-02-765685,https://pmc.ncbi.nlm.nih.gov/articles/PMC5492091/,pmc_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c319898ee7-01,DOI:10.1182/blood-2017-02-765685,https://pmc.ncbi.nlm.nih.gov/articles/PMC5492091/,pmc_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-7c9277b87c-01,DOI:10.1182/blood-2017-02-765685,https://pmc.ncbi.nlm.nih.gov/articles/PMC5492091/,pmc_abstract,Abstract,verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-dfd5824394-01,,,missing_citation,,not_applicable,curator-derived value,0,2026-07-31
+ICI-9099787bfc-01,PMID:33264544,https://pubmed.ncbi.nlm.nih.gov/33264544/,pubmed_abstract,Table 2,verified,curated estimate note names the exact source table or figure,0,2026-07-31
+ICI-fac1883214-01,PMID:33264544,https://pubmed.ncbi.nlm.nih.gov/33264544/,pubmed_abstract,Table 2,verified,curated estimate note names the exact source table or figure,0,2026-07-31
+ICI-013ea9c9ea-01,PMID:33264544,https://pubmed.ncbi.nlm.nih.gov/33264544/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint,population:1",16,2026-07-31
+ICI-f0a7b7fce0-01,PMID:33264544,https://pubmed.ncbi.nlm.nih.gov/33264544/,pubmed_abstract,Table 2,verified,curated estimate note names the exact source table or figure,0,2026-07-31
+ICI-c51444aea4-01,PMID:39631622,https://pubmed.ncbi.nlm.nih.gov/39631622/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a9c559498c-01,PMID:39631622,https://pubmed.ncbi.nlm.nih.gov/39631622/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint,population:2",19,2026-07-31
+ICI-e5de24a94f-01,PMID:39631622,https://pubmed.ncbi.nlm.nih.gov/39631622/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint,population:2",19,2026-07-31
+ICI-072ab82577-01,PMID:33264544,https://pubmed.ncbi.nlm.nih.gov/33264544/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-50aacfc02d-01,PMID:33264544,https://pubmed.ncbi.nlm.nih.gov/33264544/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint,population:1",16,2026-07-31
+ICI-2fc5165568-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,RESULTS > PRIMARY END POINT,verified,"endpoint,numerator/denominator,value,denominator,ci,population:2",27,2026-07-31
+ICI-4ab1cc05e0-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,RESULTS > PRIMARY END POINT,verified,"endpoint,numerator/denominator,value,denominator,ci,timepoint,population:2",30,2026-07-31
+ICI-cae877771b-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value_status,denominator,timepoint,population:1",18,2026-07-31
+ICI-b6d5eed7d9-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value_status,denominator,timepoint,population:1",18,2026-07-31
+ICI-c0e3d71f07-01,PMID:31725351,https://pmc.ncbi.nlm.nih.gov/articles/PMC7031958/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,ci,population:2",18,2026-07-31
+ICI-83fc7a73eb-01,PMID:31725351,https://pmc.ncbi.nlm.nih.gov/articles/PMC7031958/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,ci,population:2",18,2026-07-31
+ICI-64ef2b753a-01,PMID:31725351,https://pmc.ncbi.nlm.nih.gov/articles/PMC7031958/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,ci,timepoint,population:2",21,2026-07-31
+ICI-2f6ad095ba-01,PMID:31725351,https://pmc.ncbi.nlm.nih.gov/articles/PMC7031958/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,ci,timepoint,population:2",21,2026-07-31
+ICI-95c9d7f68b-01,PMID:31725351,https://pmc.ncbi.nlm.nih.gov/articles/PMC7031958/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-e038d0a7a4-01,PMID:31725351,https://pmc.ncbi.nlm.nih.gov/articles/PMC7031958/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value_status,timepoint,population:2",17,2026-07-31
+ICI-06e5425c5f-01,PMID:31725351,https://pmc.ncbi.nlm.nih.gov/articles/PMC7031958/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value_status,denominator,timepoint,population:2",19,2026-07-31
+ICI-e97c6a0bbe-01,PMID:29355075,https://pubmed.ncbi.nlm.nih.gov/29355075/,pubmed_abstract,Abstract,verified,"endpoint,value,denominator,ci,timepoint,population:4",24,2026-07-31
+ICI-6666b2cffd-01,PMID:29355075,https://pubmed.ncbi.nlm.nih.gov/29355075/,pubmed_abstract,Abstract,verified,"endpoint,value,denominator,population:4",17,2026-07-31
+ICI-2cb41f5e7b-01,PMID:29355075,https://pubmed.ncbi.nlm.nih.gov/29355075/,pubmed_abstract,Abstract,verified,"endpoint,value,denominator,population:4",17,2026-07-31
+ICI-43925d1c0f-01,PMID:29355075,https://pubmed.ncbi.nlm.nih.gov/29355075/,pubmed_abstract,Abstract,verified,"endpoint,value,denominator,timepoint,population:4",20,2026-07-31
+ICI-da9d41fc80-01,PMID:29355075,https://pubmed.ncbi.nlm.nih.gov/29355075/,pubmed_abstract,Abstract,verified,"endpoint,value,denominator,population:4",17,2026-07-31
+ICI-4b5e624be8-01,PMID:29355075,https://pubmed.ncbi.nlm.nih.gov/29355075/,pubmed_abstract,Abstract,verified,"endpoint,value,denominator,timepoint,population:4",20,2026-07-31
+ICI-e25634c12d-01,PMID:29355075,https://pubmed.ncbi.nlm.nih.gov/29355075/,pubmed_abstract,Abstract,verified,"endpoint,value_status,denominator,timepoint,population:4",20,2026-07-31
+ICI-1086e5daaf-01,PMID:34637336,https://pubmed.ncbi.nlm.nih.gov/34637336/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-e8b415c4d8-01,PMID:34637336,https://pubmed.ncbi.nlm.nih.gov/34637336/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-d535bbe754-01,PMID:34637336,https://pubmed.ncbi.nlm.nih.gov/34637336/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-f21f4fb8c6-01,PMID:34637336,https://pubmed.ncbi.nlm.nih.gov/34637336/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value_status,denominator,timepoint",17,2026-07-31
+ICI-c391647a74-01,PMID:34637336,https://pubmed.ncbi.nlm.nih.gov/34637336/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value_status,denominator,timepoint",17,2026-07-31
+ICI-172bcbe950-01,PMID:34637336,https://pubmed.ncbi.nlm.nih.gov/34637336/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-f71970a937-01,PMID:34637336,https://pubmed.ncbi.nlm.nih.gov/34637336/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-126ce979c6-01,PMID:34637336,https://pubmed.ncbi.nlm.nih.gov/34637336/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value_status,denominator,timepoint",17,2026-07-31
+ICI-fac074c76d-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,numerator/denominator,value,denominator,population:1",23,2026-07-31
+ICI-065ff92796-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,RESULTS > PRIMARY END POINT,verified,"endpoint,value,denominator,timepoint,population:1",17,2026-07-31
+ICI-bbff8c381a-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-54d6c0c112-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-033c8882f9-01,PMID:31532724,https://pmc.ncbi.nlm.nih.gov/articles/PMC6943974/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value",12,2026-07-31
+ICI-8f71cb2eac-01,PMID:31532724,https://pmc.ncbi.nlm.nih.gov/articles/PMC6943974/,pmc_abstract,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c32679e1c3-01,PMID:31532724,https://pmc.ncbi.nlm.nih.gov/articles/PMC6943974/,pmc_abstract,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-57d9af4608-01,PMID:31532724,https://pmc.ncbi.nlm.nih.gov/articles/PMC6943974/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value_status,timepoint",15,2026-07-31
+ICI-9459107c19-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-5d159331b2-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-d107db86df-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-353edd1447-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,denominator,ci,timepoint,population:3",19,2026-07-31
+ICI-f4c11e3e55-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-e16f38e43f-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-cb4fc6cc85-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-2f44f89310-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-001726a0e3-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-e42db6628c-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-d7188974ab-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,population:1",15,2026-07-31
+ICI-fad62b3255-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-b8f9719958-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-4182f54785-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,"Abstract, Results",located_unverified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-1978c8ccd2-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,"Abstract, Results",located_unverified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-5ccaa6b719-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,"Abstract, Results",located_unverified,"endpoint,value,denominator,population:1",15,2026-07-31
+ICI-c8e2ba8f45-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-aef2b3301d-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-732c723e34-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,"Abstract, Results",located_unverified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-1452386811-01,PMID:30620669,https://pmc.ncbi.nlm.nih.gov/articles/PMC6528729/,pmc_abstract,"Abstract, Results",located_unverified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-15c4121090-01,PMID:31609651,https://pmc.ncbi.nlm.nih.gov/articles/PMC6881098/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-c09b429cc5-01,PMID:31609651,https://pmc.ncbi.nlm.nih.gov/articles/PMC6881098/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-e045c0d841-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-b3d75c53c7-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-f6db400548-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,timepoint,population:3",19,2026-07-31
+ICI-d318c83a29-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,located_unverified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-508bc91a3e-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-0ec5911eda-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-551c15df42-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-93676babf6-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,timepoint,population:3",19,2026-07-31
+ICI-ab59b6106e-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,located_unverified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-7014291b7c-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-96b4d412b9-01,PMID:31582355,https://pubmed.ncbi.nlm.nih.gov/31582355/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-f81f4324e3-01,PMID:31582355,https://pubmed.ncbi.nlm.nih.gov/31582355/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a0755a9960-01,PMID:31582355,https://pubmed.ncbi.nlm.nih.gov/31582355/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,timepoint,population:1",12,2026-07-31
+ICI-db97f9fefe-01,PMID:31582355,https://pubmed.ncbi.nlm.nih.gov/31582355/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a89af1a5e9-01,PMID:31582355,https://pubmed.ncbi.nlm.nih.gov/31582355/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-2a529a2f70-01,PMID:31582355,https://pubmed.ncbi.nlm.nih.gov/31582355/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,denominator,timepoint,population:1",14,2026-07-31
+ICI-a4abe5b031-01,PMID:33026938,https://pubmed.ncbi.nlm.nih.gov/33026938/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-ba043c8be9-01,PMID:35108470,https://pubmed.ncbi.nlm.nih.gov/35108470/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-b6aab72384-01,PMID:35108470,https://pubmed.ncbi.nlm.nih.gov/35108470/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-f8c46d915d-01,PMID:35108470,https://pubmed.ncbi.nlm.nih.gov/35108470/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-1a821e877e-01,PMID:35108470,https://pubmed.ncbi.nlm.nih.gov/35108470/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-0d68475749-01,PMID:35108470,https://pubmed.ncbi.nlm.nih.gov/35108470/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-7adb9b1ccb-01,PMID:35108470,https://pubmed.ncbi.nlm.nih.gov/35108470/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-30fdf982ae-01,PMID:35108470,https://pubmed.ncbi.nlm.nih.gov/35108470/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-975d83e915-01,DOI:10.1182/blood.2019004753,https://pmc.ncbi.nlm.nih.gov/articles/PMC7869188/,pmc_abstract,Abstract,verified,"endpoint,numerator/denominator,value,denominator,ci,population:6",29,2026-07-31
+ICI-7b62042b23-01,DOI:10.1182/blood.2019004753,https://pmc.ncbi.nlm.nih.gov/articles/PMC7869188/,pmc_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-ad7e64190e-01,DOI:10.1182/blood.2019004753,https://pmc.ncbi.nlm.nih.gov/articles/PMC7869188/,pmc_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a65827d41e-01,DOI:10.1182/blood.2019004753,https://pmc.ncbi.nlm.nih.gov/articles/PMC7869188/,pmc_abstract,Abstract,verified,"endpoint,denominator,timepoint,population:6",16,2026-07-31
+ICI-a85db4ba09-01,DOI:10.1182/blood.2019004753,https://pmc.ncbi.nlm.nih.gov/articles/PMC7869188/,pmc_abstract,Abstract,verified,"endpoint,value,denominator,ci,timepoint,population:6",24,2026-07-31
+ICI-d2872bd715-01,DOI:10.1182/blood.2019004753,https://pmc.ncbi.nlm.nih.gov/articles/PMC7869188/,pmc_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-abaced8733-01,DOI:10.1182/blood.2019004753,https://pmc.ncbi.nlm.nih.gov/articles/PMC7869188/,pmc_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-b6231dd107-01,DOI:10.1182/blood.2019004753,https://pmc.ncbi.nlm.nih.gov/articles/PMC7869188/,pmc_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-b18146c252-01,DOI:10.1182/blood.2019004753,https://pmc.ncbi.nlm.nih.gov/articles/PMC7869188/,pmc_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-e680dc5342-01,PMID:32437507,https://pmc.ncbi.nlm.nih.gov/articles/PMC7243167/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-36ae967c82-01,PMID:32437507,https://pmc.ncbi.nlm.nih.gov/articles/PMC7243167/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-2adc60ea45-01,PMID:32437507,https://pmc.ncbi.nlm.nih.gov/articles/PMC7243167/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-1b70a4143f-01,PMID:32437507,https://pmc.ncbi.nlm.nih.gov/articles/PMC7243167/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-6fd5feb80c-01,PMID:32437507,https://pmc.ncbi.nlm.nih.gov/articles/PMC7243167/,pmc_full_text,"Abstract, Results",verified,"endpoint,denominator,timepoint",13,2026-07-31
+ICI-f24b5cba72-01,PMID:32437507,https://pmc.ncbi.nlm.nih.gov/articles/PMC7243167/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-78740348d5-01,PMID:29584546,https://pmc.ncbi.nlm.nih.gov/articles/PMC6075855/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,population:1",19,2026-07-31
+ICI-ccd67105ee-01,PMID:29584546,https://pmc.ncbi.nlm.nih.gov/articles/PMC6075855/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:1",22,2026-07-31
+ICI-0401547eae-01,PMID:29584546,https://pmc.ncbi.nlm.nih.gov/articles/PMC6075855/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:1",22,2026-07-31
+ICI-2588285332-01,PMID:29584546,https://pmc.ncbi.nlm.nih.gov/articles/PMC6075855/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-5376b48c43-01,PMID:29584546,https://pmc.ncbi.nlm.nih.gov/articles/PMC6075855/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-92255bb6fc-01,PMID:28441111,https://pmc.ncbi.nlm.nih.gov/articles/PMC5791843/,pmc_abstract,"Abstract, Results",verified,"endpoint,denominator,ci",14,2026-07-31
+ICI-1a1f13bbdd-01,PMID:28441111,https://pmc.ncbi.nlm.nih.gov/articles/PMC5791843/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-7049d9192b-01,PMID:31409671,https://pmc.ncbi.nlm.nih.gov/articles/PMC6776792/,pmc_abstract,Abstract,verified,"endpoint,value,denominator,ci,population:6",21,2026-07-31
+ICI-721ac01874-01,PMID:31409671,https://pmc.ncbi.nlm.nih.gov/articles/PMC6776792/,pmc_abstract,Abstract,verified,"endpoint,value,denominator,population:6",17,2026-07-31
+ICI-61867d5430-01,PMID:31679945,https://pubmed.ncbi.nlm.nih.gov/31679945/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-9ae9f65246-01,PMID:31679945,https://pubmed.ncbi.nlm.nih.gov/31679945/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,denominator,timepoint,population:2",15,2026-07-31
+ICI-3d65890d97-01,PMID:31679945,https://pubmed.ncbi.nlm.nih.gov/31679945/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3db57f96fc-01,PMID:31679945,https://pubmed.ncbi.nlm.nih.gov/31679945/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-1b0d20ad25-01,PMID:31679945,https://pubmed.ncbi.nlm.nih.gov/31679945/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,denominator,timepoint,population:3",16,2026-07-31
+ICI-4c8dcac8de-01,PMID:31679945,https://pubmed.ncbi.nlm.nih.gov/31679945/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-743e9b1529-01,PMID:31679945,https://pubmed.ncbi.nlm.nih.gov/31679945/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-400ae9a1d4-01,PMID:31679945,https://pubmed.ncbi.nlm.nih.gov/31679945/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,timepoint,population:2",13,2026-07-31
+ICI-6d0e8d650e-01,PMID:31679945,https://pubmed.ncbi.nlm.nih.gov/31679945/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-115459b2ac-01,DOI:10.1016/j.ejca.2018.11.015,https://doi.org/10.1016/j.ejca.2018.11.015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-1c58e794bd-01,DOI:10.1016/j.ejca.2018.11.015,https://doi.org/10.1016/j.ejca.2018.11.015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-0806626c27-01,DOI:10.1016/j.ejca.2018.11.015,https://doi.org/10.1016/j.ejca.2018.11.015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-68b73b8a7c-01,DOI:10.1016/j.ejca.2018.11.015,https://doi.org/10.1016/j.ejca.2018.11.015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-63197a5a9a-01,DOI:10.1016/j.ejca.2018.11.015,https://doi.org/10.1016/j.ejca.2018.11.015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-33e04a560a-01,DOI:10.1016/j.ejca.2018.11.015,https://doi.org/10.1016/j.ejca.2018.11.015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-399cb5d0cb-01,DOI:10.1016/j.ejca.2018.11.015,https://doi.org/10.1016/j.ejca.2018.11.015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-ae503046aa-01,PMID:30383184,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439564/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,ci,population:2",18,2026-07-31
+ICI-4614dbd717-01,PMID:30383184,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439564/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,population:1",19,2026-07-31
+ICI-c9a3ab079d-01,PMID:30383184,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439564/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,population:2",20,2026-07-31
+ICI-876f6088ed-01,PMID:29955135,https://pmc.ncbi.nlm.nih.gov/articles/PMC6048158/,pmc_full_text,Table 3,verified,curated estimate note names the exact source table or figure,0,2026-07-31
+ICI-ab6de4e7c2-01,PMID:27646946,https://pmc.ncbi.nlm.nih.gov/articles/PMC6804896/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,numerator/denominator,value,denominator,population:2",23,2026-07-31
+ICI-525a85c4f5-01,PMID:27646946,https://pmc.ncbi.nlm.nih.gov/articles/PMC6804896/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,value,denominator,timepoint,population:2",18,2026-07-31
+ICI-092506171c-01,PMID:27646946,https://pmc.ncbi.nlm.nih.gov/articles/PMC6804896/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,value,denominator,timepoint,population:2",18,2026-07-31
+ICI-495787714d-01,PMID:29955135,https://pmc.ncbi.nlm.nih.gov/articles/PMC6048158/,pmc_full_text,Table 3,verified,curated estimate note names the exact source table or figure,0,2026-07-31
+ICI-8c52580418-01,PMID:27646946,https://pmc.ncbi.nlm.nih.gov/articles/PMC6804896/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,numerator/denominator,value,denominator,population:2",23,2026-07-31
+ICI-3023486645-01,PMID:27646946,https://pmc.ncbi.nlm.nih.gov/articles/PMC6804896/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,value,denominator,timepoint,population:2",18,2026-07-31
+ICI-3fb6937ac4-01,PMID:27646946,https://pmc.ncbi.nlm.nih.gov/articles/PMC6804896/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,value,denominator,timepoint,population:2",18,2026-07-31
+ICI-7487baac53-01,PMID:33529058,https://pmc.ncbi.nlm.nih.gov/articles/PMC8078262/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,population:1",13,2026-07-31
+ICI-40be47aad0-01,PMID:33529058,https://pmc.ncbi.nlm.nih.gov/articles/PMC8078262/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,population:1",15,2026-07-31
+ICI-5b931e41ff-01,PMID:33529058,https://pmc.ncbi.nlm.nih.gov/articles/PMC8078262/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c6f8144c0b-01,PMID:33529058,https://pmc.ncbi.nlm.nih.gov/articles/PMC8078262/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,denominator,timepoint,population:1",14,2026-07-31
+ICI-74ee393f60-01,PMID:33529058,https://pmc.ncbi.nlm.nih.gov/articles/PMC8078262/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,ci,timepoint,population:1",22,2026-07-31
+ICI-048150ac07-01,PMID:33529058,https://pmc.ncbi.nlm.nih.gov/articles/PMC8078262/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-e1696a6eee-01,DOI:10.1200/JCO.2019.37.15_suppl.4569,https://doi.org/10.1200/JCO.2019.37.15_suppl.4569,doi_record,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-ba2c15eea4-01,DOI:10.1200/JCO.2019.37.15_suppl.4569,https://doi.org/10.1200/JCO.2019.37.15_suppl.4569,doi_record,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-12222b7086-01,PMID:33529058,https://pmc.ncbi.nlm.nih.gov/articles/PMC8078262/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,population:1",13,2026-07-31
+ICI-3c0861434d-01,DOI:10.1200/JCO.2019.37.15_suppl.4569,https://doi.org/10.1200/JCO.2019.37.15_suppl.4569,doi_record,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-d1d7ea7f64-01,PMID:26406148,https://pmc.ncbi.nlm.nih.gov/articles/PMC5719487/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,population:1",13,2026-07-31
+ICI-cde7728448-01,PMID:26406148,https://pmc.ncbi.nlm.nih.gov/articles/PMC5719487/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,timepoint,population:1",16,2026-07-31
+ICI-3f9c08e582-01,PMID:26406148,https://pmc.ncbi.nlm.nih.gov/articles/PMC5719487/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,ci,timepoint,population:1",20,2026-07-31
+ICI-a76671931a-01,PMID:26406148,https://pmc.ncbi.nlm.nih.gov/articles/PMC5719487/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value",12,2026-07-31
+ICI-ba11a5b1b1-01,PMID:26406148,https://pmc.ncbi.nlm.nih.gov/articles/PMC5719487/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,ci,timepoint",19,2026-07-31
+ICI-fbc99ba6f6-01,PMID:26406148,https://pmc.ncbi.nlm.nih.gov/articles/PMC5719487/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,ci,timepoint",19,2026-07-31
+ICI-dd6e17da69-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a400b2be5c-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-5993a4ad6a-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-88ba2f2172-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value_status,timepoint,population:2",17,2026-07-31
+ICI-6b2e5800e3-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-79299c47c8-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,Table 2,verified,"endpoint,value_status,denominator,timepoint,population:3",21,2026-07-31
+ICI-558467b418-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-4bd4533ca2-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,population:2",14,2026-07-31
+ICI-6faf5ed780-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-fc755f7866-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,RESULTS > EFFICACY > Exploratory Outcomes According to PD-L1 Expression Level,verified,"endpoint,value,timepoint,population:2",16,2026-07-31
+ICI-d7ddba5ce8-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-e02a6a2af9-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-2ba1f4b363-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,RESULTS > EFFICACY > Secondary End Points in the Intention-to-Treat Population,verified,"endpoint,value,timepoint,population:1",15,2026-07-31
+ICI-75c08bb4ec-01,PMID:29562145,https://pmc.ncbi.nlm.nih.gov/articles/PMC5972549/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value_status,denominator,timepoint",17,2026-07-31
+ICI-74f4bc9574-01,PMID:29867230,https://pmc.ncbi.nlm.nih.gov/articles/PMC6721896/,pmc_full_text,Results > Efficacy.,verified,"endpoint,value,population:2",13,2026-07-31
+ICI-6f3c5a80c9-01,PMID:29867230,https://pmc.ncbi.nlm.nih.gov/articles/PMC6721896/,pmc_full_text,Results > Efficacy.,verified,"endpoint,value,population:2",13,2026-07-31
+ICI-929e53c50f-01,PMID:29867230,https://pmc.ncbi.nlm.nih.gov/articles/PMC6721896/,pmc_full_text,Results > Efficacy.,verified,"endpoint,value,timepoint,population:2",16,2026-07-31
+ICI-e6fa7070be-01,PMID:29867230,https://pmc.ncbi.nlm.nih.gov/articles/PMC6721896/,pmc_full_text,Results > Efficacy.,verified,"endpoint,value,population:4",14,2026-07-31
+ICI-7be940d63d-01,PMID:29867230,https://pmc.ncbi.nlm.nih.gov/articles/PMC6721896/,pmc_full_text,Results > Efficacy.,verified,"endpoint,value,ci,timepoint,population:4",21,2026-07-31
+ICI-06c2905f2c-01,PMID:29867230,https://pmc.ncbi.nlm.nih.gov/articles/PMC6721896/,pmc_full_text,Results > Efficacy.,verified,"endpoint,value",11,2026-07-31
+ICI-c1bf57d928-01,PMID:29867230,https://pmc.ncbi.nlm.nih.gov/articles/PMC6721896/,pmc_full_text,Results > Efficacy.,verified,"endpoint,value,timepoint",14,2026-07-31
+ICI-36e5ed46b2-01,PMID:29867230,https://pmc.ncbi.nlm.nih.gov/articles/PMC6721896/,pmc_full_text,Results > Efficacy.,verified,"endpoint,value,population:2",13,2026-07-31
+ICI-b71d41ed18-01,PMID:29867230,https://pmc.ncbi.nlm.nih.gov/articles/PMC6721896/,pmc_full_text,Results > Efficacy.,verified,"endpoint,value,ci,timepoint,population:2",20,2026-07-31
+ICI-cc9a5e0825-01,PMID:33529058,https://pmc.ncbi.nlm.nih.gov/articles/PMC8078262/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,population:1",13,2026-07-31
+ICI-f9208d1721-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,ci,population:1",18,2026-07-31
+ICI-6b55e578ad-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Table 4:,verified,"endpoint,value,denominator,population:1",16,2026-07-31
+ICI-587c2a8f1e-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Table 4:,verified,"endpoint,denominator,timepoint,population:1",15,2026-07-31
+ICI-64664fa73d-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,timepoint,population:1",17,2026-07-31
+ICI-cc67a3135f-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,timepoint,population:1",17,2026-07-31
+ICI-7f5eb696e1-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,"Abstract, Findings",verified,"endpoint,value,denominator,ci,population:1",19,2026-07-31
+ICI-ec4200c61e-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,population:1",14,2026-07-31
+ICI-78750f0529-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,timepoint,population:1",17,2026-07-31
+ICI-337217ea27-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,timepoint,population:1",17,2026-07-31
+ICI-31c4f078ca-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,timepoint,population:1",17,2026-07-31
+ICI-bbaeb9fa63-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,timepoint,population:1",17,2026-07-31
+ICI-8a96e6cba9-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,population:2",15,2026-07-31
+ICI-6edcef92d1-01,PMID:28434648,https://pmc.ncbi.nlm.nih.gov/articles/PMC7539326/,pmc_full_text,Results,verified,"endpoint,value,denominator,population:2",15,2026-07-31
+ICI-0ad7a7d2d8-01,PMID:33001135,https://pmc.ncbi.nlm.nih.gov/articles/PMC7530824/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,ci",16,2026-07-31
+ICI-ee55df807c-01,PMID:33001135,https://pmc.ncbi.nlm.nih.gov/articles/PMC7530824/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-d064e71065-01,PMID:33001135,https://pmc.ncbi.nlm.nih.gov/articles/PMC7530824/,pmc_full_text,"Abstract, Results",verified,"endpoint,value_status,timepoint",15,2026-07-31
+ICI-af01af16b5-01,PMID:33001135,https://pmc.ncbi.nlm.nih.gov/articles/PMC7530824/,pmc_full_text,Results,verified,"endpoint,value,timepoint,population:1",15,2026-07-31
+ICI-ddd7f98d43-01,PMID:33001135,https://pmc.ncbi.nlm.nih.gov/articles/PMC7530824/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-6e978d0f58-01,PMID:33001135,https://pmc.ncbi.nlm.nih.gov/articles/PMC7530824/,pmc_full_text,Table.,verified,"endpoint,value,denominator,timepoint,population:1",19,2026-07-31
+ICI-fee7335545-01,PMID:33001135,https://pmc.ncbi.nlm.nih.gov/articles/PMC7530824/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-6f4689caf8-01,PMID:33001135,https://pmc.ncbi.nlm.nih.gov/articles/PMC7530824/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-f198f5c4b6-01,PMID:38844309,https://pubmed.ncbi.nlm.nih.gov/38844309/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,population:2",14,2026-07-31
+ICI-2e8f590173-01,PMID:38844309,https://pubmed.ncbi.nlm.nih.gov/38844309/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-2ed96eedbc-01,PMID:38844309,https://pubmed.ncbi.nlm.nih.gov/38844309/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci,timepoint,population:2",21,2026-07-31
+ICI-e29b6e85a5-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-3356419757-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-212d27db9c-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-15e3b58699-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-83bfc48f29-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-608df4bed5-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-ad825ad73b-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-ef9705b258-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-50158d5c35-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-243fff63b6-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-f834cd0444-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-17b105bce4-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-35b9cfa565-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-1a577b99d3-01,DOI:10.1056/EVIDoa2100070,https://doi.org/10.1056/EVIDoa2100070,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-bbe300d326-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,Results > Efficacy,verified,"endpoint,value,population:1",12,2026-07-31
+ICI-4bb87fd546-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,Results > Efficacy,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-a77be98e0c-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-e49237a35b-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,population:1",19,2026-07-31
+ICI-59b50426f3-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:1",22,2026-07-31
+ICI-21dbb61b2b-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-0e85cfe55d-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,"Abstract, Results",verified,"endpoint,timepoint,population:1",12,2026-07-31
+ICI-9abbc81fd4-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-6a742a88f1-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,"Abstract, Results",verified,"endpoint,timepoint,population:1",12,2026-07-31
+ICI-d7be178df9-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-701b430ad3-01,PMID:26412456,https://pmc.ncbi.nlm.nih.gov/articles/PMC5705936/,pmc_full_text,"Abstract, Results",verified,"endpoint,timepoint,population:1",12,2026-07-31
+ICI-0f54d83fe4-01,PMID:27718847,https://pubmed.ncbi.nlm.nih.gov/27718847/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-1541540c6b-01,PMID:27718847,https://pubmed.ncbi.nlm.nih.gov/27718847/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-422127f512-01,PMID:27718847,https://pubmed.ncbi.nlm.nih.gov/27718847/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value",12,2026-07-31
+ICI-629c395ded-01,PMID:31562796,https://pubmed.ncbi.nlm.nih.gov/31562796/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-baed09d614-01,PMID:31562796,https://pubmed.ncbi.nlm.nih.gov/31562796/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-0ef4198abe-01,PMID:31562796,https://pubmed.ncbi.nlm.nih.gov/31562796/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint,population:1",16,2026-07-31
+ICI-f7bf901d27-01,PMID:31562796,https://pubmed.ncbi.nlm.nih.gov/31562796/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-5cc9d59a69-01,PMID:31562796,https://pubmed.ncbi.nlm.nih.gov/31562796/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint,population:1",16,2026-07-31
+ICI-52803ba4cf-01,PMID:36223558,https://pmc.ncbi.nlm.nih.gov/articles/PMC9937094/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,timepoint,population:3",18,2026-07-31
+ICI-e0081e5893-01,PMID:32997907,https://pubmed.ncbi.nlm.nih.gov/32997907/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-4439b03c5c-01,PMID:32997907,https://pubmed.ncbi.nlm.nih.gov/32997907/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-2c41aa9242-01,PMID:32997907,https://pubmed.ncbi.nlm.nih.gov/32997907/,pubmed_abstract,"Abstract, Results",verified,"endpoint,timepoint,population:2",13,2026-07-31
+ICI-919fa6659e-01,PMID:32997907,https://pubmed.ncbi.nlm.nih.gov/32997907/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-25b2af6aac-01,PMID:27979383,https://pmc.ncbi.nlm.nih.gov/articles/PMC6886121/,pmc_full_text,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-ab42735a77-01,PMID:27979383,https://pmc.ncbi.nlm.nih.gov/articles/PMC6886121/,pmc_full_text,"Abstract, Findings",verified,"endpoint,denominator,timepoint",13,2026-07-31
+ICI-b3d0d4438b-01,PMID:29773717,https://pmc.ncbi.nlm.nih.gov/articles/PMC6030433/,pmc_full_text,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-40ee4f78ab-01,PMID:29773717,https://pmc.ncbi.nlm.nih.gov/articles/PMC6030433/,pmc_full_text,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-40ee4f78ab-02,PMID:29773717,https://pmc.ncbi.nlm.nih.gov/articles/PMC6030433/,pmc_full_text,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-2e06c5f7d3-01,PMID:29773717,https://pmc.ncbi.nlm.nih.gov/articles/PMC6030433/,pmc_full_text,Abstract,verified,"endpoint,value,denominator,population:3",17,2026-07-31
+ICI-1c401c554d-01,PMID:29773717,https://pmc.ncbi.nlm.nih.gov/articles/PMC6030433/,pmc_full_text,Results > Co-mutations in STK11/LKB1 are associated with inferior clinical outcome with PD-1 blockade in multiple independent cohorts of KRAS-mutant LUAC,verified,"endpoint,value,denominator,population:3",16,2026-07-31
+ICI-be21515948-01,PMID:26028407,https://pmc.ncbi.nlm.nih.gov/articles/PMC4681400/,pmc_full_text,Table 2,verified,curated estimate note names the exact source table or figure,0,2026-07-31
+ICI-5b813640a5-01,PMID:26028407,https://pmc.ncbi.nlm.nih.gov/articles/PMC4681400/,pmc_full_text,Table 2,verified,curated estimate note names the exact source table or figure,0,2026-07-31
+ICI-79f3d709fb-01,PMID:26028407,https://pmc.ncbi.nlm.nih.gov/articles/PMC4681400/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,timepoint,population:2",17,2026-07-31
+ICI-20c769fcb5-01,PMID:26028407,https://pmc.ncbi.nlm.nih.gov/articles/PMC4681400/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,ci,timepoint,population:2",21,2026-07-31
+ICI-20ef0a8cde-01,PMID:26028407,https://pmc.ncbi.nlm.nih.gov/articles/PMC4681400/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,ci,population:2",18,2026-07-31
+ICI-c6a98e5172-01,PMID:26028407,https://pmc.ncbi.nlm.nih.gov/articles/PMC4681400/,pmc_full_text,Table 2,verified,"endpoint,value_status,denominator,timepoint,population:2",20,2026-07-31
+ICI-a55f83933e-01,DOI:10.1200/JCO.20.01605,https://pmc.ncbi.nlm.nih.gov/articles/PMC8078445/,pmc_full_text,RESULTS > Tumor Response,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-fef3211a5c-01,PMID:27718847,https://pubmed.ncbi.nlm.nih.gov/27718847/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-bc41e5a2f8-01,PMID:27718847,https://pubmed.ncbi.nlm.nih.gov/27718847/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-387932c49f-01,PMID:27718847,https://pubmed.ncbi.nlm.nih.gov/27718847/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value_status,timepoint",15,2026-07-31
+ICI-d9f97a062f-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-fd1d20b4a9-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-c9425f6f6e-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-df9bc910a7-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,timepoint,population:3",19,2026-07-31
+ICI-9374924e16-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-22ba3b1e19-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-a36540dcf8-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,value,denominator,timepoint,population:3",19,2026-07-31
+ICI-ae96c8bb72-01,PMID:36808285,https://pmc.ncbi.nlm.nih.gov/articles/PMC10398811/,pmc_full_text,Results > No Survival Benefit Was Observed Across Cohorts,verified,"endpoint,denominator,timepoint,population:3",15,2026-07-31
+ICI-a5110c10af-01,DOI:10.1080/10428194.2022.2034155,https://doi.org/10.1080/10428194.2022.2034155,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-00c2bac28b-01,DOI:10.1080/10428194.2022.2034155,https://doi.org/10.1080/10428194.2022.2034155,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-5a37718a4b-01,DOI:10.1080/10428194.2022.2034155,https://doi.org/10.1080/10428194.2022.2034155,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-74fb282c7c-01,DOI:10.1080/10428194.2022.2034155,https://doi.org/10.1080/10428194.2022.2034155,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-8822167caa-01,DOI:10.1080/10428194.2022.2034155,https://doi.org/10.1080/10428194.2022.2034155,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-9aec2e4744-01,DOI:10.1080/10428194.2022.2034155,https://doi.org/10.1080/10428194.2022.2034155,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-b7d9a56e32-01,DOI:10.1080/10428194.2022.2034155,https://doi.org/10.1080/10428194.2022.2034155,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-13b1a410d0-01,DOI:10.1080/10428194.2022.2034155,https://doi.org/10.1080/10428194.2022.2034155,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-ba05b51ac5-01,DOI:10.1080/10428194.2022.2034155,https://doi.org/10.1080/10428194.2022.2034155,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-7502d759c8-01,PMID:35289329,https://pmc.ncbi.nlm.nih.gov/articles/PMC8921328/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-52e16b7ccb-01,PMID:35289329,https://pmc.ncbi.nlm.nih.gov/articles/PMC8921328/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-2843a019c0-01,PMID:35289329,https://pmc.ncbi.nlm.nih.gov/articles/PMC8921328/,pmc_full_text,Results > Patients > Efficacy,verified,"endpoint,value,denominator,ci,timepoint,population:2",22,2026-07-31
+ICI-784f9b8f57-01,PMID:35289329,https://pmc.ncbi.nlm.nih.gov/articles/PMC8921328/,pmc_full_text,Supplementary Figure 2,verified,curated estimate note names the exact source table or figure,0,2026-07-31
+ICI-6391ac3bad-01,PMID:35289329,https://pmc.ncbi.nlm.nih.gov/articles/PMC8921328/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-2ddb5630e5-01,PMID:35289329,https://pmc.ncbi.nlm.nih.gov/articles/PMC8921328/,pmc_full_text,Results > Patients > Efficacy,verified,"endpoint,timepoint,population:1",11,2026-07-31
+ICI-96dcba4ace-01,PMID:33836153,https://pubmed.ncbi.nlm.nih.gov/33836153/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-789050bded-01,PMID:33836153,https://pubmed.ncbi.nlm.nih.gov/33836153/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-94c74816c2-01,PMID:33836153,https://pubmed.ncbi.nlm.nih.gov/33836153/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-af48088927-01,PMID:33836153,https://pubmed.ncbi.nlm.nih.gov/33836153/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-d5599a7308-01,PMID:33836153,https://pubmed.ncbi.nlm.nih.gov/33836153/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,denominator,timepoint,population:1",14,2026-07-31
+ICI-17009f0210-01,PMID:33836153,https://pubmed.ncbi.nlm.nih.gov/33836153/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-2ba924d213-01,PMID:33836153,https://pubmed.ncbi.nlm.nih.gov/33836153/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-b69c9f3b38-01,PMID:33836153,https://pubmed.ncbi.nlm.nih.gov/33836153/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-436bf42bcc-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-77a7f6d5bb-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,denominator,timepoint",13,2026-07-31
+ICI-b076397f08-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3eedef77bf-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-e83f5e10aa-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-fc34e216db-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-5ee55a04ad-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,denominator,timepoint,population:1",14,2026-07-31
+ICI-ec1c116e7f-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-d8b4271412-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-d60e8738c3-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,value,denominator,population:1",15,2026-07-31
+ICI-a2b8ab3474-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-334657565c-01,PMID:33485464,https://pubmed.ncbi.nlm.nih.gov/33485464/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-fcb6ecd25e-01,PMID:30605211,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439847/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-acf81d8aa7-01,PMID:30605211,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439847/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-bc313ba925-01,PMID:30605211,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439847/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a3fbd53406-01,PMID:30605211,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439847/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-5e9ecac834-01,PMID:30605211,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439847/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-ded3f3a8bb-01,PMID:30605211,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439847/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-d6ede0840b-01,PMID:30605211,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439847/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-7599e31ef1-01,PMID:30605211,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439847/,pmc_abstract,"Abstract, Results",verified,"endpoint,numerator/denominator,value,ci,population:2",26,2026-07-31
+ICI-6046d61b34-01,PMID:30605211,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439847/,pmc_abstract,"Abstract, Results",verified,"endpoint,numerator/denominator,value,ci,population:2",26,2026-07-31
+ICI-94980ac18f-01,PMID:30937889,https://pubmed.ncbi.nlm.nih.gov/30937889/,pubmed_abstract,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-a45ca3ed48-01,PMID:30937889,https://pubmed.ncbi.nlm.nih.gov/30937889/,pubmed_abstract,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-0415d548a7-01,PMID:34590004,https://pmc.ncbi.nlm.nih.gov/articles/PMC8474479/,pmc_full_text,Results > Efficacy of Nivolumab,located_unverified,"endpoint,value,denominator,ci,population:1",18,2026-07-31
+ICI-ccaabf1e7d-01,DOI:10.1038/s41416-020-0775-0,https://pmc.ncbi.nlm.nih.gov/articles/PMC7188798/,pmc_full_text,Table 2,verified,"endpoint,value",13,2026-07-31
+ICI-460c94526d-01,DOI:10.1038/s41416-020-0775-0,https://pmc.ncbi.nlm.nih.gov/articles/PMC7188798/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-dfafa7f774-01,DOI:10.1038/s41416-020-0775-0,https://pmc.ncbi.nlm.nih.gov/articles/PMC7188798/,pmc_full_text,Results > Outcomes and adverse events,verified,"endpoint,value,ci,population:2",17,2026-07-31
+ICI-c01eb65fd7-01,DOI:10.1038/s41416-020-0775-0,https://pmc.ncbi.nlm.nih.gov/articles/PMC7188798/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-563a6f8b09-01,DOI:10.1038/s41416-020-0775-0,https://pmc.ncbi.nlm.nih.gov/articles/PMC7188798/,pmc_full_text,Fig. 2,verified,"endpoint,denominator,timepoint",12,2026-07-31
+ICI-bb868e2991-01,DOI:10.1038/s41416-020-0775-0,https://pmc.ncbi.nlm.nih.gov/articles/PMC7188798/,pmc_full_text,Results > Outcomes and adverse events,verified,"endpoint,timepoint,population:2",12,2026-07-31
+ICI-88d294e374-01,DOI:10.1158/1078-0432.CCR-19-3356,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,verified,"endpoint,value,denominator,ci,population:3",20,2026-07-31
+ICI-60d4f8bbbc-01,DOI:10.1158/1078-0432.CCR-19-3356,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-31747d5688-01,DOI:10.1158/1078-0432.CCR-19-3356,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,"Abstract, Results:",verified,"endpoint,numerator/denominator,value,denominator,population:3",25,2026-07-31
+ICI-b5215aa0e8-01,DOI:10.1158/1078-0432.CCR-19-3356,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,located_unverified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-738e4fb409-01,DOI:10.1158/1078-0432.CCR-19-3356,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,located_unverified,"endpoint,value,denominator,timepoint,population:3",19,2026-07-31
+ICI-0bf25b2b25-01,DOI:10.1158/1078-0432.CCR-19-3356,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,located_unverified,"endpoint,value,denominator,ci,timepoint,population:3",23,2026-07-31
+ICI-e715592be4-01,DOI:10.1158/1078-0432.CCR-20-4729,https://doi.org/10.1158/1078-0432.CCR-20-4729,doi_record,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-7b3b08cecf-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,denominator,population:2",16,2026-07-31
+ICI-f3eaf068a8-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,denominator,population:2",16,2026-07-31
+ICI-06a156aa56-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,denominator,population:2",16,2026-07-31
+ICI-7854e29adf-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a768796126-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,denominator,timepoint,population:2",19,2026-07-31
+ICI-a527ac98b1-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value_status,denominator,timepoint,population:2",19,2026-07-31
+ICI-87addd4403-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,denominator,timepoint,population:2",19,2026-07-31
+ICI-a36ef6e5bd-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,denominator,timepoint,population:2",19,2026-07-31
+ICI-1d5ca61403-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,population:2",14,2026-07-31
+ICI-7cff0da616-01,PMID:30726175,https://pmc.ncbi.nlm.nih.gov/articles/PMC6424137/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,population:2",14,2026-07-31
+ICI-ccdfa8d759-01,PMID:27592805,https://pmc.ncbi.nlm.nih.gov/articles/PMC5587154/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-99299f59bb-01,PMID:27592805,https://pmc.ncbi.nlm.nih.gov/articles/PMC5587154/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-773d20dd9d-01,PMID:27592805,https://pmc.ncbi.nlm.nih.gov/articles/PMC5587154/,pmc_full_text,Results,verified,"endpoint,value,denominator,population:2",15,2026-07-31
+ICI-6e7e54bf2e-01,PMID:29566106,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885245/,pmc_abstract,"Abstract, Findings",verified,"endpoint,value,ci,population:5",19,2026-07-31
+ICI-dde3cbb439-01,PMID:29566106,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885245/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,ci,population:1",17,2026-07-31
+ICI-0a630591c2-01,PMID:31969335,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,"Abstract, Results:",verified,"endpoint,numerator/denominator,value,denominator",22,2026-07-31
+ICI-8b52db339e-01,PMID:31969335,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-6a3f52e698-01,PMID:31969335,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,Table 3,verified,curated estimate note names the exact source table or figure,0,2026-07-31
+ICI-c8a3a23b71-01,PMID:31969335,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,verified,"endpoint,value,denominator,population:1",14,2026-07-31
+ICI-a090cf83d4-01,PMID:31969335,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,verified,"endpoint,value,denominator,ci,timepoint,population:1",21,2026-07-31
+ICI-ea71995808-01,PMID:31969335,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,verified,"endpoint,value,denominator,ci,timepoint,population:1",21,2026-07-31
+ICI-75b2111485-01,PMID:31969335,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,verified,"endpoint,value,denominator,timepoint,population:1",17,2026-07-31
+ICI-13b5aaab8c-01,PMID:31969335,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,"Abstract, Results:",verified,"endpoint,numerator/denominator,value,denominator,population:1",23,2026-07-31
+ICI-355f32ded8-01,PMID:31969335,https://pmc.ncbi.nlm.nih.gov/articles/PMC7231627/,pmc_full_text,RESULTS > Outcomes,verified,"endpoint,value,denominator,ci,timepoint,population:1",21,2026-07-31
+ICI-f7f5629e48-01,PMID:40588371,https://pmc.ncbi.nlm.nih.gov/articles/PMC12211841/,pmc_full_text,"Abstract, Results",verified,"endpoint,numerator/denominator,value,denominator,population:1",23,2026-07-31
+ICI-fe80bb5e52-01,PMID:40588371,https://pmc.ncbi.nlm.nih.gov/articles/PMC12211841/,pmc_full_text,"Abstract, Results",verified,"endpoint,numerator/denominator,value,denominator,population:1",23,2026-07-31
+ICI-b246e329ef-01,PMID:40588371,https://pmc.ncbi.nlm.nih.gov/articles/PMC12211841/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-c89ab52570-01,PMID:40588371,https://pmc.ncbi.nlm.nih.gov/articles/PMC12211841/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-de9e5a30cc-01,PMID:40588371,https://pmc.ncbi.nlm.nih.gov/articles/PMC12211841/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-32cfae9d16-01,PMID:28837405,https://pubmed.ncbi.nlm.nih.gov/28837405/,pubmed_abstract,Abstract,verified,"endpoint,value,ci,population:3",19,2026-07-31
+ICI-e2e0c7bc2d-01,PMID:28837405,https://pubmed.ncbi.nlm.nih.gov/28837405/,pubmed_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-49f4b7f6b3-01,PMID:28837405,https://pubmed.ncbi.nlm.nih.gov/28837405/,pubmed_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-afbed127c7-01,PMID:28837405,https://pubmed.ncbi.nlm.nih.gov/28837405/,pubmed_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-d5996912bf-01,PMID:28837405,https://pubmed.ncbi.nlm.nih.gov/28837405/,pubmed_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-83f29e3c08-01,PMID:28837405,https://pubmed.ncbi.nlm.nih.gov/28837405/,pubmed_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-f4791d45c7-01,PMID:28837405,https://pubmed.ncbi.nlm.nih.gov/28837405/,pubmed_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-c9c49d3d02-01,PMID:28837405,https://pubmed.ncbi.nlm.nih.gov/28837405/,pubmed_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-2c3303896a-01,PMID:28837405,https://pubmed.ncbi.nlm.nih.gov/28837405/,pubmed_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-d9b891ea7b-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-055dc2375c-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-18809bdc03-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-087048cc5d-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-49c24efa4a-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-f409f20189-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-c776b9c9ae-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value_status,denominator,timepoint",17,2026-07-31
+ICI-c42fbc7316-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,population:2",14,2026-07-31
+ICI-24dc92c1d2-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,population:2",14,2026-07-31
+ICI-ff2a7114e3-01,PMID:31046082,https://pubmed.ncbi.nlm.nih.gov/31046082/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-4813ec6cff-01,PMID:30676622,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439837/,pmc_abstract,"Abstract, Findings",verified,"endpoint,value,denominator,population:6",17,2026-07-31
+ICI-623c9361ee-01,PMID:30676622,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439837/,pmc_abstract,"Abstract, Findings",verified,"endpoint,value,denominator,population:6",17,2026-07-31
+ICI-1fb161edd5-01,PMID:30676622,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439837/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,population:3",15,2026-07-31
+ICI-33fc6052f9-01,PMID:30676622,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439837/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,ci,timepoint,population:3",22,2026-07-31
+ICI-5a315e2755-01,PMID:30676622,https://pmc.ncbi.nlm.nih.gov/articles/PMC6439837/,pmc_abstract,"Abstract, Results",verified,"endpoint,value,ci,population:3",19,2026-07-31
+ICI-f39b833d2e-01,PMID:30557521,https://pubmed.ncbi.nlm.nih.gov/30557521/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-7a6ef511cd-01,NCT02054806,https://clinicaltrials.gov/study/NCT02054806,clinicaltrials_results,"Results, Outcome Measures: Progression Free Survival (PFS)",verified,"endpoint,value,ci,timepoint,population:2",21,2026-07-31
+ICI-73ebd85448-01,NCT02054806,https://clinicaltrials.gov/study/NCT02054806,clinicaltrials_results,"Results, Outcome Measures: Overall Survival (OS)",verified,"endpoint,value,ci,timepoint,population:2",21,2026-07-31
+ICI-75483f30c4-01,PMID:31682550,https://pmc.ncbi.nlm.nih.gov/articles/PMC8184060/,pmc_abstract,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-f45b1f0a1b-01,PMID:31682550,https://pmc.ncbi.nlm.nih.gov/articles/PMC8184060/,pmc_abstract,"Abstract, RESULTS",located_unverified,"endpoint,timepoint,population:1",12,2026-07-31
+ICI-9764b17ea3-01,PMID:31682550,https://pmc.ncbi.nlm.nih.gov/articles/PMC8184060/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,timepoint,population:1",12,2026-07-31
+ICI-f36557e601-01,PMID:31682550,https://pmc.ncbi.nlm.nih.gov/articles/PMC8184060/,pmc_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-221c1cd978-01,DOI:10.3390/cancers12082307,https://pmc.ncbi.nlm.nih.gov/articles/PMC7465458/,pmc_full_text,Abstract,verified,"endpoint,value,ci,population:3",19,2026-07-31
+ICI-a1a6f8e91c-01,DOI:10.3390/cancers12082307,https://pmc.ncbi.nlm.nih.gov/articles/PMC7465458/,pmc_full_text,Abstract,verified,"endpoint,value,ci,population:3",19,2026-07-31
+ICI-4d31fb10e5-01,DOI:10.3390/cancers12082307,https://pmc.ncbi.nlm.nih.gov/articles/PMC7465458/,pmc_full_text,3. Results > 3.2. Efficacy,verified,"endpoint,value,ci,population:2",17,2026-07-31
+ICI-aa8e0e890b-01,DOI:10.3390/cancers12082307,https://pmc.ncbi.nlm.nih.gov/articles/PMC7465458/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-6281a487c7-01,DOI:10.3390/cancers12082307,https://pmc.ncbi.nlm.nih.gov/articles/PMC7465458/,pmc_full_text,Abstract,verified,"endpoint,value,timepoint,population:3",18,2026-07-31
+ICI-fd7e905841-01,PMID:37130017,https://pmc.ncbi.nlm.nih.gov/articles/PMC10651864/,pmc_full_text,Results and discussion,verified,"endpoint,value,denominator,ci,population:4",20,2026-07-31
+ICI-1caa113469-01,PMID:37130017,https://pmc.ncbi.nlm.nih.gov/articles/PMC10651864/,pmc_full_text,Abstract,verified,"endpoint,value,population:6",15,2026-07-31
+ICI-de9631f7ee-01,PMID:37130017,https://pmc.ncbi.nlm.nih.gov/articles/PMC10651864/,pmc_full_text,Results and discussion,verified,"endpoint,value,denominator,population:4",16,2026-07-31
+ICI-43337d59b5-01,PMID:37130017,https://pmc.ncbi.nlm.nih.gov/articles/PMC10651864/,pmc_full_text,Results and discussion,verified,"endpoint,value_status,denominator,timepoint,population:4",19,2026-07-31
+ICI-b82af851d3-01,PMID:37130017,https://pmc.ncbi.nlm.nih.gov/articles/PMC10651864/,pmc_full_text,Results and discussion,verified,"endpoint,value,denominator,timepoint,population:4",19,2026-07-31
+ICI-80526a3d45-01,PMID:37130017,https://pmc.ncbi.nlm.nih.gov/articles/PMC10651864/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-823bcca221-01,PMID:37130017,https://pmc.ncbi.nlm.nih.gov/articles/PMC10651864/,pmc_full_text,Results and discussion,verified,"endpoint,value,denominator,timepoint,population:4",19,2026-07-31
+ICI-993251207f-01,PMID:37130017,https://pmc.ncbi.nlm.nih.gov/articles/PMC10651864/,pmc_full_text,Results and discussion,verified,"endpoint,value,denominator,population:4",16,2026-07-31
+ICI-65b09fc32a-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,ci",16,2026-07-31
+ICI-59d848ef55-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value",12,2026-07-31
+ICI-d713c0dc99-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value_status,timepoint",15,2026-07-31
+ICI-973c34629c-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-7d7294a673-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value",12,2026-07-31
+ICI-22ad261368-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value",12,2026-07-31
+ICI-dd833f74d7-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-9bd6e089dc-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-88d78f32ac-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value",12,2026-07-31
+ICI-11b6a5fbea-01,PMID:31774688,https://pmc.ncbi.nlm.nih.gov/articles/PMC7186583/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-f37d406872-01,,,missing_citation,,not_applicable,curator-derived value,0,2026-07-31
+ICI-d0e29b28b2-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,numerator/denominator,value,denominator,population:1",23,2026-07-31
+ICI-9e86265bd9-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,RESULTS > PRIMARY END POINT,verified,"endpoint,numerator/denominator,value,denominator,ci,timepoint,population:1",29,2026-07-31
+ICI-670b86ac82-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,Figure 2,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-045f96bd06-01,PMID:26028255,https://pmc.ncbi.nlm.nih.gov/articles/PMC4481136/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-157d1b1849-01,PMID:34380663,https://pmc.ncbi.nlm.nih.gov/articles/PMC8330584/,pmc_full_text,"Abstract, Results",verified,"endpoint,numerator/denominator,value,population:1",21,2026-07-31
+ICI-d4b9ddceed-01,PMID:34380663,https://pmc.ncbi.nlm.nih.gov/articles/PMC8330584/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-9676c4df19-01,PMID:34380663,https://pmc.ncbi.nlm.nih.gov/articles/PMC8330584/,pmc_full_text,Results > Outcomes,verified,"endpoint,value,denominator,ci,population:1",18,2026-07-31
+ICI-a30213aaed-01,PMID:34380663,https://pmc.ncbi.nlm.nih.gov/articles/PMC8330584/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-ca26aa02c1-01,PMID:34380663,https://pmc.ncbi.nlm.nih.gov/articles/PMC8330584/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-31cd333339-01,PMID:34380663,https://pmc.ncbi.nlm.nih.gov/articles/PMC8330584/,pmc_full_text,Results > Outcomes,verified,"endpoint,numerator/denominator,value,population:5",22,2026-07-31
+ICI-68f695eab6-01,PMID:37672694,https://pmc.ncbi.nlm.nih.gov/articles/PMC10729808/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-ac6660f176-01,PMID:37672694,https://pmc.ncbi.nlm.nih.gov/articles/PMC10729808/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-99df990742-01,PMID:37672694,https://pmc.ncbi.nlm.nih.gov/articles/PMC10729808/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,population:1",15,2026-07-31
+ICI-14ea45d388-01,PMID:37672694,https://pmc.ncbi.nlm.nih.gov/articles/PMC10729808/,pmc_full_text,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-28b78feb76-01,PMID:37672694,https://pmc.ncbi.nlm.nih.gov/articles/PMC10729808/,pmc_full_text,RESULTS > EFFICACY,verified,"endpoint,value,denominator,timepoint,population:2",18,2026-07-31
+ICI-d4d51e026e-01,PMID:37672694,https://pmc.ncbi.nlm.nih.gov/articles/PMC10729808/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-eb0f232db6-01,PMID:37672694,https://pmc.ncbi.nlm.nih.gov/articles/PMC10729808/,pmc_full_text,RESULTS > EFFICACY,verified,"endpoint,value,denominator,timepoint,population:2",18,2026-07-31
+ICI-0c6031d882-01,PMID:37672694,https://pmc.ncbi.nlm.nih.gov/articles/PMC10729808/,pmc_full_text,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-c813ebc19a-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,population:2",13,2026-07-31
+ICI-9e0fec3287-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,"Abstract, Findings:",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-0a58ba9e67-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",verified,"endpoint,value,population:1",13,2026-07-31
+ICI-9d9b2a4f31-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-0643a1207d-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c22314cfc5-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a95ee422da-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-ee5536cda9-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-20f6937be0-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a44c21bbe4-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-07b7aa4086-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-55894ec561-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-8a975a40d8-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-9a6eed08d9-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-8a35e54935-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-57d61767e6-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-6c88fa7795-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-731d06342d-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,population:1",12,2026-07-31
+ICI-b2a5638ad3-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-3a3134b17b-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-d80348660e-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,population:4",18,2026-07-31
+ICI-c2623b060c-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,"Abstract, Findings:",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-39a714d8c2-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,timepoint,population:4",17,2026-07-31
+ICI-e3e64cda80-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:4",21,2026-07-31
+ICI-397e5355c4-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:4",21,2026-07-31
+ICI-26a43e9c90-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:4",21,2026-07-31
+ICI-1f563cc0f2-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,population:3",14,2026-07-31
+ICI-eb8594ede7-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:3",21,2026-07-31
+ICI-e12e2040c4-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:3",21,2026-07-31
+ICI-c21f2242ff-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-def38304ee-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a2e719caec-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-7c1d85c64f-01,PMID:31812554,https://pubmed.ncbi.nlm.nih.gov/31812554/,pubmed_abstract,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-70976624e2-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,"Abstract, Findings:",verified,"endpoint,numerator/denominator",16,2026-07-31
+ICI-cc40aee04f-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,population:2",13,2026-07-31
+ICI-ab0d19608c-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,population:1",12,2026-07-31
+ICI-c5a846763f-01,PMID:39343511,https://pmc.ncbi.nlm.nih.gov/articles/PMC11440204/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3ce1bd36b9-01,PMID:39343511,https://pmc.ncbi.nlm.nih.gov/articles/PMC11440204/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c11835f458-01,PMID:39356983,https://pmc.ncbi.nlm.nih.gov/articles/PMC11779594/,pmc_full_text,"Abstract, RESULTS:",verified,"endpoint,value,denominator,ci,population:3",21,2026-07-31
+ICI-7d96281f66-01,PMID:39356983,https://pmc.ncbi.nlm.nih.gov/articles/PMC11779594/,pmc_full_text,"Abstract, RESULTS:",verified,"endpoint,value,denominator,timepoint,population:3",20,2026-07-31
+ICI-132bab9102-01,PMID:39356983,https://pmc.ncbi.nlm.nih.gov/articles/PMC11779594/,pmc_full_text,"Abstract, RESULTS:",verified,"endpoint,value_status,timepoint,population:3",18,2026-07-31
+ICI-0b50764941-01,PMID:39356983,https://pmc.ncbi.nlm.nih.gov/articles/PMC11779594/,pmc_full_text,"Abstract, RESULTS:",verified,"endpoint,value,ci,population:3",19,2026-07-31
+ICI-08a3707108-01,PMID:39356983,https://pmc.ncbi.nlm.nih.gov/articles/PMC11779594/,pmc_full_text,"Abstract, RESULTS:",verified,"endpoint,value,denominator,ci,population:2",20,2026-07-31
+ICI-d94b6bb0c5-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,"Abstract, Findings:",verified,"endpoint,numerator/denominator",16,2026-07-31
+ICI-b2e389837c-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,"Abstract, Findings:",verified,"endpoint,value,population:1",13,2026-07-31
+ICI-89ff10c6f4-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,population:2",13,2026-07-31
+ICI-5def647922-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,"Abstract, Findings:",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3d5c73d0ec-01,PMID:41760889,https://pmc.ncbi.nlm.nih.gov/articles/PMC13065800/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3bdccb427b-01,PMID:41760889,https://pmc.ncbi.nlm.nih.gov/articles/PMC13065800/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-702c35cb4f-01,PMID:41760889,https://pmc.ncbi.nlm.nih.gov/articles/PMC13065800/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-02efacfe24-01,PMID:41760889,https://pmc.ncbi.nlm.nih.gov/articles/PMC13065800/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-966f14ec2d-01,PMID:41760889,https://pmc.ncbi.nlm.nih.gov/articles/PMC13065800/,pmc_full_text,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-1f683d7cae-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,population:2",13,2026-07-31
+ICI-678e86ab65-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,"Abstract, Findings:",verified,"endpoint,numerator/denominator",16,2026-07-31
+ICI-7e796043d1-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,population:3",14,2026-07-31
+ICI-ede3c1f501-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-e2003093ee-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-458b806694-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-2e46a4627a-01,PMID:37429302,https://pubmed.ncbi.nlm.nih.gov/37429302/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a166d88a43-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,"Abstract, Findings:",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-ba2003b708-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,population:1",16,2026-07-31
+ICI-b09be66c23-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-1a9349bc90-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-3685d2df14-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-27d906d8d8-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-56ba2f840b-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-5a30bd2006-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-72b03ee23c-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-6b8787485e-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-d55e60ec89-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,"Abstract, Findings:",verified,"endpoint,value",12,2026-07-31
+ICI-6b3d5949b5-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-82862f9fa1-01,PMID:28988646,https://pmc.ncbi.nlm.nih.gov/articles/PMC7939029/,pmc_full_text,RESULTS,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-dcdc418d17-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-f646ad58df-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-1793125d04-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-40e61d0514-01,DOI:10.1200/JCO.2019.37.15_suppl.11015,https://doi.org/10.1200/JCO.2019.37.15_suppl.11015,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-367f3b5460-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-82493d756c-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-41ab79b829-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-e5955363a7-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-49a3e7662d-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-f5a30654c5-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-95006a6a56-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-f88742e370-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-23cadc3e71-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-42926cc658-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-29c468a953-01,PMID:27269741,https://pubmed.ncbi.nlm.nih.gov/27269741/,pubmed_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-90f14ccfd4-01,PMID:30664989,https://pubmed.ncbi.nlm.nih.gov/30664989/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-af4d467962-01,PMID:30664989,https://pubmed.ncbi.nlm.nih.gov/30664989/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci",16,2026-07-31
+ICI-19aa29a628-01,PMID:30664989,https://pubmed.ncbi.nlm.nih.gov/30664989/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,ci,timepoint",19,2026-07-31
+ICI-5c4b4bdda9-01,PMID:30664989,https://pubmed.ncbi.nlm.nih.gov/30664989/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-3b629d1cb9-01,PMID:30664989,https://pubmed.ncbi.nlm.nih.gov/30664989/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c7d27e5de6-01,PMID:30664989,https://pubmed.ncbi.nlm.nih.gov/30664989/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,population:1",15,2026-07-31
+ICI-60dd3b1cb7-01,PMID:30664989,https://pubmed.ncbi.nlm.nih.gov/30664989/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:1",22,2026-07-31
+ICI-57d77b4845-01,PMID:30664989,https://pubmed.ncbi.nlm.nih.gov/30664989/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint,population:1",18,2026-07-31
+ICI-c45f7ddf79-01,PMID:28889792,https://pmc.ncbi.nlm.nih.gov/articles/PMC5706778/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-7e43e71bba-01,PMID:28889792,https://pmc.ncbi.nlm.nih.gov/articles/PMC5706778/,pmc_full_text,RESULTS > EFFICACY,verified,"endpoint,value,timepoint,population:2",16,2026-07-31
+ICI-27c515fc41-01,PMID:28889792,https://pmc.ncbi.nlm.nih.gov/articles/PMC5706778/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,timepoint,population:1",12,2026-07-31
+ICI-20b555f216-01,PMID:28889792,https://pmc.ncbi.nlm.nih.gov/articles/PMC5706778/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-20908fed0d-01,PMID:28889792,https://pmc.ncbi.nlm.nih.gov/articles/PMC5706778/,pmc_full_text,RESULTS > EFFICACY,verified,"endpoint,value,ci,timepoint,population:1",19,2026-07-31
+ICI-8aa6f777dd-01,PMID:28889792,https://pmc.ncbi.nlm.nih.gov/articles/PMC5706778/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,timepoint",11,2026-07-31
+ICI-f5d6afe3dc-01,PMID:25891173,https://pubmed.ncbi.nlm.nih.gov/25891173/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-53f27342de-01,PMID:25891173,https://pubmed.ncbi.nlm.nih.gov/25891173/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-396667cde6-01,PMID:25891173,https://pubmed.ncbi.nlm.nih.gov/25891173/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-61af6d64ce-01,PMID:25891173,https://pubmed.ncbi.nlm.nih.gov/25891173/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-13894b2b45-01,PMID:25891173,https://pubmed.ncbi.nlm.nih.gov/25891173/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-217504b01d-01,PMID:25891173,https://pubmed.ncbi.nlm.nih.gov/25891173/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a3004563b1-01,PMID:26027431,https://pmc.ncbi.nlm.nih.gov/articles/PMC5698905/,pmc_full_text,Results > Efficacy,verified,"endpoint,value,population:1",12,2026-07-31
+ICI-407f1436e7-01,PMID:26027431,https://pmc.ncbi.nlm.nih.gov/articles/PMC5698905/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,ci,timepoint",19,2026-07-31
+ICI-be6e0822b2-01,PMID:26027431,https://pmc.ncbi.nlm.nih.gov/articles/PMC5698905/,pmc_full_text,"Abstract, Results",verified,"endpoint,timepoint",11,2026-07-31
+ICI-6615510560-01,PMID:26027431,https://pmc.ncbi.nlm.nih.gov/articles/PMC5698905/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,timepoint",15,2026-07-31
+ICI-a37f415429-01,PMID:26027431,https://pmc.ncbi.nlm.nih.gov/articles/PMC5698905/,pmc_full_text,Results > Efficacy,verified,"endpoint,value,population:1",12,2026-07-31
+ICI-fd53c9008e-01,PMID:26027431,https://pmc.ncbi.nlm.nih.gov/articles/PMC5698905/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,ci,timepoint,population:1",20,2026-07-31
+ICI-1937997384-01,PMID:26027431,https://pmc.ncbi.nlm.nih.gov/articles/PMC5698905/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,ci,timepoint,population:1",20,2026-07-31
+ICI-8fd36e30fa-01,PMID:26027431,https://pmc.ncbi.nlm.nih.gov/articles/PMC5698905/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-c2331e566c-01,PMID:26027431,https://pmc.ncbi.nlm.nih.gov/articles/PMC5698905/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,ci,timepoint,population:1",20,2026-07-31
+ICI-a1bc8eafa7-01,PMID:34818112,https://pmc.ncbi.nlm.nih.gov/articles/PMC8718224/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-ed05cf4cd2-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Findings",verified,"endpoint,numerator/denominator,value,denominator,population:1",23,2026-07-31
+ICI-d0ddb2caf4-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Results",verified,"endpoint,numerator/denominator,value,denominator,ci",26,2026-07-31
+ICI-57fb7038b4-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a0389e6e5e-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-cab740b982-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-09663178bb-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-ccaccda0f7-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-97f9f92acc-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Results",verified,"endpoint,numerator/denominator,value,denominator,ci,population:2",28,2026-07-31
+ICI-33cc121b26-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-0aa97fc15d-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Results",verified,"endpoint,numerator/denominator,value,denominator,ci,population:2",28,2026-07-31
+ICI-cf87d987e7-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_abstract,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-50e20a6ba2-01,PMID:30515672,https://pmc.ncbi.nlm.nih.gov/articles/PMC6570778/,pmc_full_text,Table 4,verified,"endpoint,denominator,ci,population:1",16,2026-07-31
+ICI-18e6f590bc-01,PMID:30515672,https://pmc.ncbi.nlm.nih.gov/articles/PMC6570778/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:1",22,2026-07-31
+ICI-3cddba579b-01,PMID:30515672,https://pmc.ncbi.nlm.nih.gov/articles/PMC6570778/,pmc_full_text,Results > Antitumor activity,verified,"endpoint,value,denominator,ci,timepoint,population:1",21,2026-07-31
+ICI-5da4d6fdf7-01,PMID:30515672,https://pmc.ncbi.nlm.nih.gov/articles/PMC6570778/,pmc_full_text,Results > Antitumor activity,verified,"endpoint,value,denominator,population:1",14,2026-07-31
+ICI-fa05476918-01,PMID:30515672,https://pmc.ncbi.nlm.nih.gov/articles/PMC6570778/,pmc_full_text,Results > Antitumor activity,verified,"endpoint,numerator/denominator,value,population:1",20,2026-07-31
+ICI-cb39f9d8c5-01,PMID:30515672,https://pmc.ncbi.nlm.nih.gov/articles/PMC6570778/,pmc_full_text,Results > Antitumor activity,verified,"endpoint,numerator/denominator,value,population:1",20,2026-07-31
+ICI-bb314fcb71-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-20a62140e7-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,Results > Antitumor activity: 1 L-mn subgroup,verified,"endpoint,value",11,2026-07-31
+ICI-6cee5f3ef2-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-ccd084e87f-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-90bfdb9944-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-40de23bd19-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-f9f8ec92c2-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-e3ccda0d08-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-8ea7d669ef-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-2674a4fd11-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-564618bbc1-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,Results > Antitumor activity: 1 L-mn subgroup,verified,"endpoint,numerator/denominator,value,ci,population:4",26,2026-07-31
+ICI-56cbc1b355-01,PMID:30717797,https://pmc.ncbi.nlm.nih.gov/articles/PMC6362598/,pmc_full_text,Results > Antitumor activity: 1 L-mn subgroup,verified,"endpoint,numerator/denominator,value,ci,population:4",26,2026-07-31
+ICI-e37537fa7c-01,PMID:29045540,https://pubmed.ncbi.nlm.nih.gov/29045540/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-2fe21eab0e-01,PMID:29045540,https://pubmed.ncbi.nlm.nih.gov/29045540/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-49ee9f3ea2-01,PMID:29045540,https://pubmed.ncbi.nlm.nih.gov/29045540/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-b738c2d9c3-01,DOI:10.1002/cncr.34657,https://doi.org/10.1002/cncr.34657,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-b9da0f2f10-01,DOI:10.1002/cncr.34657,https://doi.org/10.1002/cncr.34657,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-c9e54f1c59-01,DOI:10.1002/cncr.34657,https://doi.org/10.1002/cncr.34657,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-6c8a074707-01,DOI:10.1002/cncr.34657,https://doi.org/10.1002/cncr.34657,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-3fda461db1-01,DOI:10.1002/cncr.34657,https://doi.org/10.1002/cncr.34657,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-3c091423d1-01,DOI:10.1002/cncr.34657,https://doi.org/10.1002/cncr.34657,doi_record,,citation_only,source citation verified; no public text block was available,0,2026-07-31
+ICI-290c164100-01,PMID:31639039,https://pmc.ncbi.nlm.nih.gov/articles/PMC6805423/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-e531355aa2-01,PMID:31639039,https://pmc.ncbi.nlm.nih.gov/articles/PMC6805423/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-244928197d-01,PMID:31639039,https://pmc.ncbi.nlm.nih.gov/articles/PMC6805423/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-727d3fda5e-01,PMID:31639039,https://pmc.ncbi.nlm.nih.gov/articles/PMC6805423/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-642dd49c90-01,PMID:31639039,https://pmc.ncbi.nlm.nih.gov/articles/PMC6805423/,pmc_full_text,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-1db7f7a7ad-01,PMID:29395863,https://pmc.ncbi.nlm.nih.gov/articles/PMC10683856/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-a85194dd4a-01,PMID:29395863,https://pmc.ncbi.nlm.nih.gov/articles/PMC10683856/,pmc_full_text,Results,verified,"endpoint,value,denominator,population:3",16,2026-07-31
+ICI-ead3cd1f13-01,PMID:29395863,https://pmc.ncbi.nlm.nih.gov/articles/PMC10683856/,pmc_full_text,Results,verified,"endpoint,value,denominator,population:3",16,2026-07-31
+ICI-d27552d68f-01,PMID:29395863,https://pmc.ncbi.nlm.nih.gov/articles/PMC10683856/,pmc_full_text,"Abstract, Findings",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-1724a2983a-01,PMID:29395863,https://pmc.ncbi.nlm.nih.gov/articles/PMC10683856/,pmc_full_text,Results,verified,"endpoint,value,denominator,ci,population:3",20,2026-07-31
+ICI-6154a337a6-01,PMID:29395863,https://pmc.ncbi.nlm.nih.gov/articles/PMC10683856/,pmc_full_text,Results,verified,"endpoint,denominator,timepoint,population:3",15,2026-07-31
+ICI-fc91603344-01,PMID:29395863,https://pmc.ncbi.nlm.nih.gov/articles/PMC10683856/,pmc_full_text,Results,verified,"endpoint,denominator,timepoint,population:3",15,2026-07-31
+ICI-3d10989ced-01,PMID:29395863,https://pmc.ncbi.nlm.nih.gov/articles/PMC10683856/,pmc_full_text,Results,verified,"endpoint,denominator,timepoint,population:3",15,2026-07-31
+ICI-300be8ecf3-01,PMID:29395863,https://pmc.ncbi.nlm.nih.gov/articles/PMC10683856/,pmc_full_text,Results,verified,"endpoint,denominator,timepoint,population:3",15,2026-07-31
+ICI-74053911de-01,PMID:29906252,https://pubmed.ncbi.nlm.nih.gov/29906252/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-506b32f2a7-01,,,missing_citation,,not_applicable,curator-derived value,0,2026-07-31
+ICI-64a41d348a-01,PMID:27159395,https://pmc.ncbi.nlm.nih.gov/articles/PMC4887167/,pmc_abstract,Abstract,source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-e35f9168c5-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-81454d98c0-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-bcda9bc5e7-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-d213eb7d1f-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-adda1ffda7-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-f5d7ec3621-01,PMID:34990208,https://pmc.ncbi.nlm.nih.gov/articles/PMC8887941/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-297f54eb44-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,population:2",20,2026-07-31
+ICI-bd96872001-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-4c502a89d6-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:2",23,2026-07-31
+ICI-908902c15d-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:2",23,2026-07-31
+ICI-71a3411cc4-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-e3b25a0916-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-6b3c591537-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,population:3",17,2026-07-31
+ICI-eea0f2dbfa-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,population:3",17,2026-07-31
+ICI-3eb852a85a-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,denominator,timepoint,population:3",16,2026-07-31
+ICI-54e2770e1b-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint,population:3",20,2026-07-31
+ICI-8ececb93fb-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint,population:3",24,2026-07-31
+ICI-fbe76122a3-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint,population:3",20,2026-07-31
+ICI-d14ed900d0-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",verified,"endpoint,denominator,timepoint,population:3",16,2026-07-31
+ICI-dc53353bd1-01,PMID:39847999,https://pubmed.ncbi.nlm.nih.gov/39847999/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3ccf3aa3ac-01,PMID:34990208,https://pmc.ncbi.nlm.nih.gov/articles/PMC8887941/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-666d42d93f-01,PMID:34990208,https://pmc.ncbi.nlm.nih.gov/articles/PMC8887941/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-74214de11c-01,PMID:34990208,https://pmc.ncbi.nlm.nih.gov/articles/PMC8887941/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-f51bcdaed3-01,PMID:34990208,https://pmc.ncbi.nlm.nih.gov/articles/PMC8887941/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value_status,denominator,timepoint",17,2026-07-31
+ICI-a0105517f0-01,PMID:34990208,https://pmc.ncbi.nlm.nih.gov/articles/PMC8887941/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-b71340fe40-01,PMID:34990208,https://pmc.ncbi.nlm.nih.gov/articles/PMC8887941/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value_status,denominator,timepoint",17,2026-07-31
+ICI-c08a7eeed5-01,PMID:34990208,https://pmc.ncbi.nlm.nih.gov/articles/PMC8887941/,pmc_full_text,,not_verified,no source block matched the endpoint and row-specific evidence,0,2026-07-31
+ICI-9371a55ab6-01,PMID:27533448,https://pmc.ncbi.nlm.nih.gov/articles/PMC5767160/,pmc_full_text,RESULTS > Efficacy analyses > Objective responses,verified,"endpoint,value,ci,population:2",17,2026-07-31
+ICI-8e49d3b5f6-01,PMID:27533448,https://pmc.ncbi.nlm.nih.gov/articles/PMC5767160/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-1b0a765789-01,PMID:27533448,https://pmc.ncbi.nlm.nih.gov/articles/PMC5767160/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,ci,timepoint",19,2026-07-31
+ICI-47259e2217-01,PMID:27533448,https://pmc.ncbi.nlm.nih.gov/articles/PMC5767160/,pmc_full_text,"Abstract, RESULTS",verified,"endpoint,value,ci,timepoint",19,2026-07-31
+ICI-ed31cd419b-01,PMID:33417511,https://pubmed.ncbi.nlm.nih.gov/33417511/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3a4595afbc-01,PMID:33125309,https://pmc.ncbi.nlm.nih.gov/articles/PMC8257877/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-3d7839d921-01,PMID:33125309,https://pmc.ncbi.nlm.nih.gov/articles/PMC8257877/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-c0c8f2e533-01,PMID:33125309,https://pmc.ncbi.nlm.nih.gov/articles/PMC8257877/,pmc_abstract,"Abstract, RESULTS",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-e2df67c751-01,PMID:35361487,https://pubmed.ncbi.nlm.nih.gov/35361487/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-6feec02085-01,PMID:35361487,https://pubmed.ncbi.nlm.nih.gov/35361487/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-15d1787eb3-01,PMID:35361487,https://pubmed.ncbi.nlm.nih.gov/35361487/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator",14,2026-07-31
+ICI-862a969452-01,PMID:35361487,https://pubmed.ncbi.nlm.nih.gov/35361487/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,timepoint",17,2026-07-31
+ICI-4ae0a1ad8b-01,PMID:35361487,https://pubmed.ncbi.nlm.nih.gov/35361487/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-ba14288ab8-01,PMID:35361487,https://pubmed.ncbi.nlm.nih.gov/35361487/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci,timepoint",21,2026-07-31
+ICI-4196024f02-01,PMID:32673170,https://pmc.ncbi.nlm.nih.gov/articles/PMC7460151/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,value,denominator,ci",17,2026-07-31
+ICI-8d0d9e4e21-01,PMID:32673170,https://pmc.ncbi.nlm.nih.gov/articles/PMC7460151/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-3b85b565b0-01,PMID:32673170,https://pmc.ncbi.nlm.nih.gov/articles/PMC7460151/,pmc_full_text,"Abstract, RESULTS",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-22c34e822b-01,PMID:32673170,https://pmc.ncbi.nlm.nih.gov/articles/PMC7460151/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,value,denominator,ci",17,2026-07-31
+ICI-cfc16af897-01,PMID:32673170,https://pmc.ncbi.nlm.nih.gov/articles/PMC7460151/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,value_status,denominator,timepoint",16,2026-07-31
+ICI-fc6ffbba81-01,PMID:32673170,https://pmc.ncbi.nlm.nih.gov/articles/PMC7460151/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,value,denominator,ci,timepoint",20,2026-07-31
+ICI-b1b8b062cd-01,PMID:32673170,https://pmc.ncbi.nlm.nih.gov/articles/PMC7460151/,pmc_full_text,RESULTS > Efficacy,verified,"endpoint,value_status,denominator,timepoint",16,2026-07-31
+ICI-5c2c2237e1-01,PMID:34293460,https://pubmed.ncbi.nlm.nih.gov/34293460/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
+ICI-9eb893ac25-01,PMID:34293460,https://pubmed.ncbi.nlm.nih.gov/34293460/,pubmed_abstract,"Abstract, Results",verified,"endpoint,denominator,ci",14,2026-07-31
+ICI-897a51cb7a-01,PMID:29863979,https://pubmed.ncbi.nlm.nih.gov/29863979/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31

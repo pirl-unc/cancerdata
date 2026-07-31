@@ -39,6 +39,7 @@ from .ici import (
     cancer_ici_response_df,
     cancer_ici_response_estimates_df,
     cancer_ici_response_record,
+    cancer_ici_source_locator_audit_df,
     ici_regimens,
     pooled_ici_response,
     resolve_ici_response_source,
@@ -86,6 +87,11 @@ def ici_response_anchor_df():
 def ici_response_estimates_df():
     """Audited ICI endpoint evidence table with metrics, CIs, denominators, and refs."""
     return cancer_ici_response_estimates_df()
+
+
+def ici_source_locator_audit_df():
+    """Source-document locations and match evidence for every ICI estimate row."""
+    return cancer_ici_source_locator_audit_df()
 
 
 def best_available_ici_response(
@@ -163,12 +169,14 @@ __all__ = [
     "cancer_ici_response_df",
     "cancer_ici_response_estimates_df",
     "cancer_ici_response_record",
+    "cancer_ici_source_locator_audit_df",
     "ici_regimens",
     "ici_response_anchor_df",
     "ici_response_by_regimen",
     "ici_response_estimates_df",
     "ici_response_records_by_regimen",
     "ici_response_source",
+    "ici_source_locator_audit_df",
     "pooled_ici_response",
     "resolve_apd1_response_source",
     "resolve_ici_response_source",
