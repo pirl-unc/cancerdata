@@ -286,6 +286,7 @@ def _clear_caches():
     _classification_target_map.cache_clear()
     _classification_reference_code_map.cache_clear()
     _expression_source_cohort_counts.cache_clear()
+    _cancer_type_record_frame.cache_clear()
     _clear_cache()  # frame cache + registered derived caches (burden maps, CTA, …)
 
 
@@ -1106,6 +1107,7 @@ _CANCER_TYPE_RECORD_COLUMNS = [
 ]
 
 
+@lru_cache(maxsize=1)
 def _cancer_type_record_frame() -> pd.DataFrame:
     from .incidence import burden_category
     from .tmb import cancer_tmb
@@ -1219,7 +1221,8 @@ def cancer_type_records(
 
     Return type is always a DataFrame, including for empty results.
     """
-    df = _cancer_type_record_frame()
+    # Filtering must never mutate the shared, registry-derived base frame.
+    df = _cancer_type_record_frame().copy()
 
     exact_codes = _normalize_cancer_code_filter(cancer_types)
     if exact_codes is not None:
