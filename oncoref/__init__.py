@@ -191,6 +191,7 @@ from .expression import (
     gene_within_sample_top_fraction,
     housekeeping_cancer_expression_coverage,
     housekeeping_cancer_expression_coverage_from_matrix,
+    housekeeping_cancer_expression_coverage_summary,
     pan_cancer_expression,
     per_sample_expression,
     pooled_cohort_stats,
@@ -586,6 +587,7 @@ __all__ = [
     "greedy_coverage",
     "housekeeping_cancer_expression_coverage",
     "housekeeping_cancer_expression_coverage_from_matrix",
+    "housekeeping_cancer_expression_coverage_summary",
     "housekeeping_reference_profile",
     # HPA normal-tissue reference data
     "hpa_cell_type_expression",

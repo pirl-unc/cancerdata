@@ -438,11 +438,12 @@ processing plan.
   `on_missing="raise"` when a downstream migration requires the manifests.
   `housekeeping_cancer_expression_coverage(...)` is the reusable #202 audit
   surface for evaluating clean-TPM biological housekeeping candidates across
-  cancer cohorts: it reports per-gene detection, `>= floor` coverage, p1/p5/
-  median clean TPM, sample-QC mode, and source-scale metadata. Treat absolute TPM
-  floors as hard evidence only where `recommended_for_absolute_tpm_floor` is true;
-  microarray/proxy or otherwise non-linear sources stay visible as warning/rank
-  calibration inputs, not vetoes.
+  cancer cohorts. Pass its result to
+  `housekeeping_cancer_expression_coverage_summary(...)` for one row per candidate
+  with a source-aware linear-floor status and the worst comparable cohort. Treat
+  absolute TPM floors as hard evidence only where
+  `recommended_for_absolute_tpm_floor` is true; microarray/proxy or otherwise
+  non-linear sources stay visible as warning/rank calibration inputs, not vetoes.
 
 ### Builder APIs
 
@@ -838,6 +839,34 @@ gene_families.clean_tpm_censored_gene_ids()
 ```
 
 ### Housekeeping normalization
+
+Housekeeping normalization is an explicit, consumer-specific expression space, not
+the general oncoref default. Prefer clean TPM when additive abundance matters,
+`log1p(clean TPM)` when magnitude needs compression, and percentile ranks when only
+within-sample ordering matters. Use an HK-derived size factor only after the consumer
+has shown that it improves its own calibrated task.
+
+The active 30-gene biological panel is deliberately stable. Cancer-side low-tail
+coverage can identify warnings and candidate replacements, but it does not
+automatically promote genes: changing the panel changes every normalized value and
+requires downstream recalibration. Use the raw and summarized source-aware audits:
+
+```python
+from oncoref import expression
+
+coverage = expression.housekeeping_cancer_expression_coverage(
+    ["LUAD", "SKCM"], auto_fetch=False, on_missing="raise"
+)
+summary = expression.housekeeping_cancer_expression_coverage_summary(coverage)
+summary[["Symbol", "linear_floor_status", "worst_linear_p5_cancer_code"]]
+```
+
+Only rows marked `recommended_for_absolute_tpm_floor` participate in the summary's
+linear TPM pass/fail decision. Proxy or non-linear sources remain counted but cannot
+pass or veto an absolute clean-TPM floor. The raw audit records requested, audited,
+and unavailable cancer codes in DataFrame attributes. The summary rejects a known
+partial audit by default; `require_complete=False` is an explicit exploratory-cache
+opt-out, not a release-quality panel decision.
 
 For clean-TPM housekeeping denominators, use the biological HPA-stable panel:
 
