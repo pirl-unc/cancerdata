@@ -879,6 +879,29 @@ def test_regenerate_plots_runner_computes_percentile_coverage_once(monkeypatch):
     assert all(kwargs["coverage_table"] is sentinel for kwargs in dependent)
 
 
+def test_regenerate_plots_runner_records_exact_data_inventory():
+    import importlib.util
+
+    runner = Path(__file__).resolve().parent.parent / "scripts" / "regenerate_plots.py"
+    spec = importlib.util.spec_from_file_location("_regen_plots_inventory", runner)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    availability = {
+        "per_sample": ("LUAD", "SKCM"),
+        "percentile_gene": ("LUAD",),
+        "percentile_proteoform": ("SKCM",),
+        "within_sample": ("LUAD", "SKCM"),
+    }
+    coverage = pd.DataFrame()
+    coverage.attrs.update({"audited_cohorts": ["LUAD"], "missing_cohorts": {"SKCM": "not staged"}})
+
+    text = "\n".join(mod._availability_index_lines(availability, coverage))
+
+    assert "Cached per-sample matrices (2): `LUAD`, `SKCM`" in text
+    assert "p90/p95 joint coverage cohorts audited (1): `LUAD`" in text
+    assert "- `SKCM`: not staged" in text
+
+
 def test_regenerate_plots_runner_writes_all_figures_pdf(tmp_path):
     import importlib.util
     from pathlib import Path

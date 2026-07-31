@@ -310,21 +310,28 @@ def _availability_index_lines(availability, percentile_coverage):
     percentile_gene = availability["percentile_gene"]
     percentile_proteoform = availability["percentile_proteoform"]
     within_sample = availability["within_sample"]
+
+    def inventory(label, codes):
+        values = ", ".join(f"`{code}`" for code in codes) or "none"
+        return f"- {label} ({len(codes)}): {values}"
+
     lines = [
         "## Local data",
         "",
-        f"- Cached per-sample matrices: {len(per_sample)}",
-        f"- Local or locally recomputable gene percentile cohorts: {len(percentile_gene)}",
-        "- Local or locally recomputable proteoform percentile cohorts: "
-        f"{len(percentile_proteoform)}",
-        f"- Local or locally recomputable within-sample cohorts: {len(within_sample)}",
+        inventory("Cached per-sample matrices", per_sample),
+        inventory("Local or locally recomputable gene percentile cohorts", percentile_gene),
+        inventory(
+            "Local or locally recomputable proteoform percentile cohorts",
+            percentile_proteoform,
+        ),
+        inventory("Local or locally recomputable within-sample cohorts", within_sample),
     ]
     if percentile_coverage is not None:
         audited = percentile_coverage.attrs.get("audited_cohorts", ())
         missing = percentile_coverage.attrs.get("missing_cohorts", {})
         lines.extend(
             [
-                f"- p90/p95 joint coverage cohorts audited: {len(audited)}",
+                inventory("p90/p95 joint coverage cohorts audited", audited),
                 f"- p90/p95 joint coverage cohorts missing: {len(missing)}",
             ]
         )
