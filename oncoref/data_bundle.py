@@ -464,6 +464,30 @@ def find_local_item(relative_path: str) -> Path | None:
     return None
 
 
+def local_item_paths(relative_path: str) -> tuple[Path, ...]:
+    """Return every non-empty local copy of one data item, without downloading.
+
+    Package/artifact checkouts and the active bundle cache can each contain a
+    partial shard directory.  Callers that enumerate shards must inspect both
+    roots instead of stopping at the first non-empty directory.  Paths retain
+    normal read precedence (package data first, then cache) and are de-duplicated
+    when both roots resolve to the same location.
+    """
+    path = Path(relative_path)
+    if path.is_absolute() or not path.parts or ".." in path.parts:
+        raise ValueError("relative_path must stay within a data root")
+
+    found: list[Path] = []
+    seen: set[Path] = set()
+    for root in (_PACKAGE_DATA_DIR, cache_dir()):
+        candidate = root / path
+        resolved = candidate.resolve()
+        if _path_complete(candidate) and resolved not in seen:
+            found.append(candidate)
+            seen.add(resolved)
+    return tuple(found)
+
+
 def item_is_local(relative_path: str) -> bool:
     """Whether one data item is non-empty in the package or active cache."""
     return find_local_item(relative_path) is not None
@@ -864,6 +888,7 @@ __all__ = [
     "is_local",
     "item_is_local",
     "list_cache_versions",
+    "local_item_paths",
     "prune_cache",
     "status",
     "verify_local",

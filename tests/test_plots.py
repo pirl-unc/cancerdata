@@ -447,7 +447,11 @@ def test_cta_patient_count_heatmap_renders(tmp_path, monkeypatch):
 
     from oncoref import proteoforms
 
-    monkeypatch.setattr(plots, "_cached_per_sample_cohorts", lambda: ["LUAD", "SKCM"])
+    monkeypatch.setattr(
+        plots,
+        "locally_available_within_sample_cohorts",
+        lambda **kwargs: ["LUAD", "SKCM"],
+    )
     monkeypatch.setattr(plots, "within_sample_top_fraction", fake_ws)
     monkeypatch.setattr(plots, "cta_gene_ids", lambda: ["E1", "E2", "E3"])
     monkeypatch.setattr(proteoforms, "gene_to_proteoform_id", lambda ids: {i: i for i in ids})
@@ -458,9 +462,20 @@ def test_cta_patient_count_heatmap_renders(tmp_path, monkeypatch):
 
 
 def test_cta_patient_count_heatmap_no_cohorts(monkeypatch):
-    monkeypatch.setattr(plots, "_cached_per_sample_cohorts", lambda: [])
-    with pytest.raises(ValueError, match="no cohorts with a cached per-sample matrix"):
+    monkeypatch.setattr(plots, "locally_available_within_sample_cohorts", lambda **kwargs: [])
+    with pytest.raises(ValueError, match="no local proteoform within-sample"):
         plots.cta_patient_count_heatmap()
+
+
+def test_cta_patient_count_heatmap_absolute_mode_uses_only_cached_matrices(monkeypatch):
+    monkeypatch.setattr(plots, "_cached_per_sample_cohorts", lambda: [])
+    monkeypatch.setattr(
+        plots,
+        "locally_available_within_sample_cohorts",
+        lambda **kwargs: pytest.fail("absolute mode must not plan from summary shards"),
+    )
+    with pytest.raises(ValueError, match="no cached per-sample matrices"):
+        plots.cta_patient_count_heatmap(threshold_tpm=50)
 
 
 def test_cta_patient_count_heatmap_duplicate_symbols(tmp_path, monkeypatch):
@@ -480,7 +495,11 @@ def test_cta_patient_count_heatmap_duplicate_symbols(tmp_path, monkeypatch):
 
     from oncoref import proteoforms
 
-    monkeypatch.setattr(plots, "_cached_per_sample_cohorts", lambda: ["LUAD", "SKCM"])
+    monkeypatch.setattr(
+        plots,
+        "locally_available_within_sample_cohorts",
+        lambda **kwargs: ["LUAD", "SKCM"],
+    )
     monkeypatch.setattr(plots, "within_sample_top_fraction", fake_ws)
     monkeypatch.setattr(plots, "cta_gene_ids", lambda: ["K1", "K2", "K3"])
     monkeypatch.setattr(proteoforms, "gene_to_proteoform_id", lambda ids: {i: i for i in ids})
@@ -522,6 +541,84 @@ def test_cta_coverage_curves_empty_raises(monkeypatch):
     monkeypatch.setattr(coverage, "greedy_coverage", lambda *a, **k: pd.DataFrame())
     with pytest.raises(ValueError, match="no coverage curve"):
         plots.cta_coverage_curves(["LUAD"])
+
+
+def _percentile_coverage_table():
+    rows = []
+    for code, final in (("LUAD", 0.8), ("SKCM", 1.0)):
+        rows.extend(
+            [
+                {
+                    "cancer_code": code,
+                    "within_sample_percentile": 0.95,
+                    "n_patients": 10,
+                    "rank": 1,
+                    "Ensembl_Gene_ID": "E1",
+                    "Symbol": "MAGEA4",
+                    "marginal_patients": 6,
+                    "marginal_fraction": 0.6,
+                    "cumulative_patients": 6,
+                    "cumulative_fraction": 0.6,
+                    "proteoform_key": "E1",
+                    "proteoform_members": "MAGEA4",
+                },
+                {
+                    "cancer_code": code,
+                    "within_sample_percentile": 0.95,
+                    "n_patients": 10,
+                    "rank": 2,
+                    "Ensembl_Gene_ID": "E2",
+                    "Symbol": "CTAG1B",
+                    "marginal_patients": round((final - 0.6) * 10),
+                    "marginal_fraction": final - 0.6,
+                    "cumulative_patients": round(final * 10),
+                    "cumulative_fraction": final,
+                    "proteoform_key": "E2",
+                    "proteoform_members": "CTAG1B",
+                },
+            ]
+        )
+    return pd.DataFrame(rows)
+
+
+def test_cta_within_sample_percentile_coverage_plots_render(tmp_path):
+    coverage_table = _percentile_coverage_table()
+    curves = tmp_path / "percentile-curves.png"
+    stacked = tmp_path / "percentile-stacked.png"
+
+    curve_figure = plots.cta_within_sample_percentile_coverage_curves(
+        ["lung adenocarcinoma", "SKCM"], coverage_table=coverage_table, save=str(curves)
+    )
+    stacked_figure = plots.cta_within_sample_percentile_coverage_stacked_bars(
+        ["LUAD", "SKCM"], coverage_table=coverage_table, save=str(stacked)
+    )
+
+    assert curves.stat().st_size > 0 and stacked.stat().st_size > 0
+    assert "within-sample p95" in curve_figure.axes[0].get_ylabel()
+    assert "within-sample p95" in stacked_figure.axes[0].get_xlabel()
+
+
+def test_cta_within_sample_percentile_addressable_burden_uses_joint_union(tmp_path, monkeypatch):
+    from oncoref import coverage
+
+    supplied = _percentile_coverage_table()
+    captured = {}
+
+    def fake_fraction(cohorts, **kwargs):
+        captured.update(kwargs)
+        return pd.Series({"LUAD": 0.8, "SKCM": 1.0})
+
+    monkeypatch.setattr(
+        coverage, "within_sample_percentile_addressable_fraction_by_cohort", fake_fraction
+    )
+    out = tmp_path / "percentile-burden.png"
+    figure = plots.cta_within_sample_percentile_addressable_burden(
+        cohorts=["LUAD", "SKCM"], coverage_table=supplied, save=str(out)
+    )
+
+    assert captured["coverage"] is supplied
+    assert captured["percentile"] == 0.95
+    assert out.stat().st_size > 0 and figure is not None
 
 
 def test_antigen_family_grouping():
@@ -713,7 +810,13 @@ def test_regenerate_plots_runner_references_real_functions():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
-    jobs = mod._jobs()
+    availability = {
+        "per_sample": ("LUAD", "SKCM"),
+        "percentile_gene": ("LUAD", "SKCM"),
+        "percentile_proteoform": ("LUAD", "SKCM"),
+        "within_sample": ("LUAD", "SKCM"),
+    }
+    jobs = mod._jobs(availability)
     assert jobs, "runner produced no jobs"
     names = {name for _, name, _, _ in jobs}
     assert {"apd1_vs_tmb_ici", "apd1_vs_tmb_strict_pd1"} <= names
@@ -728,13 +831,75 @@ def test_regenerate_plots_runner_references_real_functions():
         "cta_specific_9mer_load_vs_world_mortality_t50",
     } <= names
     assert {
-        "cta_addressable_burden_within_sample_p90_world_mortality",
+        "cta_addressable_burden_per_sample_p90_world_mortality",
         "cta_addressable_burden_per_sample_t50_us_mortality",
+    } <= names
+    assert {
+        "cta_coverage_curves_p90",
+        "cta_coverage_curves_p95",
+        "cta_coverage_stacked_bars_p90",
+        "cta_coverage_stacked_bars_p95",
     } <= names
     assert {"cta_patient_count_heatmap_p90", "cta_patient_count_heatmap_t50"} <= names
     for family, name, fn_attr, kwargs in jobs:
         assert family and name and isinstance(kwargs, dict)
         assert callable(getattr(plots, fn_attr, None)), f"{fn_attr} is not a plots function"
+
+
+def test_regenerate_plots_runner_computes_percentile_coverage_once(monkeypatch):
+    import importlib.util
+
+    runner = Path(__file__).resolve().parent.parent / "scripts" / "regenerate_plots.py"
+    spec = importlib.util.spec_from_file_location("_regen_plots_shared", runner)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    availability = {
+        "per_sample": ("LUAD", "SKCM"),
+        "percentile_gene": (),
+        "percentile_proteoform": (),
+        "within_sample": (),
+    }
+    jobs = mod._jobs(availability)
+    sentinel = _percentile_coverage_table()
+    calls = []
+
+    def fake_sweep(cohorts, **kwargs):
+        calls.append((cohorts, kwargs))
+        return sentinel
+
+    monkeypatch.setattr(mod, "within_sample_percentile_coverage_sweep", fake_sweep)
+    prepared, result = mod._attach_shared_percentile_coverage(jobs, availability)
+
+    assert result is sentinel
+    assert calls == [(("LUAD", "SKCM"), {"percentiles": (0.9, 0.95), "on_missing": "record"})]
+    dependent = [
+        kwargs for _, _, function, kwargs in prepared if function in mod._PERCENTILE_COVERAGE_PLOTS
+    ]
+    assert len(dependent) == 12
+    assert all(kwargs["coverage_table"] is sentinel for kwargs in dependent)
+
+
+def test_regenerate_plots_runner_records_exact_data_inventory():
+    import importlib.util
+
+    runner = Path(__file__).resolve().parent.parent / "scripts" / "regenerate_plots.py"
+    spec = importlib.util.spec_from_file_location("_regen_plots_inventory", runner)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    availability = {
+        "per_sample": ("LUAD", "SKCM"),
+        "percentile_gene": ("LUAD",),
+        "percentile_proteoform": ("SKCM",),
+        "within_sample": ("LUAD", "SKCM"),
+    }
+    coverage = pd.DataFrame()
+    coverage.attrs.update({"audited_cohorts": ["LUAD"], "missing_cohorts": {"SKCM": "not staged"}})
+
+    text = "\n".join(mod._availability_index_lines(availability, coverage))
+
+    assert "Cached per-sample matrices (2): `LUAD`, `SKCM`" in text
+    assert "p90/p95 joint coverage cohorts audited (1): `LUAD`" in text
+    assert "- `SKCM`: not staged" in text
 
 
 def test_regenerate_plots_runner_writes_all_figures_pdf(tmp_path):
@@ -782,10 +947,20 @@ def test_regenerate_plots_runner_closes_each_returned_figure(tmp_path, monkeypat
     monkeypatch.setattr(
         mod,
         "_jobs",
-        lambda: [
+        lambda availability: [
             ("memory", "first", "_memory_test_plot", {"label": "first"}),
             ("memory", "second", "_memory_test_plot", {"label": "second"}),
         ],
+    )
+    monkeypatch.setattr(
+        mod,
+        "_plot_data_availability",
+        lambda: {
+            "per_sample": (),
+            "percentile_gene": (),
+            "percentile_proteoform": (),
+            "within_sample": (),
+        },
     )
     monkeypatch.setattr(
         mod.cta_curation_plots,

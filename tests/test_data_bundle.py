@@ -47,6 +47,29 @@ def test_item_availability_checks_package_then_partial_cache(monkeypatch, tmp_pa
     assert data_bundle.find_local_item(item) == cached
 
 
+def test_local_item_paths_returns_package_and_partial_cache(monkeypatch, tmp_path):
+    package_root = tmp_path / "package"
+    cache_root = tmp_path / "cache"
+    item = "cancer-reference-expression-percentiles"
+    monkeypatch.setattr(data_bundle, "_PACKAGE_DATA_DIR", package_root)
+    monkeypatch.setenv("CANCERDATA_BUNDLED_DATA", str(cache_root))
+
+    packaged = package_root / item
+    cached = cache_root / item
+    packaged.mkdir(parents=True)
+    cached.mkdir(parents=True)
+    (packaged / "LUAD.parquet").write_text("packaged")
+    (cached / "SKCM.parquet").write_text("cached")
+
+    assert data_bundle.local_item_paths(item) == (packaged, cached)
+
+
+@pytest.mark.parametrize("path", ["/absolute", "../escape", "nested/../../escape"])
+def test_local_item_paths_rejects_paths_outside_data_roots(path):
+    with pytest.raises(ValueError, match="relative_path"):
+        data_bundle.local_item_paths(path)
+
+
 def test_item_availability_rejects_missing_and_empty_items(monkeypatch, tmp_path):
     package_root = tmp_path / "package"
     cache_root = tmp_path / "cache"

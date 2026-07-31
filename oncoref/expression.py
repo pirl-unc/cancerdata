@@ -234,6 +234,26 @@ def _available_shard_codes(root: Path) -> list[str]:
     return sorted(p.stem for p in root.glob("*.parquet") if not p.name.startswith("._"))
 
 
+def _local_shard_dirs(
+    dataset: ShardDataset, *, proteoform: bool = False, scope: str = "cta"
+) -> tuple[Path, ...]:
+    """Every locally present directory for one shard variant, without fetching."""
+    return data_bundle.local_item_paths(dataset.subdir(proteoform=proteoform, scope=scope))
+
+
+def _available_local_cohorts(
+    dataset: ShardDataset, *, proteoform: bool = False, scope: str = "cta"
+) -> list[str]:
+    """Sorted union of shard codes across package and active-cache roots."""
+    return sorted(
+        {
+            code
+            for root in _local_shard_dirs(dataset, proteoform=proteoform, scope=scope)
+            for code in _available_shard_codes(root)
+        }
+    )
+
+
 def _shard_dir(dataset: ShardDataset, *, proteoform: bool = False, scope: str = "cta") -> Path:
     """The bundle directory holding ``dataset``'s per-cohort shards at the requested
     level and ``scope`` (the proteoform variant is scope-specific — see
@@ -250,6 +270,9 @@ def _available_cohorts(
 ) -> list[str]:
     """Sorted cohort codes with a shipped shard for ``dataset`` (gene, or the
     scope-specific proteoform variant)."""
+    local = _available_local_cohorts(dataset, proteoform=proteoform, scope=scope)
+    if local:
+        return local
     return _available_shard_codes(_shard_dir(dataset, proteoform=proteoform, scope=scope))
 
 
@@ -260,7 +283,12 @@ def _shard_path(
     proteoform: bool = False,
     scope: str = "cta",
 ) -> Path:
-    return _shard_dir(dataset, proteoform=proteoform, scope=scope) / f"{code}.parquet"
+    filename = f"{code}.parquet"
+    for root in _local_shard_dirs(dataset, proteoform=proteoform, scope=scope):
+        candidate = root / filename
+        if candidate.is_file():
+            return candidate
+    return _shard_dir(dataset, proteoform=proteoform, scope=scope) / filename
 
 
 def _resolve_cancer_types(
@@ -1060,6 +1088,43 @@ def available_percentile_cohorts(*, proteoform: bool = False, scope: str = "cta"
     ``proteoform=True``, the proteoform-summed variant (one vector per proteoform
     key, identical-protein members collapsed before ranking, in ``scope``)."""
     return _available_cohorts(_PERCENTILES, proteoform=proteoform, scope=scope)
+
+
+def _locally_available_summary_cohorts(
+    dataset: ShardDataset,
+    *,
+    proteoform: bool,
+    scope: str,
+    include_recomputable: bool,
+) -> list[str]:
+    """Local shard union, optionally extended by cached source matrices."""
+    available = set(_available_local_cohorts(dataset, proteoform=proteoform, scope=scope))
+    if include_recomputable:
+        available.update(
+            code for code in source_matrices.available_cohorts() if source_matrices.is_cached(code)
+        )
+    return sorted(available)
+
+
+def locally_available_percentile_cohorts(
+    *,
+    proteoform: bool = False,
+    scope: str = "cta",
+    include_recomputable: bool = True,
+) -> list[str]:
+    """Cohorts readable as percentile vectors without a download.
+
+    The result is the union of shards in package/artifact data and the active
+    partial bundle cache. With ``include_recomputable=True`` (default), it also
+    includes cohorts whose per-sample source matrix is cached locally. This
+    function never fetches either data source.
+    """
+    return _locally_available_summary_cohorts(
+        _PERCENTILES,
+        proteoform=proteoform,
+        scope=scope,
+        include_recomputable=include_recomputable,
+    )
 
 
 _ARTIFACT_TECHNICAL_EXTRA_STATUSES = frozenset(
@@ -5597,6 +5662,28 @@ def available_within_sample_cohorts(*, proteoform: bool = False, scope: str = "c
     With ``proteoform=True``, the proteoform-summed variant (identical-protein
     members collapsed before ranking, in ``scope`` — see :func:`within_sample_top_fraction`)."""
     return _available_cohorts(_WITHIN_SAMPLE, proteoform=proteoform, scope=scope)
+
+
+def locally_available_within_sample_cohorts(
+    *,
+    proteoform: bool = False,
+    scope: str = "cta",
+    include_recomputable: bool = True,
+) -> list[str]:
+    """Cohorts readable as within-sample prevalence without a download.
+
+    The result is the union of shards in the package/artifact checkout and the
+    active partial bundle cache.  With ``include_recomputable=True`` (default),
+    it also includes cohorts whose per-sample source matrix is cached locally,
+    because :func:`within_sample_top_fraction` can derive the same artifact from
+    that matrix.  This function never fetches either data source.
+    """
+    return _locally_available_summary_cohorts(
+        _WITHIN_SAMPLE,
+        proteoform=proteoform,
+        scope=scope,
+        include_recomputable=include_recomputable,
+    )
 
 
 def within_sample_top_fraction(

@@ -32,12 +32,13 @@ from .cancer_types import (
     cancer_lineage_group,
     cancer_type_registry,
     format_cancer_code_label,
+    resolve_cancer_type,
 )
 from .cta import cta_gene_id_to_name, cta_gene_ids
 from .expression import (
     available_percentile_cohorts,
-    available_within_sample_cohorts,
     cohort_gene_percentiles,
+    locally_available_within_sample_cohorts,
     within_sample_top_fraction,
 )
 from .ici import cancer_ici_response
@@ -890,7 +891,7 @@ def _cta_prevalence_by_cohort(threshold):
 
     cta_ids = set(cta_gene_ids())
     out = {}
-    for code in available_within_sample_cohorts():
+    for code in locally_available_within_sample_cohorts(include_recomputable=False):
         df = within_sample_top_fraction(code, threshold=threshold)
         frac_col = next((c for c in df.columns if c.startswith("frac_samples_top")), None)
         if frac_col is None:
@@ -914,6 +915,41 @@ def _addressable_prevalence(source, *, threshold, threshold_tpm):
         prev = _cta_prevalence_by_cohort(threshold)
         return prev, f"top-CTA prevalence, thr={threshold}"
     raise ValueError("source must be 'within_sample' or 'per_sample'")
+
+
+def _cta_addressable_burden_from_prevalence(
+    prevalence,
+    *,
+    prevalence_label,
+    metric,
+    n,
+    save,
+):
+    """Render addressable burden from an already-audited cohort prevalence map."""
+    if not prevalence:
+        raise ValueError("no CTA prevalence available for the requested data source")
+    burden = cancer_burden(metric=metric)
+    burden_label = _burden_metric_label(metric)
+    xlabel = f"Addressable burden ({burden_label} × {prevalence_label})"
+
+    rows = []
+    for code, fraction in prevalence.items():
+        category = burden_category(code)
+        burden_share = burden.get(category) if category else None
+        if burden_share:
+            rows.append((code, float(burden_share) * float(fraction)))
+    if not rows:
+        raise ValueError("no cohort mapped to both a burden category and CTA prevalence")
+
+    rows.sort(key=lambda row: row[1], reverse=True)
+    rows = rows[:n]
+    return _ranked_family_barh(
+        rows,
+        xlabel=xlabel,
+        title=f"CTA-addressable {burden_label} — top {len(rows)} cancers",
+        legend=True,
+        save=save,
+    )
 
 
 def cta_addressable_burden(
@@ -945,32 +981,47 @@ def cta_addressable_burden(
     prevalence, prevalence_label = _addressable_prevalence(
         source, threshold=threshold, threshold_tpm=threshold_tpm
     )
-    if not prevalence:
-        raise ValueError(
-            f"no CTA prevalence available for source={source!r} — is the required data "
-            "present? (within-sample bundle, or cached per-sample matrices)"
-        )
-    burden = cancer_burden(metric=metric)  # {burden category: share}
-    burden_label = _burden_metric_label(metric)
-    xlabel = f"Addressable burden ({burden_label} × {prevalence_label})"
+    return _cta_addressable_burden_from_prevalence(
+        prevalence,
+        prevalence_label=prevalence_label,
+        metric=metric,
+        n=n,
+        save=save,
+    )
 
-    rows = []
-    for code, prev in prevalence.items():
-        category = burden_category(code)
-        inc = burden.get(category) if category else None
-        if inc is None or not inc:
-            continue
-        rows.append((code, float(inc) * prev, prev))
-    if not rows:
-        raise ValueError("no cohort mapped to both a burden category and CTA prevalence")
 
-    rows.sort(key=lambda r: r[1], reverse=True)
-    rows = rows[:n]
-    return _ranked_family_barh(
-        [(r[0], r[1]) for r in rows],
-        xlabel=xlabel,
-        title=f"CTA-addressable {burden_label} — top {len(rows)} cancers",
-        legend=True,
+def cta_within_sample_percentile_addressable_burden(
+    *,
+    percentile=0.95,
+    cohorts=None,
+    coverage_table=None,
+    metric="us_incidence_pct",
+    n=25,
+    save=None,
+):
+    """CTA-addressable burden using the true patient union at p90/p95.
+
+    A CTA is positive when its biological clean-TPM rank within that individual
+    tumor is at least ``percentile``.  Unlike ``source='within_sample'`` in
+    :func:`cta_addressable_burden`, this calculation retains CTA co-occurrence and
+    counts each patient once when any CTA is positive.  It therefore needs cached
+    per-sample matrices.  ``coverage_table`` can reuse one
+    :func:`oncoref.coverage.within_sample_percentile_coverage_sweep` across a plot
+    batch.
+    """
+    from .coverage import within_sample_percentile_addressable_fraction_by_cohort
+
+    fractions = within_sample_percentile_addressable_fraction_by_cohort(
+        cohorts,
+        percentile=percentile,
+        coverage=coverage_table,
+        on_missing="record",
+    )
+    return _cta_addressable_burden_from_prevalence(
+        fractions.to_dict(),
+        prevalence_label=f"P(≥1 CTA at within-sample p{round(percentile * 100)})",
+        metric=metric,
+        n=n,
         save=save,
     )
 
@@ -998,18 +1049,29 @@ def cta_patient_count_heatmap(
     ranks in the top ``(1 - threshold)`` *within that patient* — ``threshold=0.95`` →
     the within-sample **p95** (top 5%) convention pirlygenes uses, far more stringent
     than a flat low-TPM cut. Pass ``threshold_tpm=<TPM>`` instead to use the absolute
-    "fraction of patients with clean TPM ≥ threshold" from the per-sample matrices.
+    "fraction of patients with clean TPM > threshold" from the per-sample matrices.
 
     Columns are ordered by **mean prevalence across the shown cohorts** (most broadly
-    expressed antigen first); rows by their single best CTA. ``cohorts`` defaults to
-    every cohort with a cached per-sample matrix."""
+    expressed antigen first); rows by their single best CTA. ``cohorts`` defaults
+    to locally readable within-sample data in rank mode and cached per-sample
+    matrices in absolute-TPM mode. Neither default triggers a download."""
     import pandas as pd
 
-    cohorts = list(cohorts) if cohorts is not None else _cached_per_sample_cohorts()
+    if cohorts is not None:
+        cohorts = list(cohorts)
+    elif threshold_tpm is not None:
+        cohorts = _cached_per_sample_cohorts()
+    else:
+        cohorts = locally_available_within_sample_cohorts(proteoform=True, scope="cta")
     if not cohorts:
+        if threshold_tpm is not None:
+            raise ValueError(
+                "no cached per-sample matrices for absolute-TPM prevalence — "
+                "stage source matrices first."
+            )
         raise ValueError(
-            "no cohorts with a cached per-sample matrix — fetch them via "
-            "source_matrices.fetch(code) (or stage them) first."
+            "no local proteoform within-sample shards or cached per-sample matrices — "
+            "fetch the bundle or stage source matrices first."
         )
     rows = {}
     key_to_symbol = {}
@@ -1060,49 +1122,31 @@ def cta_patient_count_heatmap(
     )
 
 
-def cta_coverage_curves(
-    cancer_types,
+def _render_cta_coverage_curves(
+    coverage_by_code,
     *,
-    threshold_tpm=50.0,
-    max_genes=20,
-    top_n=10,
-    save=None,
+    max_genes,
+    top_n,
+    threshold_label,
+    save,
 ):
-    """Greedy **antigen-coverage curves**, the **top ``top_n`` cohorts by final coverage
-    overlaid on one axes** — for each cohort, the cumulative fraction of patients covered
-    as CTAs are added to the panel in greedy set-cover order
-    (:func:`oncoref.coverage.greedy_coverage`, proteoform-aggregated). Answers "how many
-    antigens a panel needs to reach most patients", and lets cancers be compared directly.
-
-    Curves are colored by lineage group; the legend gives each cohort's final coverage.
-    ``cancer_types`` is a code or iterable of codes (each needs a cached per-sample
-    matrix); coverage is computed for all of them and the broadest ``top_n`` (default 10)
-    are drawn (pass ``top_n=None`` for all)."""
+    """Render comparable greedy curves from precomputed per-cohort tables."""
     import numpy as np
 
-    from .coverage import greedy_coverage
-
-    codes = [cancer_types] if isinstance(cancer_types, str) else list(cancer_types)
     plt = _plt()
-
-    curves = []  # (code, x, y)
-    for code in codes:
-        gc = greedy_coverage(code, threshold_tpm=threshold_tpm, max_genes=max_genes)
-        if gc.empty:
+    curves = []
+    for code, coverage in coverage_by_code.items():
+        if coverage.empty:
             continue
-        x = np.concatenate([[0], gc["rank"].to_numpy()])
-        y = np.concatenate([[0.0], gc["cumulative_fraction"].to_numpy()])
+        x = np.concatenate([[0], coverage["rank"].to_numpy()])
+        y = np.concatenate([[0.0], coverage["cumulative_fraction"].to_numpy()])
         curves.append((code, x, y))
     if not curves:
-        raise ValueError(
-            "no coverage curve could be drawn — are the cohorts' per-sample matrices "
-            "cached, and does any CTA clear the threshold?"
-        )
-    curves.sort(key=lambda t: t[2][-1], reverse=True)  # broadest coverage first
+        raise ValueError("no coverage curve could be drawn from the available cohort data")
+
+    curves.sort(key=lambda item: item[2][-1], reverse=True)
     total = len(curves)
     shown = curves[:top_n] if top_n else curves
-    # Distinct per-cohort colors — lineage colors would collide for the several
-    # same-lineage cohorts usually in the top-coverage set (e.g. multiple sarcomas).
     cmap = plt.get_cmap("tab10" if len(shown) <= 10 else "tab20")
     code_color = {code: cmap(i % cmap.N) for i, (code, _, _) in enumerate(shown)}
 
@@ -1117,7 +1161,7 @@ def cta_coverage_curves(
             label=f"{format_cancer_code_label(code)} ({y[-1]:.0%})",
         )
     ax.set_xlabel("number of CTAs in panel (greedy set cover)")
-    ax.set_ylabel(f"fraction of patients covered (≥1 CTA > {threshold_tpm:g} TPM)")
+    ax.set_ylabel(f"fraction of patients covered ({threshold_label})")
     ax.set_ylim(0, 1)
     ax.set_xlim(0, max_genes)
     ax.grid(True, alpha=0.3)
@@ -1128,6 +1172,141 @@ def cta_coverage_curves(
     return _save(fig, save)
 
 
+def _render_cta_coverage_stacked_bars(
+    coverage_by_code,
+    *,
+    total_cohorts,
+    top_n,
+    threshold_label,
+    save,
+):
+    """Render marginal antigen contributions from precomputed greedy tables."""
+    if not coverage_by_code:
+        raise ValueError("no coverage to plot from the available cohort data")
+    ordered = sorted(
+        coverage_by_code.items(),
+        key=lambda item: float(item[1]["cumulative_fraction"].iloc[-1]),
+        reverse=True,
+    )
+    if top_n:
+        ordered = ordered[:top_n]
+    all_symbols = {str(symbol) for _, table in ordered for symbol in table["Symbol"]}
+    symbol_colors, family_colors = _antigen_family_colors(all_symbols)
+
+    rows = []
+    for code, table in ordered:
+        covered = float(table["cumulative_fraction"].iloc[-1])
+        segments = [
+            (
+                str(row.Symbol),
+                float(row.marginal_fraction),
+                symbol_colors[str(row.Symbol)],
+            )
+            for row in table.itertuples()
+        ]
+        rows.append((f"{format_cancer_code_label(code)}  ({covered:.0%})", segments))
+    suffix = (
+        f"top {len(rows)} of {total_cohorts} cohorts by coverage"
+        if top_n and total_cohorts > len(rows)
+        else f"{len(rows)} cohorts"
+    )
+    return _stacked_barh(
+        rows,
+        xlabel=f"fraction of patients covered ({threshold_label})",
+        title=f"CTA greedy coverage by antigen — {suffix}",
+        legend=family_colors,
+        save=save,
+    )
+
+
+def _percentile_coverage_by_code(
+    cancer_types,
+    *,
+    percentile,
+    max_genes,
+    coverage_table,
+):
+    """Select one p90/p95 greedy table per requested cohort."""
+    import pandas as pd
+
+    from .coverage import _coverage_at_percentile, within_sample_percentile_coverage_sweep
+
+    requested = [cancer_types] if isinstance(cancer_types, str) else list(cancer_types)
+    codes = [resolve_cancer_type(code, strict=False) or str(code) for code in requested]
+    if coverage_table is None:
+        coverage_table = within_sample_percentile_coverage_sweep(
+            codes,
+            percentiles=(percentile,),
+            on_missing="record",
+        )
+    selected = _coverage_at_percentile(coverage_table, percentile)
+    selected = selected[selected["cancer_code"].astype(str).isin(set(codes))]
+    selected = selected[pd.to_numeric(selected["rank"], errors="coerce") > 0]
+
+    by_code = {}
+    for code, table in selected.groupby("cancer_code", sort=False):
+        ordered = table.sort_values("rank", kind="stable")
+        by_code[str(code)] = ordered.head(max_genes).reset_index(drop=True)
+    return codes, by_code
+
+
+def _absolute_coverage_by_code(codes, *, threshold_tpm, max_genes):
+    """Compute one absolute-TPM greedy table per cohort, omitting empty results."""
+    from .coverage import greedy_coverage
+
+    by_code = {}
+    for code in codes:
+        table = greedy_coverage(code, threshold_tpm=threshold_tpm, max_genes=max_genes)
+        if not table.empty:
+            by_code[code] = table
+    return by_code
+
+
+def cta_coverage_curves(
+    cancer_types,
+    *,
+    threshold_tpm=50.0,
+    max_genes=20,
+    top_n=10,
+    save=None,
+):
+    """Greedy CTA coverage curves at one absolute clean-TPM threshold."""
+    codes = [cancer_types] if isinstance(cancer_types, str) else list(cancer_types)
+    by_code = _absolute_coverage_by_code(codes, threshold_tpm=threshold_tpm, max_genes=max_genes)
+    return _render_cta_coverage_curves(
+        by_code,
+        max_genes=max_genes,
+        top_n=top_n,
+        threshold_label=f"≥1 CTA > {threshold_tpm:g} TPM",
+        save=save,
+    )
+
+
+def cta_within_sample_percentile_coverage_curves(
+    cancer_types,
+    *,
+    percentile=0.95,
+    coverage_table=None,
+    max_genes=20,
+    top_n=10,
+    save=None,
+):
+    """Greedy CTA coverage curves at a tumor-specific p90/p95 rank cutoff."""
+    _, by_code = _percentile_coverage_by_code(
+        cancer_types,
+        percentile=percentile,
+        max_genes=max_genes,
+        coverage_table=coverage_table,
+    )
+    return _render_cta_coverage_curves(
+        by_code,
+        max_genes=max_genes,
+        top_n=top_n,
+        threshold_label=f"≥1 CTA at within-sample p{round(percentile * 100)}",
+        save=save,
+    )
+
+
 def cta_coverage_stacked_bars(
     cancer_types,
     *,
@@ -1136,60 +1315,39 @@ def cta_coverage_stacked_bars(
     top_n=40,
     save=None,
 ):
-    """Greedy **coverage plateau** as a stacked bar per cohort — one horizontal bar
-    per cancer type, split into the marginal new-patient fraction each CTA adds in
-    greedy set-cover order (:func:`oncoref.coverage.greedy_coverage`). The bar's
-    total length is the cohort's addressable share (≥1 CTA panel); each segment shows
-    how much a single antigen contributes, coloured by antigen family.
-
-    Complements :func:`cta_coverage_curves` (cumulative step curve) by showing *which*
-    antigens carry the coverage. ``cancer_types`` is a code or iterable; each needs a
-    cached per-sample matrix. ``max_genes`` caps the segments per cohort; coverage is
-    computed for all cohorts and the broadest ``top_n`` (default 40) are shown, **sorted
-    by fraction of patients covered (highest at top)** (pass ``top_n=None`` for all)."""
-    from .coverage import greedy_coverage
-
+    """Marginal CTA coverage per cohort at one absolute clean-TPM threshold."""
     codes = [cancer_types] if isinstance(cancer_types, str) else list(cancer_types)
-    total = len(codes)
-    coverage_by_code = {}
-    for code in codes:
-        gc = greedy_coverage(code, threshold_tpm=threshold_tpm, max_genes=max_genes)
-        if not gc.empty:
-            coverage_by_code[code] = gc
-    if not coverage_by_code:
-        raise ValueError(
-            "no coverage to plot — are the cohorts' per-sample matrices cached, and "
-            "does any CTA clear the threshold?"
-        )
-    # Rank cohorts by fraction of patients covered (highest first), then cap.
-    ordered = sorted(
-        coverage_by_code.items(),
-        key=lambda kv: float(kv[1]["cumulative_fraction"].iloc[-1]),
-        reverse=True,
+    by_code = _absolute_coverage_by_code(codes, threshold_tpm=threshold_tpm, max_genes=max_genes)
+    return _render_cta_coverage_stacked_bars(
+        by_code,
+        total_cohorts=len(codes),
+        top_n=top_n,
+        threshold_label=f"≥1 CTA > {threshold_tpm:g} TPM",
+        save=save,
     )
-    if top_n:
-        ordered = ordered[:top_n]
-    all_syms = {str(s) for _, gc in ordered for s in gc["Symbol"]}
-    sym_color, fam_color = _antigen_family_colors(all_syms)
 
-    rows = []
-    for code, gc in ordered:
-        covered = float(gc["cumulative_fraction"].iloc[-1])
-        segs = [
-            (str(r.Symbol), float(r.marginal_fraction), sym_color[str(r.Symbol)])
-            for r in gc.itertuples()
-        ]
-        rows.append((f"{format_cancer_code_label(code)}  ({covered:.0%})", segs))
-    suffix = (
-        f"top {len(rows)} of {total} cohorts by coverage"
-        if top_n and total > len(rows)
-        else f"{len(rows)} cohorts"
+
+def cta_within_sample_percentile_coverage_stacked_bars(
+    cancer_types,
+    *,
+    percentile=0.95,
+    coverage_table=None,
+    max_genes=12,
+    top_n=40,
+    save=None,
+):
+    """Marginal CTA coverage per cohort at a tumor-specific p90/p95 cutoff."""
+    codes, by_code = _percentile_coverage_by_code(
+        cancer_types,
+        percentile=percentile,
+        max_genes=max_genes,
+        coverage_table=coverage_table,
     )
-    return _stacked_barh(
-        rows,
-        xlabel=f"fraction of patients covered (≥1 CTA > {threshold_tpm:g} TPM)",
-        title=f"CTA greedy coverage by antigen — {suffix}",
-        legend=fam_color,
+    return _render_cta_coverage_stacked_bars(
+        by_code,
+        total_cohorts=len(codes),
+        top_n=top_n,
+        threshold_label=f"≥1 CTA at within-sample p{round(percentile * 100)}",
         save=save,
     )
 

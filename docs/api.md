@@ -333,6 +333,25 @@ candidate is called a CTA by an explicit Human Protein Atlas (HPA) normal-tissue
 expression rule; the call is not evidence that its antigen is presented by the
 major histocompatibility complex (MHC) or that it is a validated therapy target.
 
+CTA identity and tumor coverage answer different questions. The HPA-derived CTA
+definition determines which genes are in the reference set. Tumor expression
+then asks how often those CTAs are active in a cohort. An absolute threshold such
+as 50 clean TPM compares expression magnitudes. A within-sample p90 or p95
+threshold instead ranks the complete biological transcriptome inside each tumor:
+p90 means the CTA is in that tumor's top 10% of expression values, and p95 means
+the top 5%. Rank thresholds are appropriate when source scales are not directly
+comparable.
+
+Patient coverage requires the joint per-sample matrix. It is the fraction of
+patients with at least one positive CTA, counting a patient once even when
+several CTAs are positive. It cannot be recovered by adding per-gene prevalence
+or taking the largest prevalence value. `cta_within_sample_percentile_coverage()`
+retains this co-occurrence and returns a deterministic greedy antigen order for
+p90/p95; `cta_within_sample_percentile_addressable_fraction_by_cohort()` returns
+the final true patient union. Both use biological clean TPM and collapse
+identical-protein CTA loci before ranking by default. They use QC-passing samples
+by default; pass `sample_qc="all"` only for an explicit forensic view.
+
 ### Restriction synthesis
 
 `synthesize_restriction()` prefers the HPA protein restriction when protein data
@@ -368,8 +387,21 @@ cta.cta_gene_names()
 cta.cta_clinical_target_evidence()
 cta.cta_specificity_audit()
 cta_coverage.cta_addressable_fraction("LUAD")
+coverage = cta_coverage.cta_within_sample_percentile_coverage(
+    ["LUAD", "SKCM"], percentiles=(0.90, 0.95)
+)
+cta_coverage.cta_within_sample_percentile_addressable_fraction_by_cohort(
+    ["LUAD", "SKCM"], percentile=0.95, coverage=coverage
+)
 cta_peptides.cta_specific_9mer_count_map(by="proteoform_key")
 ```
+
+When `cohorts` is omitted, the percentile-coverage APIs inspect only cached
+per-sample matrices and do not download data. Use
+`locally_available_percentile_cohorts()` and
+`locally_available_within_sample_cohorts()` to plan local work across both
+package/artifact data and a partial bundle cache. Set `include_recomputable=False`
+when only already-built shards should count.
 
 ## Generic Antigen Panels
 
@@ -959,8 +991,11 @@ but it is not the clean-TPM biological denominator.
   `data_bundle.bundle_is_local()` reports whether the entire downloadable cache is
   populated. For a side-effect-free check of one required artifact across both an
   in-repository/package data directory and a partial cache, use
-  `data_bundle.item_is_local(path)` or `data_bundle.find_local_item(path)`. These
-  item-level probes never fetch data and reject empty files or directories. Use
+  `data_bundle.item_is_local(path)` or `data_bundle.find_local_item(path)`. When
+  package data and the cache can each hold different shards of the same artifact,
+  use `data_bundle.local_item_paths(path)` to inspect both non-empty roots in read
+  precedence order. These item-level probes never fetch data and reject empty
+  files or directories. Use
   `data_bundle.bundle_release_manifest()` to fetch and validate only the small
   release manifest/checksum for the active `DATA_VERSION`, including tarball
   sha256 plus any artifact inventory, builder commit, source-matrix version, and
