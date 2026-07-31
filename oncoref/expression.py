@@ -2046,6 +2046,46 @@ _HOUSEKEEPING_CANCER_COVERAGE_COLUMNS = [
     "passes_p5_floor",
 ]
 
+_HOUSEKEEPING_CANCER_COVERAGE_SUMMARY_COLUMNS = [
+    "Ensembl_Gene_ID",
+    "Symbol",
+    "housekeeping_detection_floor_tpm",
+    "sample_qc",
+    "expression_space",
+    "linear_cohorts_audited",
+    "linear_samples_audited",
+    "noncomparable_cohorts_observed",
+    "noncomparable_samples_observed",
+    "linear_cohorts_with_measurement",
+    "linear_cohorts_missing_measurement",
+    "linear_cohorts_passing_p5_floor",
+    "linear_measured_cohort_pass_fraction",
+    "minimum_linear_p5_tpm",
+    "minimum_linear_fraction_above_floor",
+    "worst_linear_p5_cancer_code",
+    "worst_linear_p5_source_cohort",
+    "linear_floor_status",
+]
+
+_HOUSEKEEPING_CANCER_COVERAGE_SUMMARY_REQUIRED = frozenset(
+    {
+        "cancer_code",
+        "source_cohort",
+        "recommended_for_absolute_tpm_floor",
+        "housekeeping_detection_floor_tpm",
+        "Ensembl_Gene_ID",
+        "Symbol",
+        "panel_member_present",
+        "n_samples",
+        "n_measured_samples",
+        "fraction_above_floor",
+        "p5_tpm",
+        "passes_p5_floor",
+        "sample_qc",
+        "expression_space",
+    }
+)
+
 
 def _housekeeping_panel_rows(panel_ids=None) -> pd.DataFrame:
     from .gene_families import clean_tpm_biological_housekeeping_genes
@@ -2137,7 +2177,17 @@ def housekeeping_cancer_expression_coverage_from_matrix(
             **source_metadata,
         }
 
+    raw_linear_comparability = meta.get("linear_tpm_comparable")
+    linear_tpm_comparable = _optional_bool(raw_linear_comparability)
+    if linear_tpm_comparable is None:
+        if pd.isna(raw_linear_comparability):
+            linear_tpm_comparable = False
+        else:
+            raise ValueError("source_metadata linear_tpm_comparable must be a boolean value")
+
     floor = float(housekeeping_detection_floor_tpm)
+    if not np.isfinite(floor) or floor < 0:
+        raise ValueError("housekeeping_detection_floor_tpm must be finite and non-negative")
     n_samples = len(samples)
     rows: list[dict] = []
     for panel_row in panel.itertuples(index=False):
@@ -2164,8 +2214,8 @@ def housekeeping_cancer_expression_coverage_from_matrix(
                 "source_type": meta.get("source_type"),
                 "unit": meta.get("unit"),
                 "source_scale_class": meta.get("source_scale_class"),
-                "linear_tpm_comparable": bool(meta.get("linear_tpm_comparable")),
-                "recommended_for_absolute_tpm_floor": bool(meta.get("linear_tpm_comparable")),
+                "linear_tpm_comparable": linear_tpm_comparable,
+                "recommended_for_absolute_tpm_floor": linear_tpm_comparable,
                 "sample_qc": sample_qc,
                 "expression_space": expression_space,
                 "housekeeping_detection_floor_tpm": floor,
@@ -2224,9 +2274,17 @@ def housekeeping_cancer_expression_coverage(
     else:
         codes = list(cancer_types)
 
+    requested_codes: list[str] = []
+    seen_codes: set[str] = set()
+    audited_codes: list[str] = []
+    missing_codes: list[str] = []
     frames: list[pd.DataFrame] = []
     for requested in codes:
-        code = resolve_cancer_type(requested, strict=False) or requested
+        code = str(resolve_cancer_type(requested, strict=False) or requested)
+        if code in seen_codes:
+            continue
+        seen_codes.add(code)
+        requested_codes.append(code)
         try:
             clean = per_sample_expression(
                 code,
@@ -2237,8 +2295,10 @@ def housekeeping_cancer_expression_coverage(
         except (FileNotFoundError, source_matrices.SourceMatrixError):
             if mode == "raise":
                 raise
+            missing_codes.append(code)
             continue
         meta = _selected_expression_source_metadata(str(code))
+        audited_codes.append(code)
         frames.append(
             housekeeping_cancer_expression_coverage_from_matrix(
                 clean,
@@ -2251,12 +2311,243 @@ def housekeeping_cancer_expression_coverage(
             )
         )
 
-    if not frames:
-        return pd.DataFrame(columns=_HOUSEKEEPING_CANCER_COVERAGE_COLUMNS)
-    out = pd.concat(frames, ignore_index=True)
+    out = (
+        pd.concat(frames, ignore_index=True)
+        if frames
+        else pd.DataFrame(columns=_HOUSEKEEPING_CANCER_COVERAGE_COLUMNS)
+    )
     out.attrs["issue"] = "#202"
     out.attrs["sample_qc"] = sample_qc
     out.attrs["expression_space"] = "tpm_clean"
+    out.attrs["housekeeping_detection_floor_tpm"] = float(housekeeping_detection_floor_tpm)
+    out.attrs["on_missing"] = mode
+    out.attrs["requested_cancer_codes"] = tuple(requested_codes)
+    out.attrs["audited_cancer_codes"] = tuple(audited_codes)
+    out.attrs["missing_cancer_codes"] = tuple(missing_codes)
+    out.attrs["cohort_audit_complete"] = not missing_codes
+    return out
+
+
+def _strict_coverage_bool_column(values: pd.Series, *, column: str) -> pd.Series:
+    normalized = values.astype(str).str.strip().str.lower()
+    true_values = {"true", "1", "yes"}
+    false_values = {"false", "0", "no"}
+    invalid = normalized[~normalized.isin(true_values | false_values)]
+    if not invalid.empty:
+        bad = sorted(invalid.unique().tolist())
+        raise ValueError(f"coverage column {column!r} contains non-boolean values: {bad}")
+    return normalized.isin(true_values)
+
+
+def _prepare_housekeeping_coverage_summary_input(
+    coverage: pd.DataFrame,
+) -> tuple[pd.DataFrame, float, dict[str, str]]:
+    work = coverage.loc[:, sorted(_HOUSEKEEPING_CANCER_COVERAGE_SUMMARY_REQUIRED)].copy()
+    raw_ids = work["Ensembl_Gene_ID"]
+    invalid_ids = raw_ids.isna() | raw_ids.astype(str).str.strip().str.lower().isin(
+        {"", "nan", "none"}
+    )
+    if invalid_ids.any():
+        raise ValueError("coverage contains missing Ensembl_Gene_ID values")
+    work["Ensembl_Gene_ID"] = raw_ids.astype(str).map(unversioned)
+
+    for column in (
+        "housekeeping_detection_floor_tpm",
+        "n_samples",
+        "n_measured_samples",
+        "fraction_above_floor",
+        "p5_tpm",
+    ):
+        work[column] = pd.to_numeric(work[column], errors="coerce")
+    for column in (
+        "recommended_for_absolute_tpm_floor",
+        "panel_member_present",
+        "passes_p5_floor",
+    ):
+        work[column] = _strict_coverage_bool_column(work[column], column=column)
+
+    if work["housekeeping_detection_floor_tpm"].isna().any():
+        raise ValueError("coverage has missing housekeeping_detection_floor_tpm values")
+    floors = work["housekeeping_detection_floor_tpm"].unique()
+    if len(floors) != 1:
+        raise ValueError(
+            "coverage must use exactly one housekeeping_detection_floor_tpm; "
+            f"found {sorted(float(value) for value in floors)}"
+        )
+    floor = float(floors[0])
+    if not np.isfinite(floor) or floor < 0:
+        raise ValueError("housekeeping_detection_floor_tpm must be finite and non-negative")
+
+    for column in ("n_samples", "n_measured_samples"):
+        values = work[column]
+        invalid = values.isna() | values.lt(0) | values.mod(1).ne(0)
+        if invalid.any():
+            raise ValueError(f"coverage column {column!r} must contain non-negative integers")
+    if work["n_measured_samples"].gt(work["n_samples"]).any():
+        raise ValueError("coverage n_measured_samples cannot exceed n_samples")
+    invalid_fraction = work["fraction_above_floor"].isna() | ~work["fraction_above_floor"].between(
+        0.0, 1.0
+    )
+    if invalid_fraction.any():
+        raise ValueError("coverage fraction_above_floor values must be between 0 and 1")
+    invalid_p5 = work["p5_tpm"].notna() & ~np.isfinite(work["p5_tpm"])
+    if invalid_p5.any():
+        raise ValueError("coverage p5_tpm values must be finite or missing")
+
+    dimensions: dict[str, str] = {}
+    for column in ("sample_qc", "expression_space"):
+        values = work[column].dropna().astype(str).str.strip().unique()
+        if len(values) != 1 or work[column].isna().any() or not values[0]:
+            raise ValueError(f"coverage must use exactly one non-missing {column}; found {values}")
+        dimensions[column] = str(values[0])
+
+    computed_p5_pass = work["p5_tpm"].notna() & work["p5_tpm"].ge(floor)
+    inconsistent_pass = work["passes_p5_floor"] != computed_p5_pass
+    if inconsistent_pass.any():
+        raise ValueError("coverage passes_p5_floor values disagree with p5_tpm and the floor")
+    measured_without_member = ~work["panel_member_present"] & work["n_measured_samples"].gt(0)
+    if measured_without_member.any():
+        raise ValueError("coverage records measured samples for an absent panel member")
+
+    audit_key = ["Ensembl_Gene_ID", "cancer_code", "source_cohort"]
+    duplicates = work.duplicated(audit_key, keep=False)
+    if duplicates.any():
+        repeated = work.loc[duplicates, audit_key].drop_duplicates().to_dict("records")
+        raise ValueError(f"coverage contains duplicate gene/cohort audit rows: {repeated[:5]}")
+    return work, floor, dimensions
+
+
+def _summarize_housekeeping_gene_coverage(
+    gene_id: str,
+    gene_rows: pd.DataFrame,
+    *,
+    floor: float,
+    dimensions: dict[str, str],
+) -> dict:
+    linear = gene_rows[gene_rows["recommended_for_absolute_tpm_floor"]]
+    noncomparable = gene_rows[~gene_rows["recommended_for_absolute_tpm_floor"]]
+    measured = linear[
+        linear["panel_member_present"]
+        & linear["n_measured_samples"].gt(0)
+        & linear["p5_tpm"].notna()
+    ]
+    missing_measurement = len(linear) - len(measured)
+    passing = int(measured["passes_p5_floor"].sum())
+
+    if linear.empty:
+        status = "not_audited"
+    elif missing_measurement:
+        status = "missing_linear_measurement"
+    elif passing == len(linear):
+        status = "passes_all_linear_cohorts"
+    else:
+        status = "fails_some_linear_cohorts"
+
+    worst = measured.sort_values("p5_tpm", kind="stable", na_position="last").head(1)
+    worst_row = worst.iloc[0] if not worst.empty else None
+    symbols = gene_rows["Symbol"].dropna().astype(str)
+    symbol = symbols.iloc[0] if not symbols.empty else str(gene_id)
+    return {
+        "Ensembl_Gene_ID": gene_id,
+        "Symbol": symbol,
+        "housekeeping_detection_floor_tpm": floor,
+        "sample_qc": dimensions["sample_qc"],
+        "expression_space": dimensions["expression_space"],
+        "linear_cohorts_audited": len(linear),
+        "linear_samples_audited": int(linear["n_samples"].sum()),
+        "noncomparable_cohorts_observed": len(noncomparable),
+        "noncomparable_samples_observed": int(noncomparable["n_samples"].sum()),
+        "linear_cohorts_with_measurement": len(measured),
+        "linear_cohorts_missing_measurement": missing_measurement,
+        "linear_cohorts_passing_p5_floor": passing,
+        "linear_measured_cohort_pass_fraction": (
+            passing / len(measured) if len(measured) else np.nan
+        ),
+        "minimum_linear_p5_tpm": (
+            float(measured["p5_tpm"].min()) if not measured.empty else np.nan
+        ),
+        "minimum_linear_fraction_above_floor": (
+            float(measured["fraction_above_floor"].min()) if not measured.empty else np.nan
+        ),
+        "worst_linear_p5_cancer_code": (
+            worst_row["cancer_code"] if worst_row is not None else None
+        ),
+        "worst_linear_p5_source_cohort": (
+            worst_row["source_cohort"] if worst_row is not None else None
+        ),
+        "linear_floor_status": status,
+    }
+
+
+def housekeeping_cancer_expression_coverage_summary(
+    coverage: pd.DataFrame,
+    *,
+    require_complete: bool = True,
+) -> pd.DataFrame:
+    """Summarize the cancer-side evidence for each housekeeping candidate.
+
+    This policy layer asks whether each candidate meets the recorded cohort p5
+    floor across sources whose scale supports absolute clean-TPM comparison.
+    Non-comparable sources remain counted, but their TPM values cannot pass or veto
+    the floor. ``linear_floor_status`` separates complete passes, measured low-tail
+    failures, missing measurements, and candidates with no comparable audit.
+
+    The statuses are panel-review evidence, not an automatic promotion rule. A panel
+    change alters every HK-normalized value and still requires a consumer-specific
+    benchmark. Results from :func:`housekeeping_cancer_expression_coverage` declare
+    whether every requested cohort was audited. Partial or undeclared inputs are
+    rejected by default; use ``require_complete=False`` only for explicit exploration.
+    """
+    missing = sorted(_HOUSEKEEPING_CANCER_COVERAGE_SUMMARY_REQUIRED - set(coverage.columns))
+    if missing:
+        raise ValueError(f"coverage missing required columns: {missing}")
+
+    completeness = _optional_bool(coverage.attrs.get("cohort_audit_complete"))
+    raw_missing_codes = coverage.attrs.get("missing_cancer_codes", ())
+    if isinstance(raw_missing_codes, str):
+        missing_codes = (raw_missing_codes,)
+    else:
+        missing_codes = tuple(str(code) for code in raw_missing_codes)
+    if completeness is True and missing_codes:
+        raise ValueError("coverage completeness metadata conflicts with missing_cancer_codes")
+    if require_complete and completeness is not True:
+        detail = (
+            f"missing requested cancer codes: {list(missing_codes)}"
+            if missing_codes
+            else "input does not declare whether every requested cohort was audited"
+        )
+        raise ValueError(
+            f"housekeeping coverage audit is not confirmed complete; {detail}. "
+            "Use housekeeping_cancer_expression_coverage to produce a complete audit "
+            "or pass require_complete=False for an explicitly partial audit."
+        )
+    if coverage.empty:
+        out = pd.DataFrame(columns=_HOUSEKEEPING_CANCER_COVERAGE_SUMMARY_COLUMNS)
+        out.attrs.update(coverage.attrs)
+        out.attrs["issue"] = "#202"
+        out.attrs["panel_selection_policy"] = "consumer_benchmark_required"
+        out.attrs["missing_cancer_codes"] = missing_codes
+        out.attrs["cohort_audit_complete"] = completeness
+        return out
+
+    work, floor, dimensions = _prepare_housekeeping_coverage_summary_input(coverage)
+    rows = [
+        _summarize_housekeeping_gene_coverage(
+            str(gene_id), gene_rows, floor=floor, dimensions=dimensions
+        )
+        for gene_id, gene_rows in work.groupby("Ensembl_Gene_ID", sort=False)
+    ]
+
+    out = pd.DataFrame(rows, columns=_HOUSEKEEPING_CANCER_COVERAGE_SUMMARY_COLUMNS)
+    out.attrs["issue"] = "#202"
+    out.attrs["housekeeping_detection_floor_tpm"] = floor
+    out.attrs["panel_selection_policy"] = "consumer_benchmark_required"
+    out.attrs["sample_qc"] = dimensions["sample_qc"]
+    out.attrs["expression_space"] = dimensions["expression_space"]
+    out.attrs["requested_cancer_codes"] = coverage.attrs.get("requested_cancer_codes")
+    out.attrs["audited_cancer_codes"] = coverage.attrs.get("audited_cancer_codes")
+    out.attrs["missing_cancer_codes"] = missing_codes
+    out.attrs["cohort_audit_complete"] = completeness
     return out
 
 

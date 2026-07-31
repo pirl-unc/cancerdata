@@ -1721,6 +1721,31 @@ def test_housekeeping_cancer_expression_coverage_from_matrix_reports_low_tail_st
     assert out.attrs["issue"] == "#202"
 
 
+def test_housekeeping_cancer_expression_coverage_parses_source_comparability_strictly():
+    matrix = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG_HK"],
+            "Symbol": ["HK"],
+            "sample": [100.0],
+        }
+    )
+
+    proxy = expression.housekeeping_cancer_expression_coverage_from_matrix(
+        matrix,
+        source_metadata={"linear_tpm_comparable": "false"},
+        panel_ids=["ENSG_HK"],
+    )
+    assert not proxy.loc[0, "linear_tpm_comparable"]
+    assert not proxy.loc[0, "recommended_for_absolute_tpm_floor"]
+
+    with pytest.raises(ValueError, match="must be a boolean value"):
+        expression.housekeeping_cancer_expression_coverage_from_matrix(
+            matrix,
+            source_metadata={"linear_tpm_comparable": "maybe"},
+            panel_ids=["ENSG_HK"],
+        )
+
+
 def test_housekeeping_cancer_expression_coverage_threads_sample_qc_and_source_scale(monkeypatch):
     matrix = pd.DataFrame(
         {
@@ -1763,6 +1788,228 @@ def test_housekeeping_cancer_expression_coverage_threads_sample_qc_and_source_sc
     assert keyed.loc["MTC", "source_scale_class"] == "microarray_tpm_proxy"
     assert set(out["sample_qc"]) == {"pass"}
     assert set(out["expression_space"]) == {"tpm_clean"}
+    assert out.attrs["requested_cancer_codes"] == ("LUAD", "MTC")
+    assert out.attrs["audited_cancer_codes"] == ("LUAD", "MTC")
+    assert out.attrs["missing_cancer_codes"] == ()
+    assert out.attrs["cohort_audit_complete"]
+
+
+def test_housekeeping_cancer_expression_coverage_summary_is_source_scale_aware():
+    panel_ids = ["ENSG_HK_PASS", "ENSG_HK_LOW", "ENSG_HK_MISSING"]
+
+    def audit(code, source, values, *, comparable):
+        matrix = pd.DataFrame(
+            {
+                "Ensembl_Gene_ID": list(values),
+                "Symbol": [gene_id.removeprefix("ENSG_") for gene_id in values],
+                "s1": [pair[0] for pair in values.values()],
+                "s2": [pair[1] for pair in values.values()],
+            }
+        )
+        return expression.housekeeping_cancer_expression_coverage_from_matrix(
+            matrix,
+            cancer_type=code,
+            source_metadata={
+                "source_cohort": source,
+                "source_type": "bulk RNA-seq" if comparable else "microarray",
+                "unit": "TPM" if comparable else "TPM proxy",
+                "source_scale_class": (
+                    "linear_rnaseq_tpm" if comparable else "microarray_tpm_proxy"
+                ),
+                "linear_tpm_comparable": comparable,
+            },
+            panel_ids=panel_ids,
+            housekeeping_detection_floor_tpm=30.0,
+        )
+
+    coverage = pd.concat(
+        [
+            audit(
+                "LUAD",
+                "LUAD_SOURCE",
+                {
+                    "ENSG_HK_PASS": (40.0, 50.0),
+                    "ENSG_HK_LOW": (20.0, 25.0),
+                    "ENSG_HK_MISSING": (35.0, 45.0),
+                },
+                comparable=True,
+            ),
+            audit(
+                "MBL",
+                "MBL_SOURCE",
+                {
+                    "ENSG_HK_PASS": (60.0, 70.0),
+                    "ENSG_HK_LOW": (40.0, 50.0),
+                },
+                comparable=True,
+            ),
+            audit(
+                "MTC",
+                "MTC_PROXY_SOURCE",
+                {
+                    "ENSG_HK_PASS": (1.0, 2.0),
+                    "ENSG_HK_LOW": (1.0, 2.0),
+                    "ENSG_HK_MISSING": (1.0, 2.0),
+                },
+                comparable=False,
+            ),
+        ],
+        ignore_index=True,
+    )
+    coverage["recommended_for_absolute_tpm_floor"] = coverage[
+        "recommended_for_absolute_tpm_floor"
+    ].map({True: "true", False: "false"})
+
+    summary = expression.housekeeping_cancer_expression_coverage_summary(
+        coverage, require_complete=False
+    ).set_index("Ensembl_Gene_ID")
+
+    passing = summary.loc["ENSG_HK_PASS"]
+    assert passing["linear_floor_status"] == "passes_all_linear_cohorts"
+    assert passing["linear_cohorts_audited"] == 2
+    assert passing["linear_cohorts_passing_p5_floor"] == 2
+    assert passing["noncomparable_cohorts_observed"] == 1
+    assert passing["minimum_linear_p5_tpm"] == pytest.approx(40.5)
+    assert passing["worst_linear_p5_cancer_code"] == "LUAD"
+    assert passing["worst_linear_p5_source_cohort"] == "LUAD_SOURCE"
+
+    low = summary.loc["ENSG_HK_LOW"]
+    assert low["linear_floor_status"] == "fails_some_linear_cohorts"
+    assert low["linear_measured_cohort_pass_fraction"] == pytest.approx(0.5)
+    assert low["worst_linear_p5_cancer_code"] == "LUAD"
+
+    missing = summary.loc["ENSG_HK_MISSING"]
+    assert missing["linear_floor_status"] == "missing_linear_measurement"
+    assert missing["linear_cohorts_with_measurement"] == 1
+    assert missing["linear_cohorts_missing_measurement"] == 1
+    assert summary.attrs["panel_selection_policy"] == "consumer_benchmark_required"
+
+
+def test_housekeeping_cancer_expression_coverage_summary_rejects_mixed_floors():
+    coverage = pd.DataFrame(
+        {
+            "cancer_code": ["A", "B"],
+            "source_cohort": ["A_SOURCE", "B_SOURCE"],
+            "recommended_for_absolute_tpm_floor": [True, True],
+            "housekeeping_detection_floor_tpm": [30.0, 50.0],
+            "Ensembl_Gene_ID": ["ENSG_HK", "ENSG_HK"],
+            "Symbol": ["HK", "HK"],
+            "panel_member_present": [True, True],
+            "n_samples": [2, 2],
+            "n_measured_samples": [2, 2],
+            "fraction_above_floor": [1.0, 1.0],
+            "p5_tpm": [40.0, 60.0],
+            "passes_p5_floor": [True, True],
+            "sample_qc": ["pass", "pass"],
+            "expression_space": ["tpm_clean", "tpm_clean"],
+        }
+    )
+
+    with pytest.raises(ValueError, match="exactly one housekeeping_detection_floor_tpm"):
+        expression.housekeeping_cancer_expression_coverage_summary(coverage, require_complete=False)
+
+
+def test_housekeeping_cancer_expression_coverage_rejects_invalid_floor():
+    matrix = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG_HK"],
+            "Symbol": ["HK"],
+            "sample": [100.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        expression.housekeeping_cancer_expression_coverage_from_matrix(
+            matrix,
+            panel_ids=["ENSG_HK"],
+            housekeeping_detection_floor_tpm=float("nan"),
+        )
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "message"),
+    [
+        ("n_samples", -1, "non-negative integers"),
+        ("fraction_above_floor", 1.5, "between 0 and 1"),
+        ("recommended_for_absolute_tpm_floor", "maybe", "non-boolean values"),
+        ("passes_p5_floor", False, "disagree with p5_tpm"),
+        ("panel_member_present", False, "measured samples for an absent panel member"),
+    ],
+)
+def test_housekeeping_cancer_expression_coverage_summary_rejects_corrupt_rows(
+    column, value, message
+):
+    coverage = expression.housekeeping_cancer_expression_coverage_from_matrix(
+        pd.DataFrame(
+            {
+                "Ensembl_Gene_ID": ["ENSG_HK"],
+                "Symbol": ["HK"],
+                "sample": [100.0],
+            }
+        ),
+        cancer_type="LUAD",
+        source_metadata={
+            "source_cohort": "LUAD_SOURCE",
+            "linear_tpm_comparable": True,
+        },
+        panel_ids=["ENSG_HK"],
+        housekeeping_detection_floor_tpm=30.0,
+    )
+    coverage.attrs["cohort_audit_complete"] = True
+    if isinstance(value, str):
+        coverage[column] = coverage[column].astype(object)
+    coverage.loc[0, column] = value
+
+    with pytest.raises(ValueError, match=message):
+        expression.housekeeping_cancer_expression_coverage_summary(coverage)
+
+
+def test_housekeeping_cancer_expression_coverage_summary_rejects_known_partial_audit(
+    monkeypatch,
+):
+    matrix = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG_HK"],
+            "Symbol": ["HK"],
+            "sample": [100.0],
+        }
+    )
+
+    def fake_per_sample_expression(code, **_kwargs):
+        if code == "MISSING":
+            raise FileNotFoundError(code)
+        return matrix.copy()
+
+    monkeypatch.setattr(expression, "per_sample_expression", fake_per_sample_expression)
+    monkeypatch.setattr(
+        expression,
+        "_selected_expression_source_metadata",
+        lambda code: {
+            "source_cohort": f"{code}_SOURCE",
+            "source_type": "bulk RNA-seq",
+            "unit": "TPM",
+            "source_scale_class": "linear_rnaseq_tpm",
+            "linear_tpm_comparable": True,
+        },
+    )
+
+    coverage = expression.housekeeping_cancer_expression_coverage(
+        ["LUAD", "MISSING"],
+        auto_fetch=False,
+        panel_ids=["ENSG_HK"],
+    )
+
+    assert coverage.attrs["audited_cancer_codes"] == ("LUAD",)
+    assert coverage.attrs["missing_cancer_codes"] == ("MISSING",)
+    assert not coverage.attrs["cohort_audit_complete"]
+    with pytest.raises(ValueError, match="not confirmed complete"):
+        expression.housekeeping_cancer_expression_coverage_summary(coverage)
+
+    partial = expression.housekeeping_cancer_expression_coverage_summary(
+        coverage, require_complete=False
+    )
+    assert partial.loc[0, "linear_floor_status"] == "passes_all_linear_cohorts"
+    assert not partial.attrs["cohort_audit_complete"]
 
 
 def test_per_sample_expression_filters_by_sample_qc(tmp_path, monkeypatch):
