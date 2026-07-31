@@ -910,6 +910,8 @@ def _unavailable_ci_status(row: pd.Series) -> str:
 def complete_value_and_ci_provenance(estimates: pd.DataFrame) -> pd.DataFrame:
     """Replace legacy extraction placeholders with explicit value and CI states."""
     output = estimates.copy()
+    for column in ("ci_low", "ci_high"):
+        output[column] = pd.to_numeric(output[column], errors="coerce")
     for index, row in output.iterrows():
         value = _number(row["value"])
         value_status = str(row["value_status"] or "")

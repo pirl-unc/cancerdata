@@ -72,11 +72,19 @@ jobs:
     env:
       # Keep pyensembl data under the workspace so actions/cache can archive it.
       PYENSEMBL_CACHE_DIR: ${{ github.workspace }}/.ci-cache/pyensembl
-      # The real-cohort parity test requires the released LUAD source matrix.
+      # Keep real-data test fixtures under the workspace so actions/cache can archive them.
       CANCERDATA_SOURCE_MATRICES: ${{ github.workspace }}/.ci-cache/source-matrices
+      CANCERDATA_DATA_DIR: ${{ github.workspace }}/.ci-cache/reference-data
       # Pin the fixture by content, independently of an unreleased source-version bump.
       CI_LUAD_SOURCE_URL: https://github.com/pirl-unc/oncoref/releases/download/source-v5.22.8/LUAD_per_sample_tpm.parquet
       CI_LUAD_SHA256: 001ebb9ad18aea86599ff5d808851007523f6d8f0927dfdf2a2f39372f83ffc5
+      CI_ACC_SOURCE_URL: https://github.com/pirl-unc/oncoref/releases/download/source-v5.22.8/ACC_per_sample_tpm.parquet
+      CI_ACC_SHA256: c871d0255d4aea60b55069da4eddbcea3d45a7e7b21358e77b829368df5b54f5
+      CI_ACC_REFERENCE_URL: https://github.com/pirl-unc/oncoref/releases/download/ci-fixtures-v1/ACC_reference_percentiles_v5.23.2.parquet
+      CI_ACC_REFERENCE_SHA256: eab4da92aa12067f9f51d14532d3629d4a91732f9a3eb2fb03eb26f9f5fa4658
+      ONCOREF_CI_ACC_PERCENTILE_REFERENCE: ${{ github.workspace }}/.ci-cache/reference-data/ci-fixtures/ACC_reference_percentiles_v5.23.2.parquet
+      CI_HPA_RNA_SHA256: c49b5b33a076e3b9c1eb4f7d15d063ee936e07045e192ceccfeb9edcf1d90ddb
+      CI_HPA_NORMAL_TISSUE_SHA256: 1fa9111070f23290d29a32eaa30695689599b5231e7d0bc935b60a777ad3a1cc
     strategy:
       fail-fast: true
       matrix:
@@ -101,7 +109,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .ci-cache/source-matrices
-          key: source-matrices-luad-${{ env.CI_LUAD_SHA256 }}
+          key: source-matrices-${{ env.CI_LUAD_SHA256 }}-${{ env.CI_ACC_SHA256 }}
 
       - name: Stage required source matrices
         run: |
@@ -119,19 +127,72 @@ jobs:
                       digest.update(chunk)
               return digest.hexdigest()
 
-          path = source_matrices.local_path("LUAD")
-          expected_sha256 = os.environ["CI_LUAD_SHA256"]
-          if path.is_file() and sha256(path) != expected_sha256:
-              path.unlink()
+          for code in ("LUAD", "ACC"):
+              path = source_matrices.local_path(code)
+              expected_sha256 = os.environ[f"CI_{code}_SHA256"]
+              if path.is_file() and sha256(path) != expected_sha256:
+                  path.unlink()
 
-          if not path.is_file():
-              temporary_path = path.with_suffix(".parquet.part")
-              urllib.request.urlretrieve(os.environ["CI_LUAD_SOURCE_URL"], temporary_path)
+              if not path.is_file():
+                  temporary_path = path.with_suffix(".parquet.part")
+                  urllib.request.urlretrieve(os.environ[f"CI_{code}_SOURCE_URL"], temporary_path)
+                  observed_sha256 = sha256(temporary_path)
+                  assert observed_sha256 == expected_sha256, (observed_sha256, expected_sha256)
+                  temporary_path.replace(path)
+
+              print(path)
+          PY
+
+      - name: Cache required reference data
+        uses: actions/cache@v5
+        with:
+          path: .ci-cache/reference-data
+          key: reference-data-${{ env.CI_ACC_REFERENCE_SHA256 }}-${{ env.CI_HPA_RNA_SHA256 }}-${{ env.CI_HPA_NORMAL_TISSUE_SHA256 }}
+
+      - name: Stage required reference data
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          from oncoref import reference_data
+
+          def sha256(path):
+              digest = hashlib.sha256()
+              with path.open("rb") as handle:
+                  for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          acc_reference = Path(os.environ["ONCOREF_CI_ACC_PERCENTILE_REFERENCE"])
+          expected_acc_sha256 = os.environ["CI_ACC_REFERENCE_SHA256"]
+          if acc_reference.is_file() and sha256(acc_reference) != expected_acc_sha256:
+              acc_reference.unlink()
+          if not acc_reference.is_file():
+              acc_reference.parent.mkdir(parents=True, exist_ok=True)
+              temporary_path = acc_reference.with_suffix(".parquet.part")
+              urllib.request.urlretrieve(os.environ["CI_ACC_REFERENCE_URL"], temporary_path)
               observed_sha256 = sha256(temporary_path)
-              assert observed_sha256 == expected_sha256, (observed_sha256, expected_sha256)
-              temporary_path.replace(path)
+              assert observed_sha256 == expected_acc_sha256, (
+                  observed_sha256,
+                  expected_acc_sha256,
+              )
+              temporary_path.replace(acc_reference)
 
-          print(path)
+          hpa_sources = {
+              "hpa_rna_consensus": os.environ["CI_HPA_RNA_SHA256"],
+              "hpa_normal_tissue": os.environ["CI_HPA_NORMAL_TISSUE_SHA256"],
+          }
+          for name, expected_sha256 in hpa_sources.items():
+              path = reference_data.local_path(name)
+              if path.is_file() and sha256(path) != expected_sha256:
+                  path.unlink()
+              path = reference_data.download(name)
+              observed_sha256 = sha256(path)
+              assert observed_sha256 == expected_sha256, (observed_sha256, expected_sha256)
+              print(path)
           PY
 
       - name: Cache Ensembl genome data

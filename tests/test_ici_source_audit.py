@@ -57,6 +57,8 @@ def test_ci_completion_is_idempotent():
             }
         ]
     )
+    for column in ("ci_low", "ci_high"):
+        estimates[column] = estimates[column].astype("string[pyarrow]")
 
     first = audit.complete_value_and_ci_provenance(estimates)
     second = audit.complete_value_and_ci_provenance(first)
