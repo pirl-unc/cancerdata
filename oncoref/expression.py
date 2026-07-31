@@ -2177,6 +2177,14 @@ def housekeeping_cancer_expression_coverage_from_matrix(
             **source_metadata,
         }
 
+    raw_linear_comparability = meta.get("linear_tpm_comparable")
+    linear_tpm_comparable = _optional_bool(raw_linear_comparability)
+    if linear_tpm_comparable is None:
+        if pd.isna(raw_linear_comparability):
+            linear_tpm_comparable = False
+        else:
+            raise ValueError("source_metadata linear_tpm_comparable must be a boolean value")
+
     floor = float(housekeeping_detection_floor_tpm)
     if not np.isfinite(floor) or floor < 0:
         raise ValueError("housekeeping_detection_floor_tpm must be finite and non-negative")
@@ -2206,8 +2214,8 @@ def housekeeping_cancer_expression_coverage_from_matrix(
                 "source_type": meta.get("source_type"),
                 "unit": meta.get("unit"),
                 "source_scale_class": meta.get("source_scale_class"),
-                "linear_tpm_comparable": bool(meta.get("linear_tpm_comparable")),
-                "recommended_for_absolute_tpm_floor": bool(meta.get("linear_tpm_comparable")),
+                "linear_tpm_comparable": linear_tpm_comparable,
+                "recommended_for_absolute_tpm_floor": linear_tpm_comparable,
                 "sample_qc": sample_qc,
                 "expression_space": expression_space,
                 "housekeeping_detection_floor_tpm": floor,

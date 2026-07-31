@@ -1721,6 +1721,31 @@ def test_housekeeping_cancer_expression_coverage_from_matrix_reports_low_tail_st
     assert out.attrs["issue"] == "#202"
 
 
+def test_housekeeping_cancer_expression_coverage_parses_source_comparability_strictly():
+    matrix = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG_HK"],
+            "Symbol": ["HK"],
+            "sample": [100.0],
+        }
+    )
+
+    proxy = expression.housekeeping_cancer_expression_coverage_from_matrix(
+        matrix,
+        source_metadata={"linear_tpm_comparable": "false"},
+        panel_ids=["ENSG_HK"],
+    )
+    assert not proxy.loc[0, "linear_tpm_comparable"]
+    assert not proxy.loc[0, "recommended_for_absolute_tpm_floor"]
+
+    with pytest.raises(ValueError, match="must be a boolean value"):
+        expression.housekeeping_cancer_expression_coverage_from_matrix(
+            matrix,
+            source_metadata={"linear_tpm_comparable": "maybe"},
+            panel_ids=["ENSG_HK"],
+        )
+
+
 def test_housekeeping_cancer_expression_coverage_threads_sample_qc_and_source_scale(monkeypatch):
     matrix = pd.DataFrame(
         {
