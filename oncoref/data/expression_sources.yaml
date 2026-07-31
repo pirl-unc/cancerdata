@@ -160,6 +160,7 @@ sources:
     recount3_route: mds_cd34
     expected_samples_by_code: {MDS: 82}
     source_cohort: GSE114922_SHIOZAWA_2018
+    source_project: GEO
     builder: scripts/build_recount3_source.py
     unit: recount3 Gencode-v26 coverage gene-sums
     expected_size_gb: 0.1
@@ -779,6 +780,7 @@ sources:
     recount3_route: all
     expected_samples_by_code: {NET_PANCREAS: 33}
     source_cohort: GSE118014_ALVAREZ_2018
+    source_project: GEO
     builder: scripts/build_recount3_source.py
     unit: recount3 Gencode-v26 coverage gene-sums
     expected_size_gb: 0.1
@@ -1533,6 +1535,7 @@ sources:
     source_type: github-release
     builder: scripts/build_lnen_drmetrics_reference_expression.py
     source_cohort: DRMETRICS_ALCALA_2019_LNEN
+    source_project: GEO (DR-metrics / Alcala LNEN)
     url: https://github.com/IARCbioinfo/DRMetrics
     expected_size_gb: 0.05
     citation: PMID 31431620 (Alcala 2019) + PMID 33203751 (Gabriel 2020)
@@ -1580,6 +1583,7 @@ sources:
     recount3_route: net_origin
     expected_samples_by_code: {NET_MIDGUT: 81, NET_PANCREAS: 113, NET_RECTAL: 18}
     source_cohort: GSE98894_ALVAREZ_2018_NET
+    source_project: GEO
     builder: scripts/build_recount3_source.py
     unit: recount3 Gencode-v26 coverage gene-sums
     expected_size_gb: 0.1
@@ -1613,6 +1617,7 @@ sources:
     citation: GSE32662 (Pringle 2012 medullary thyroid carcinoma)
     expected_size_gb: 0.05
     source_cohort: GSE32662_PRINGLE_2012_MTC
+    source_project: GEO
     tumor_origin: primary
     unit: TPM proxy
     processing_pipeline: GPL6480 series-matrix log2 intensity to TPM proxy; Ensembl 112
@@ -1677,6 +1682,7 @@ sources:
     citation: PMID 22241786 (Singer 2007 MSKCC 140-sample LPS classifier)
     expected_size_gb: 0.1
     source_cohort: GSE30929_SINGER_2007_LPS
+    source_project: GEO
     tumor_origin: primary
     special_handling: >
       Affymetrix HG-U133A (GPL96) microarray; 140 primary liposarcomas
