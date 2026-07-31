@@ -864,9 +864,10 @@ summary[["Symbol", "linear_floor_status", "worst_linear_p5_cancer_code"]]
 Only rows marked `recommended_for_absolute_tpm_floor` participate in the summary's
 linear TPM pass/fail decision. Proxy or non-linear sources remain counted but cannot
 pass or veto an absolute clean-TPM floor. The raw audit records requested, audited,
-and unavailable cancer codes in DataFrame attributes. The summary rejects a known
-partial audit by default; `require_complete=False` is an explicit exploratory-cache
-opt-out, not a release-quality panel decision.
+and unavailable cancer codes in DataFrame attributes. The summary rejects a partial
+audit, or one whose completeness is unknown, by default;
+`require_complete=False` is an explicit exploratory-cache opt-out, not a
+release-quality panel decision.
 
 For clean-TPM housekeeping denominators, use the biological HPA-stable panel:
 

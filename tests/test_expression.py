@@ -1835,9 +1835,9 @@ def test_housekeeping_cancer_expression_coverage_summary_is_source_scale_aware()
         "recommended_for_absolute_tpm_floor"
     ].map({True: "true", False: "false"})
 
-    summary = expression.housekeeping_cancer_expression_coverage_summary(coverage).set_index(
-        "Ensembl_Gene_ID"
-    )
+    summary = expression.housekeeping_cancer_expression_coverage_summary(
+        coverage, require_complete=False
+    ).set_index("Ensembl_Gene_ID")
 
     passing = summary.loc["ENSG_HK_PASS"]
     assert passing["linear_floor_status"] == "passes_all_linear_cohorts"
@@ -1881,7 +1881,7 @@ def test_housekeeping_cancer_expression_coverage_summary_rejects_mixed_floors():
     )
 
     with pytest.raises(ValueError, match="exactly one housekeeping_detection_floor_tpm"):
-        expression.housekeeping_cancer_expression_coverage_summary(coverage)
+        expression.housekeeping_cancer_expression_coverage_summary(coverage, require_complete=False)
 
 
 def test_housekeeping_cancer_expression_coverage_rejects_invalid_floor():
@@ -1939,7 +1939,7 @@ def test_housekeeping_cancer_expression_coverage_summary_rejects_known_partial_a
     assert coverage.attrs["audited_cancer_codes"] == ("LUAD",)
     assert coverage.attrs["missing_cancer_codes"] == ("MISSING",)
     assert not coverage.attrs["cohort_audit_complete"]
-    with pytest.raises(ValueError, match="audit is incomplete"):
+    with pytest.raises(ValueError, match="not confirmed complete"):
         expression.housekeeping_cancer_expression_coverage_summary(coverage)
 
     partial = expression.housekeeping_cancer_expression_coverage_summary(

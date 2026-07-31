@@ -2292,6 +2292,8 @@ def housekeeping_cancer_expression_coverage(
     out.attrs["issue"] = "#202"
     out.attrs["sample_qc"] = sample_qc
     out.attrs["expression_space"] = "tpm_clean"
+    out.attrs["housekeeping_detection_floor_tpm"] = float(housekeeping_detection_floor_tpm)
+    out.attrs["on_missing"] = mode
     out.attrs["requested_cancer_codes"] = tuple(requested_codes)
     out.attrs["audited_cancer_codes"] = tuple(audited_codes)
     out.attrs["missing_cancer_codes"] = tuple(missing_codes)
@@ -2341,16 +2343,25 @@ def housekeeping_cancer_expression_coverage_summary(
     missing = sorted(required - set(coverage.columns))
     if missing:
         raise ValueError(f"coverage missing required columns: {missing}")
+    completeness = coverage.attrs.get("cohort_audit_complete")
     missing_codes = tuple(str(code) for code in coverage.attrs.get("missing_cancer_codes", ()))
-    if require_complete and missing_codes:
+    if require_complete and completeness is not True:
+        if missing_codes:
+            detail = f"missing requested cancer codes: {list(missing_codes)}"
+        else:
+            detail = "input does not declare whether every requested cohort was audited"
         raise ValueError(
-            "housekeeping coverage audit is incomplete; missing requested cancer codes: "
-            f"{list(missing_codes)}. Fetch the missing source matrices or pass "
-            "require_complete=False for an explicitly partial audit."
+            f"housekeeping coverage audit is not confirmed complete; {detail}. "
+            "Use housekeeping_cancer_expression_coverage to produce a complete audit "
+            "or pass require_complete=False for an explicitly partial audit."
         )
     if coverage.empty:
         out = pd.DataFrame(columns=_HOUSEKEEPING_CANCER_COVERAGE_SUMMARY_COLUMNS)
         out.attrs.update(coverage.attrs)
+        out.attrs["issue"] = "#202"
+        out.attrs["panel_selection_policy"] = "consumer_benchmark_required"
+        out.attrs["missing_cancer_codes"] = missing_codes
+        out.attrs["cohort_audit_complete"] = completeness
         return out
 
     work = coverage.loc[:, sorted(required)].copy()
@@ -2474,7 +2485,7 @@ def housekeeping_cancer_expression_coverage_summary(
     out.attrs["requested_cancer_codes"] = coverage.attrs.get("requested_cancer_codes")
     out.attrs["audited_cancer_codes"] = coverage.attrs.get("audited_cancer_codes")
     out.attrs["missing_cancer_codes"] = missing_codes
-    out.attrs["cohort_audit_complete"] = not missing_codes
+    out.attrs["cohort_audit_complete"] = completeness
     return out
 
 
