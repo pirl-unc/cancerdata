@@ -39,21 +39,19 @@ The wider evidence base (``cancer-ici-response-estimates.csv``, exposed by
 :func:`cancer_ici_response_estimates_df` and pooled by :func:`pooled_ici_response`)
 follows three rules that matter when curating new trials or interpreting a pooled value:
 
-1. **Reported vs. derived values.** Most estimate rows are ORR/CRR/DCR/… *directly
-   reported* in the cited paper or trial-results record. A handful of anchors in ``cancer-ici-response.csv`` are
-   instead **curator-derived blends** — no single trial reports them. The clearest case is
-   the "all-comer" ORR for MSI/MMR-dependent cancers: ``READ`` 5%, ``COAD`` 5%, ``UCEC``
-   8% are *prevalence-weighted blends* of the MSI-H/dMMR responders (~45–50%) and the
-   MSS/pMMR non-responders (~0%), because the pivotal trials (KEYNOTE-177/-164/-158) enroll
-   ONLY the biomarker-selected subtype. Since no paper reports the blend, the reference
-   audit marks these ``citation_matches=False`` → ``source_verified=False`` (flags
-   ``orr-is-derived-estimate`` / ``orr-is-derived-blend`` / ``all-comer-figure-not-in-cited-paper``).
-   In the estimates table these carry ``value_basis="derived_blend"`` (vs ``"reported"``),
-   and :func:`pooled_ici_response` drops them unconditionally — a derived blend must never
-   be pooled as if it were trial data. Rows with ``value_basis="reported_context"`` are
-   source-reported values from overlapping or comparator cohorts kept for audit context,
-   and are also excluded from subtype-specific pooling. The blend is reconstructable from
-   its components:
+1. **Reported, computed, and derived values stay distinct.** ``value_basis`` records
+   whether a value was reported directly, computed from reported counts, inferred
+   from outcomes, combined across cohorts, retained as overlapping context, or
+   curator-modeled. :func:`pooled_ici_response` accepts direct reported values and
+   same-cohort count calculations; it excludes inferred, cross-cohort, contextual,
+   and modeled values.
+
+   The clearest modeled case is the "all-comer" ORR for MSI/MMR-dependent cancers:
+   ``READ`` 5%, ``COAD`` 5%, and ``UCEC`` 8% are prevalence-weighted blends of the
+   MSI-H/dMMR responders and MSS/pMMR non-responders because the pivotal trials enroll
+   only biomarker-selected subtypes. These rows carry
+   ``value_basis="derived_blend"`` and ``source_verified=False`` because no paper
+   reports the modeled result. The blend is reconstructable from its components:
    ``all_comer ≈ ORR_MSI · p_dMMR + ORR_MSS · (1 − p_dMMR)`` (COAD: 43.8·0.13 ≈ 5.7%;
    READ: 43.8·0.07 ≈ 3.1%; UCEC: 48·0.20 + 7·0.80 ≈ 15%, using the KEYNOTE-158 dMMR/pMMR
    cohorts at an advanced-EC dMMR prevalence ~20%). When adding such an anchor,
@@ -93,7 +91,14 @@ from .load_dataset import _register_derived_cache, get_data
 PROPORTION_METRICS: tuple[str, ...] = ("ORR", "CRR", "DCR", "PR")
 
 #: Values that are useful audit context but should not enter pooled estimates.
-NON_POOLABLE_VALUE_BASIS: frozenset[str] = frozenset({"derived_blend", "reported_context"})
+NON_POOLABLE_VALUE_BASIS: frozenset[str] = frozenset(
+    {
+        "derived_blend",
+        "derived_cross_cohort",
+        "inferred_from_outcomes",
+        "reported_context",
+    }
+)
 
 #: Regimen tags in preference order — the default fallback when no regimen is pinned:
 #: anti-PD-1 monotherapy first, then anti-PD-L1, then the anti-PD-1+anti-CTLA-4 doublet.
@@ -124,16 +129,19 @@ def _mixture_cohort_code_set() -> frozenset[str]:
 
 def _evidence_type(value_basis) -> str:
     basis = str(value_basis).strip()
-    if basis == "derived_blend":
-        return "derived_blend"
-    if basis == "reported_context":
-        return "reported_context"
-    return "direct_reported"
+    return {
+        "computed_from_counts": "computed_from_counts",
+        "derived_blend": "derived_blend",
+        "derived_cross_cohort": "derived_cross_cohort",
+        "inferred_from_outcomes": "inferred_from_outcomes",
+        "reported_context": "reported_context",
+    }.get(basis, "direct_reported")
 
 
 def _source_scope(code, value_basis, mixture_codes: frozenset[str]) -> str:
-    if str(value_basis).strip() == "derived_blend":
-        return "derived_blend"
+    basis = str(value_basis).strip()
+    if basis in {"derived_blend", "derived_cross_cohort"}:
+        return basis
     if str(code) in mixture_codes:
         return "aggregate_source"
     return "direct_source"
@@ -232,11 +240,16 @@ def response_anchor_evidence_df(
     merged["histology_match"] = merged["evidence_type"].map(
         {
             "direct_reported": "direct",
+            "computed_from_counts": "direct",
+            "inferred_from_outcomes": "direct",
             "reported_context": "context",
             "derived_blend": "derived",
+            "derived_cross_cohort": "derived",
         }
     )
-    merged["is_direct_cancer_code_evidence"] = merged["evidence_type"].eq("direct_reported")
+    merged["is_direct_cancer_code_evidence"] = merged["evidence_type"].isin(
+        {"direct_reported", "computed_from_counts", "inferred_from_outcomes"}
+    )
     merged["evidence_source_code"] = merged["cancer_code"].astype(str)
     merged["source_scope"] = [
         _source_scope(code, basis, mixture_codes)
@@ -650,23 +663,33 @@ def cancer_ici_response_estimates_df():
 
     Generalizes the one-anchor-per-cell :func:`cancer_ici_response_df` to *all* extracted
     endpoints — ORR, CRR, DCR, DOR, PFS, OS and landmark PFS/OS rates — each with
-    ``value``, ``unit`` (``percent`` / ``months`` / ``rate_percent``), 95% CI
+    ``value``, ``unit`` (``percent`` / ``months`` / ``rate_percent``), confidence interval
     (``ci_low`` / ``ci_high``), ``timepoint``, sample size (``metric_n`` / ``source_n``)
     and ``responders``. ``estimate_id`` is a stable row identifier used by compact
     anchor tables to point back to the exact supporting estimate. ``value_status``,
     ``ci_basis``, ``ci_low_status``, ``ci_high_status``, and
     ``source_locator_status`` make missing/not-reached/not-estimable provenance
-    explicit while the source-local locator audit is still incomplete. ``role`` is
-    ``"primary"`` (the cited representative setting) or ``"alternate"`` (other trials
-    / subgroups for the same cancer + regimen).
-    ``source_verified`` marks rows whose citation was confirmed against PubMed/Crossref or
-    a ClinicalTrials.gov results record in the reference audit. ``value_basis`` is
-    ``"reported"`` (value reported in the cited trial source), ``"reported_context"``
-    (source-reported overlapping or comparator cohort kept for audit context but excluded
-    from pooling), or ``"derived_blend"`` (a curator-computed prevalence-weighted blend,
-    e.g. the all-comer MMR-dependent ORRs — :func:`pooled_ici_response` never pools
-    these)."""
+    explicit. ``role`` is ``"primary"`` (the cited representative setting) or
+    ``"alternate"`` (other trials / subgroups for the same cancer + regimen).
+
+    ``source_verified`` preserves the prior evidence/citation verification decision;
+    use ``source_locator_status="verified"`` when an exact public source block is
+    required. ``value_basis`` distinguishes directly ``"reported"`` values from
+    ``"computed_from_counts"``, ``"inferred_from_outcomes"``,
+    ``"derived_cross_cohort"``, ``"reported_context"``, and ``"derived_blend"``.
+    Pooling excludes inferred, cross-cohort, contextual, and blended values."""
     return get_data("cancer-ici-response-estimates")
+
+
+def cancer_ici_source_locator_audit_df():
+    """The row-level source audit behind :func:`cancer_ici_response_estimates_df`.
+
+    Each ``estimate_id`` appears exactly once with the public source URL and document
+    kind, the table/figure/section locator available during the audit, match evidence,
+    and audit date. A ``citation_only`` status means the citation was confirmed but no
+    public text block was available; it does not claim an invented article location.
+    """
+    return get_data("cancer-ici-source-locator-audit")
 
 
 def _truthy(v) -> bool:

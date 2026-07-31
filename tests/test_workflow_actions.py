@@ -39,7 +39,7 @@ def test_workflows_use_node24_action_generations():
             )
 
 
-def test_test_workflow_stages_required_luad_matrix():
+def test_test_workflow_stages_required_real_data():
     workflow = yaml.safe_load(Path(".github/workflows/tests.yml").read_text())
     test_job = workflow["jobs"]["test"]
 
@@ -49,14 +49,43 @@ def test_test_workflow_stages_required_luad_matrix():
     assert test_job["env"]["CI_LUAD_SOURCE_URL"].endswith(
         "/source-v5.22.8/LUAD_per_sample_tpm.parquet"
     )
+    assert test_job["env"]["CI_ACC_SHA256"] == (
+        "c871d0255d4aea60b55069da4eddbcea3d45a7e7b21358e77b829368df5b54f5"
+    )
+    assert test_job["env"]["CI_ACC_SOURCE_URL"].endswith(
+        "/source-v5.22.8/ACC_per_sample_tpm.parquet"
+    )
+    assert test_job["env"]["CI_ACC_REFERENCE_SHA256"] == (
+        "eab4da92aa12067f9f51d14532d3629d4a91732f9a3eb2fb03eb26f9f5fa4658"
+    )
+    assert test_job["env"]["CI_ACC_REFERENCE_URL"].endswith(
+        "/ci-fixtures-v1/ACC_reference_percentiles_v5.23.2.parquet"
+    )
+    assert "CANCERDATA_DATA_DIR" in test_job["env"]
+    assert test_job["env"]["CI_HPA_RNA_SHA256"] == (
+        "c49b5b33a076e3b9c1eb4f7d15d063ee936e07045e192ceccfeb9edcf1d90ddb"
+    )
+    assert test_job["env"]["CI_HPA_NORMAL_TISSUE_SHA256"] == (
+        "1fa9111070f23290d29a32eaa30695689599b5231e7d0bc935b60a777ad3a1cc"
+    )
     cache_step = next(
         step for step in test_job["steps"] if step["name"] == "Cache required source matrices"
     )
-    assert cache_step["with"]["key"] == "source-matrices-luad-${{ env.CI_LUAD_SHA256 }}"
+    assert cache_step["with"]["key"] == (
+        "source-matrices-${{ env.CI_LUAD_SHA256 }}-${{ env.CI_ACC_SHA256 }}"
+    )
 
     stage_step = next(
         step for step in test_job["steps"] if step["name"] == "Stage required source matrices"
     )
-    assert 'source_matrices.local_path("LUAD")' in stage_step["run"]
-    assert 'os.environ["CI_LUAD_SOURCE_URL"]' in stage_step["run"]
-    assert 'os.environ["CI_LUAD_SHA256"]' in stage_step["run"]
+    assert 'for code in ("LUAD", "ACC")' in stage_step["run"]
+    assert "source_matrices.local_path(code)" in stage_step["run"]
+    assert 'os.environ[f"CI_{code}_SOURCE_URL"]' in stage_step["run"]
+    assert 'os.environ[f"CI_{code}_SHA256"]' in stage_step["run"]
+
+    reference_step = next(
+        step for step in test_job["steps"] if step["name"] == "Stage required reference data"
+    )
+    assert 'os.environ["ONCOREF_CI_ACC_PERCENTILE_REFERENCE"]' in reference_step["run"]
+    assert '"hpa_rna_consensus": os.environ["CI_HPA_RNA_SHA256"]' in reference_step["run"]
+    assert '"hpa_normal_tissue": os.environ["CI_HPA_NORMAL_TISSUE_SHA256"]' in reference_step["run"]

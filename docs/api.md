@@ -262,18 +262,68 @@ ici_response.apd1_response("SKCM")
 ici_response.best_available_ici_response("SARC_ASPS")
 ici_response.ici_response_by_regimen("SKCM")
 ici_response.ici_response_estimates_df()
+ici_response.ici_source_locator_audit_df()
 ```
 
-### Evidence rows
+### Evidence and source audit
 
 `ici_response_estimates_df()` is the auditable long table behind the compact
 ORR anchors. Each row has a stable `estimate_id`; compact
 `ici_response_record(...)` / `apd1_response_df()` rows expose that pointer as
-`source_estimate_id`. CI provenance is explicit through `ci_basis`,
-`ci_low_status`, `ci_high_status`, and `value_status`, so `NR`/`NE` bounds and
-not-reached medians are distinguishable from fields that still need extraction.
-`source_locator_status` is currently `not_extracted` for legacy rows until each
-paper/table/supplement locator is audited row by row.
+`source_estimate_id`. `ici_source_locator_audit_df()` has exactly one row per
+`estimate_id` and records the public source URL, document kind, table/figure/section
+locator, match evidence, and audit date.
+
+Use the estimates table for analysis and the locator table to inspect how an
+estimate was checked. `source_endpoint_label` and `source_population_label` are
+normalized oncoref labels for comparison; they are not represented as verbatim
+quotes from the paper.
+
+`source_locator_status` distinguishes:
+
+- `verified`: the endpoint and row-specific numeric evidence matched a source block,
+  or the extraction note named the exact table or figure.
+- `source_section`: the cited evidence was previously verified and a real public
+  results/abstract section is available, but the audit did not recover a more exact
+  numeric block.
+- `citation_only`: the cited evidence was previously verified, but the public source
+  record exposed no usable text block. The locator is intentionally blank.
+- `located_unverified`: a block matched, but the estimate remains explicitly
+  unverified because its population or value could not be confirmed.
+- `not_verified`: no supporting source block was confirmed.
+- `not_applicable`: a curator-derived value has no single source location.
+
+`ci_basis` distinguishes source-reported intervals from 95% `computed_wilson`
+intervals, `not_reported`, `source_unavailable`, `not_verified`, and
+`not_applicable`. Reported intervals retain source-specific levels such as 80% or
+90% in their extraction notes; they must not be assumed to be uniformly 95%.
+`ci_low_status` and `ci_high_status` preserve numeric, `NR`, and `NE` bounds
+independently. `value_status` likewise distinguishes numeric, not-reached,
+not-estimable, not-reported, and unverified values. There are no remaining legacy
+`not_extracted` states in these fields.
+
+`value_basis` controls interpretation and pooling:
+
+- `reported` is a value reported for the named source population.
+- `computed_from_counts` is calculated from source-reported response counts.
+- `inferred_from_outcomes` is implied by reported outcomes but was not a named
+  endpoint; it is excluded from pooling.
+- `derived_cross_cohort` combines source cohorts or treatment arms and is excluded
+  from pooling.
+- `reported_context` preserves an overlapping subgroup or comparator and is excluded
+  from pooling.
+- `derived_blend` is a curator-modeled value without a single trial estimate and is
+  excluded from pooling.
+
+The audit can be reproduced with:
+
+```bash
+python scripts/audit_ici_source_locators.py --write-estimates
+```
+
+The script retrieves one public source document at a time and stores compressed
+cache entries under `~/.cache/oncoref/ici-source-locator-audit`, keeping the source
+corpus out of memory.
 
 ## CTA Antigens
 

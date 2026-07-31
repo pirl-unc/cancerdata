@@ -249,7 +249,7 @@ def test_net_nonpancreatic_estimates_are_source_scoped_and_detailed():
         & (est["regimen"] == "PD-1+CTLA-4")
         & (est["role"] == "alternate")
     ]
-    assert {"ORR", "DCR", "PFS", "PFS_RATE", "OS"} <= set(
+    assert {"ORR", "CBR", "PFS", "PFS_RATE", "OS"} <= set(
         alternate["metric"].astype(str).str.upper()
     )
     assert alternate["setting"].astype(str).str.contains("high-grade").any()
@@ -624,8 +624,11 @@ def test_estimates_internal_consistency():
         tag = f"{r['cancer_code']}/{r['regimen']}/{m}/{r['role']}"
         assert r["role"] in ("primary", "alternate"), f"{tag}: bad role"
         assert r["value_basis"] in (
+            "computed_from_counts",
             "reported",
             "derived_blend",
+            "derived_cross_cohort",
+            "inferred_from_outcomes",
             "reported_context",
         ), f"{tag}: bad value_basis"
         ref = r["ref"]
@@ -655,7 +658,8 @@ def test_unverified_rows_do_not_claim_source_verification():
         regex=True,
     )
     explicit_uncertainty = notes.str.contains(
-        r"unverified|not independently confirmed|not confirmed|could not confirm|"
+        r"unverified|not independently confirmed|not confirmed|not re-confirmed|"
+        r"could not (?:be )?confirm(?:ed)?|"
         r"pending primary confirmation|not supported|does not report|not in abstract|"
         r"not captured|not source-verified",
         case=False,
@@ -805,8 +809,8 @@ def test_epn_checkmate908_pooled_orr_counts():
     assert float(primary["responders"]) == 1
     assert float(primary["value"]) == 4.5
     assert bool(primary["source_verified"]) is True
-    assert primary["value_basis"] == "reported"
-    assert _num(primary["ci_low"]) is None and _num(primary["ci_high"]) is None
+    assert primary["value_basis"] == "derived_cross_cohort"
+    assert primary["ci_basis"] == "computed_wilson"
 
     combo = rows[rows["role"] == "alternate"]
     assert len(combo) == 1
@@ -816,12 +820,12 @@ def test_epn_checkmate908_pooled_orr_counts():
     assert combo["value_basis"] == "reported_context"
 
     pooled = ici.pooled_ici_response("EPN", regimen="PD-1", metric="ORR", verified_only=False)
-    assert pooled["responders_total"] == 1
-    assert pooled["n_total"] == 22
-    assert pooled["n_pooled"] == 1
-    assert pooled["n_studies"] == 1
-    assert pooled["pooled_pct"] == 4.5
-    assert pooled["refs"] == ["PMID:36808285"]
+    assert pooled["responders_total"] is None
+    assert pooled["n_total"] is None
+    assert pooled["n_pooled"] == 0
+    assert pooled["n_studies"] == 0
+    assert pooled["pooled_pct"] is None
+    assert pooled["refs"] == []
 
 
 def test_sarc028_expansion_source_endpoints_and_pools():

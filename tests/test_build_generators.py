@@ -4,7 +4,6 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 
-import glob
 import gzip
 import hashlib
 import importlib.util
@@ -22,18 +21,24 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from oncoref import expression_builders, expression_source_adapters
+from oncoref import expression_builders, expression_source_adapters, source_matrices
 from oncoref.cancer_types import cohort_registry
 
 _SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 
-# Optional real-data parity: the per-sample matrices + pirlygenes' shipped
-# percentile artifact live only on a maintainer's machine (~22 GB cache), so this
-# is gated like the HPA-dependent tests and skips cleanly everywhere else.
-_ACC_MATRIX = glob.glob(
-    os.path.expanduser("~/.cache/pirlygenes/expression/*/derived/tcga_acc_per_sample_tpm.parquet")
+# Real-data parity uses one public ACC source matrix and a frozen pirlygenes
+# percentile output. CI stages both; maintainer paths remain local fallbacks.
+_ACC_MATRIX_LOCATIONS = (
+    source_matrices.local_path("ACC"),
+    Path(
+        os.path.expanduser(
+            "~/.cache/pirlygenes/expression/treehouse-polya-25-01/"
+            "derived/tcga_acc_per_sample_tpm.parquet"
+        )
+    ),
 )
-_ACC_REF_LOCATIONS = (
+_CI_ACC_REF = os.environ.get("ONCOREF_CI_ACC_PERCENTILE_REFERENCE")
+_ACC_REF_LOCATIONS = ((Path(_CI_ACC_REF),) if _CI_ACC_REF else ()) + (
     Path(
         os.path.expanduser(
             "~/code/pirlygenes/pirlygenes/data/cancer-reference-expression-percentiles/ACC.parquet"
@@ -46,8 +51,9 @@ _ACC_REF_LOCATIONS = (
         )
     ),
 )
+_ACC_MATRIX = next((path for path in _ACC_MATRIX_LOCATIONS if path.is_file()), None)
 _ACC_REF = next((path for path in _ACC_REF_LOCATIONS if path.exists()), None)
-_PARITY_READY = bool(_ACC_MATRIX) and _ACC_REF is not None
+_PARITY_READY = _ACC_MATRIX is not None and _ACC_REF is not None
 
 
 def _load_script(name):
@@ -4724,17 +4730,21 @@ def test_rebuild_expression_artifacts_keeps_all_samples_when_requested(tmp_path,
     assert build_meta.loc[0, "n_cohort_samples"] == 3
 
 
-# ---------- real-data parity (skipped without the maintainer's matrix cache) ----------
+# ---------- real-data parity against a frozen published reference ----------
 
 
-@pytest.mark.skipif(not _PARITY_READY, reason="per-sample matrix cache / pirlygenes ref absent")
 def test_percentiles_reproduce_pirlygenes_reference():
+    if not _PARITY_READY:
+        if os.environ.get("CI"):
+            pytest.fail("CI must stage the ACC source matrix and frozen percentile reference")
+        pytest.skip("ACC source matrix / frozen percentile reference absent")
+
     # End-to-end on REAL data: raw per-sample matrix -> clean_tpm -> percentile
     # vectors must reproduce pirlygenes' shipped percentile artifact for the same
     # cohort. Proves the generator + oncoref's clean_tpm port are faithful.
     from oncoref import normalization as nz
 
-    raw = pd.read_parquet(_ACC_MATRIX[0])
+    raw = pd.read_parquet(_ACC_MATRIX)
     samples = [c for c in raw.columns if c not in ("Ensembl_Gene_ID", "Symbol")]
     gene_table = raw[["Symbol", "Ensembl_Gene_ID"]]
     clean = nz.clean_tpm(raw[samples], gene_table=gene_table)

@@ -7,6 +7,7 @@
 """CTA regeneration from HPA — parity with the shipped table (#35, Phase C)."""
 
 import io
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -21,6 +22,14 @@ _HPA_READY = reference_data.is_cached("hpa_rna_consensus") and reference_data.is
 )
 
 
+def _require_hpa_v23():
+    if _HPA_READY:
+        return
+    if os.environ.get("CI"):
+        pytest.fail("CI must stage the pinned HPA v23 RNA and normal-tissue tables")
+    pytest.skip("HPA v23 not cached")
+
+
 def test_fraction_deflation_semantics():
     # All-below-1 nTPM -> deflated total 0 -> 1.0 (restricted by the +1 pseudocount).
     f = cta_regen._fraction
@@ -32,8 +41,9 @@ def test_fraction_deflation_semantics():
     assert 0.0 < val < 1.0
 
 
-@pytest.mark.skipif(not _HPA_READY, reason="HPA v23 not cached")
 def test_regeneration_reproduces_shipped_table():
+    _require_hpa_v23()
+
     # Regenerating the 47 HPA columns from HPA v23 must reproduce the shipped,
     # oncoref-owned table exactly — proof the regenerator is the source of truth.
     regen = cta_regen.regenerate_cta_columns(pd.read_csv(_CSV))
@@ -44,12 +54,13 @@ def test_regeneration_reproduces_shipped_table():
     pd.testing.assert_frame_equal(from_regen, shipped)
 
 
-@pytest.mark.skipif(not _HPA_READY, reason="HPA v23 not cached")
 def test_regeneration_preserves_identity_columns():
+    _require_hpa_v23()
+
     old = pd.read_csv(_CSV)
     regen = cta_regen.regenerate_cta_columns(old)
     for col in ("Symbol", "Ensembl_Gene_ID", "Aliases", "source_databases", "biotype"):
-        assert (regen[col].astype(str) == old[col].astype(str)).all()
+        pd.testing.assert_series_equal(regen[col], old[col], check_dtype=False)
 
 
 def test_rna_only_below_floor_confidence_is_capped():
