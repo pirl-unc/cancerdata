@@ -1901,6 +1901,44 @@ def test_housekeeping_cancer_expression_coverage_rejects_invalid_floor():
         )
 
 
+@pytest.mark.parametrize(
+    ("column", "value", "message"),
+    [
+        ("n_samples", -1, "non-negative integers"),
+        ("fraction_above_floor", 1.5, "between 0 and 1"),
+        ("recommended_for_absolute_tpm_floor", "maybe", "non-boolean values"),
+        ("passes_p5_floor", False, "disagree with p5_tpm"),
+        ("panel_member_present", False, "measured samples for an absent panel member"),
+    ],
+)
+def test_housekeeping_cancer_expression_coverage_summary_rejects_corrupt_rows(
+    column, value, message
+):
+    coverage = expression.housekeeping_cancer_expression_coverage_from_matrix(
+        pd.DataFrame(
+            {
+                "Ensembl_Gene_ID": ["ENSG_HK"],
+                "Symbol": ["HK"],
+                "sample": [100.0],
+            }
+        ),
+        cancer_type="LUAD",
+        source_metadata={
+            "source_cohort": "LUAD_SOURCE",
+            "linear_tpm_comparable": True,
+        },
+        panel_ids=["ENSG_HK"],
+        housekeeping_detection_floor_tpm=30.0,
+    )
+    coverage.attrs["cohort_audit_complete"] = True
+    if isinstance(value, str):
+        coverage[column] = coverage[column].astype(object)
+    coverage.loc[0, column] = value
+
+    with pytest.raises(ValueError, match=message):
+        expression.housekeeping_cancer_expression_coverage_summary(coverage)
+
+
 def test_housekeeping_cancer_expression_coverage_summary_rejects_known_partial_audit(
     monkeypatch,
 ):
