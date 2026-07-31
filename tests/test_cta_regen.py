@@ -60,7 +60,7 @@ def test_regeneration_preserves_identity_columns():
     old = pd.read_csv(_CSV)
     regen = cta_regen.regenerate_cta_columns(old)
     for col in ("Symbol", "Ensembl_Gene_ID", "Aliases", "source_databases", "biotype"):
-        assert (regen[col].astype(str) == old[col].astype(str)).all()
+        pd.testing.assert_series_equal(regen[col], old[col], check_dtype=False)
 
 
 def test_rna_only_below_floor_confidence_is_capped():
