@@ -2,4 +2,4 @@
 set -o errexit
 
 ./lint.sh
-python -m pytest tests/ --cov=oncoref --cov-report=term-missing
+python -m pytest tests/ -n 2 --dist load --cov=oncoref --cov-report=term-missing

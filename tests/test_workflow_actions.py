@@ -1,4 +1,5 @@
 import re
+import shlex
 from pathlib import Path
 
 import yaml
@@ -89,3 +90,20 @@ def test_test_workflow_stages_required_real_data():
     assert 'os.environ["ONCOREF_CI_ACC_PERCENTILE_REFERENCE"]' in reference_step["run"]
     assert '"hpa_rna_consensus": os.environ["CI_HPA_RNA_SHA256"]' in reference_step["run"]
     assert '"hpa_normal_tissue": os.environ["CI_HPA_NORMAL_TISSUE_SHA256"]' in reference_step["run"]
+
+
+def test_test_commands_use_bounded_parallelism_with_coverage():
+    workflow = yaml.safe_load(Path(".github/workflows/tests.yml").read_text())
+    test_steps = workflow["jobs"]["test"]["steps"]
+    workflow_command = next(step["run"] for step in test_steps if step["name"] == "Run unit tests")
+    local_command = next(
+        line for line in Path("test.sh").read_text().splitlines() if "pytest" in line
+    )
+
+    for command in (workflow_command, local_command):
+        arguments = shlex.split(command)
+        assert arguments[arguments.index("-n") + 1] == "2"
+        assert arguments[arguments.index("--dist") + 1] == "load"
+        assert "--cov=oncoref" in arguments
+    assert "--cov-report=xml" in shlex.split(workflow_command)
+    assert "--cov-report=term-missing" in shlex.split(local_command)

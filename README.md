@@ -143,7 +143,7 @@ oncoref version
 ./develop.sh   # editable install with dev extras
 ./format.sh    # ruff format
 ./lint.sh      # ruff check + format --check
-./test.sh      # lint + pytest with coverage
+./test.sh      # lint + the full pytest suite with coverage and two workers
 ```
 
 ## License

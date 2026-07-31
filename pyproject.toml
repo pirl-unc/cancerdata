@@ -45,6 +45,7 @@ plots = [
 dev = [
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
     "ruff",
     "matplotlib",
     "adjustText",

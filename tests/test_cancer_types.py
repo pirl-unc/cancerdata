@@ -295,6 +295,25 @@ def test_clear_caches_allows_reload(monkeypatch):
     assert "PRAD" in cd.CANCER_TYPE_NAMES
 
 
+def test_cancer_type_record_frame_is_cached_cleared_and_defensive():
+    cancer_types._clear_caches()
+    assert cancer_types._cancer_type_record_frame.cache_info().currsize == 0
+
+    first = cancer_types.cancer_type_records(["PRAD"])
+    after_first = cancer_types._cancer_type_record_frame.cache_info()
+    second = cancer_types.cancer_type_records(["LUAD"])
+    after_second = cancer_types._cancer_type_record_frame.cache_info()
+
+    assert after_first.misses == 1
+    assert after_second.hits == 1
+    first.loc[:, "name"] = "mutated caller frame"
+    assert cancer_types.cancer_type_records(["PRAD"])["name"].iloc[0] != "mutated caller frame"
+    assert second["code"].tolist() == ["LUAD"]
+
+    cancer_types._clear_caches()
+    assert cancer_types._cancer_type_record_frame.cache_info().currsize == 0
+
+
 def test_every_registry_family_has_a_curated_display_name():
     # Drift guard: every registry family must have a curated label, not the
     # title-cased fallback. (This caught the stale 'cns'/'endocrine' keys left
