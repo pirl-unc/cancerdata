@@ -59,6 +59,16 @@ _CATEGORICAL_COLUMNS_BY_DATASET = {
     ),
 }
 
+# NCBI uses literal aliases such as "NA" and "NaN". Preserve every nonempty
+# string in this table while continuing to represent empty CSV cells as missing.
+_CSV_READ_OPTIONS_BY_DATASET = {
+    "ncbi-symbol-synonyms": {
+        "dtype": "string",
+        "keep_default_na": False,
+        "na_values": [""],
+    },
+}
+
 # Back-compat alias.
 _DATA_DIR = _BUNDLED_DATA_DIR
 
@@ -146,11 +156,17 @@ def _optimize_cached_dataframe(dataset_name: str, df: pd.DataFrame) -> pd.DataFr
     return df
 
 
+def _read_csv_for_cache(path: Path, dataset_name: str) -> pd.DataFrame:
+    """Read one CSV with the owning dataset's lossless parsing contract."""
+    options = _CSV_READ_OPTIONS_BY_DATASET.get(dataset_name, {})
+    return pd.read_csv(str(path), low_memory=False, **options)
+
+
 def _read_shards_for_cache(shard_dir: Path, paths: list[Path]) -> list[pd.DataFrame]:
     """Read shards while compacting each one before the next is retained."""
     frames = []
     for path in paths:
-        frame = pd.read_csv(str(path), low_memory=False)
+        frame = _read_csv_for_cache(path, shard_dir.name)
         frames.append(_optimize_cached_dataframe(shard_dir.name, frame))
     return frames
 
@@ -270,7 +286,8 @@ def get_data(name, _dataframes_dict=None, *, copy=True):
             else:
                 cache_key = resolved.name.removesuffix(".gz")
                 if cache_key not in _CACHED_DATAFRAMES:
-                    _CACHED_DATAFRAMES[cache_key] = pd.read_csv(str(resolved), low_memory=False)
+                    dataset_name = cache_key.removesuffix(".csv")
+                    _CACHED_DATAFRAMES[cache_key] = _read_csv_for_cache(resolved, dataset_name)
             cached = _CACHED_DATAFRAMES[cache_key]
             return cached.copy() if copy else cached
     raise ValueError(f"Dataset {name} not found")

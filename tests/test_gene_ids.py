@@ -8,6 +8,7 @@
 
 import oncoref
 from oncoref import gene_ids as g
+from oncoref.load_dataset import get_data
 
 
 def test_unversioned_normalizer():
@@ -194,6 +195,39 @@ def test_symbol_synonym_resolution():
     assert g.resolve_symbol(alias.lower()) == official  # case-insensitive
     # an unknown / already-official symbol passes through
     assert g.resolve_symbol("NOT_A_REAL_GENE") == "NOT_A_REAL_GENE"
+
+
+def test_symbol_synonym_resolution_preserves_exact_case_collisions():
+    assert g.resolve_symbol("NA") == "XK"
+    assert g.resolve_symbol("NaN") == "SCN11A"
+    assert g.resolve_symbol("20-ALPHA-HSD") == "AKR1C1"
+    assert g.resolve_symbol("20-alpha-HSD") == "HSD17B1"
+    assert g.resolve_symbol("5PTASE") == "INPP5A"
+    assert g.resolve_symbol("5PTase") == "INPP5B"
+
+    # Other casing deterministically follows the exact uppercase snapshot row.
+    assert g.resolve_symbol("20-AlPhA-HsD") == "AKR1C1"
+    assert g.resolve_symbol("5PtAsE") == "INPP5A"
+    assert g.canonical_gene_id("20-ALPHA-HSD") == "ENSG00000187134"
+    assert g.canonical_gene_id("20-alpha-HSD") == "ENSG00000108786"
+    assert g.canonical_gene_id("5PTASE") == "ENSG00000068383"
+    assert g.canonical_gene_id("5PTase") == "ENSG00000204084"
+
+
+def test_symbol_synonym_resolution_leaves_unanchored_case_collisions_ambiguous():
+    assert g.resolve_symbol("H-plk") == "ZNF117"
+    assert g.resolve_symbol("h-PLK") == "ERV3-1-ZNF117"
+    assert g.resolve_symbol("H-PLK") == "H-PLK"
+
+
+def test_every_exact_symbol_synonym_row_roundtrips():
+    synonyms = get_data("ncbi-symbol-synonyms", copy=False)
+    failures = [
+        (str(row.alias), str(row.official_symbol), g.resolve_symbol(str(row.alias)))
+        for row in synonyms.itertuples(index=False)
+        if g.resolve_symbol(str(row.alias)) != str(row.official_symbol)
+    ]
+    assert not failures, failures[:5]
 
 
 def test_canonical_gene_space_and_biotype():
