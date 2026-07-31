@@ -16,12 +16,15 @@ from __future__ import annotations
 
 from .coverage import (
     DEFAULT_EXPRESSED_TPM,
+    DEFAULT_WITHIN_SAMPLE_PERCENTILES,
     addressable_fraction,
     addressable_fraction_by_cohort,
     cta_patient_fractions,
     greedy_coverage,
     mean_antigens_per_patient,
     mean_antigens_per_patient_by_cohort,
+    within_sample_percentile_addressable_fraction_by_cohort,
+    within_sample_percentile_coverage_sweep,
 )
 
 
@@ -72,12 +75,53 @@ def cta_mean_antigens_per_patient_by_cohort(
     )
 
 
+def cta_within_sample_percentile_coverage(
+    cohorts=None,
+    *,
+    percentiles=DEFAULT_WITHIN_SAMPLE_PERCENTILES,
+    proteoform: bool = True,
+    sample_qc: str = "pass",
+    on_missing: str = "raise",
+):
+    """Greedy CTA patient coverage at tumor-specific p90/p95 rank cutoffs."""
+    return within_sample_percentile_coverage_sweep(
+        cohorts,
+        percentiles=percentiles,
+        proteoform=proteoform,
+        sample_qc=sample_qc,
+        on_missing=on_missing,
+    )
+
+
+def cta_within_sample_percentile_addressable_fraction_by_cohort(
+    cohorts=None,
+    *,
+    percentile: float = 0.95,
+    proteoform: bool = True,
+    sample_qc: str = "pass",
+    coverage=None,
+    on_missing: str = "raise",
+):
+    """CTA-positive patient union per cohort at a within-tumor rank cutoff."""
+    return within_sample_percentile_addressable_fraction_by_cohort(
+        cohorts,
+        percentile=percentile,
+        proteoform=proteoform,
+        sample_qc=sample_qc,
+        coverage=coverage,
+        on_missing=on_missing,
+    )
+
+
 __all__ = [
     "DEFAULT_EXPRESSED_TPM",
+    "DEFAULT_WITHIN_SAMPLE_PERCENTILES",
     "cta_addressable_fraction",
     "cta_addressable_fraction_by_cohort",
     "cta_greedy_coverage",
     "cta_mean_antigens_per_patient",
     "cta_mean_antigens_per_patient_by_cohort",
     "cta_patient_fractions",
+    "cta_within_sample_percentile_addressable_fraction_by_cohort",
+    "cta_within_sample_percentile_coverage",
 ]

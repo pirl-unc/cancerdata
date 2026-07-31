@@ -53,7 +53,31 @@ DEFAULT_EXPRESSED_TPM: float = 10.0
 # are comparable across packages.
 DEFAULT_THRESHOLDS: tuple[float, ...] = (25, 50, 100, 200)
 
+# The two within-sample percentile cuts used by the pirlygenes CTA plot catalog.
+# Values are percentile ranks on [0, 1], so 0.95 means the top 5% of biological
+# expression values within each individual tumor.
+DEFAULT_WITHIN_SAMPLE_PERCENTILES: tuple[float, ...] = (0.90, 0.95)
+
 _BASE = ["Ensembl_Gene_ID", "Symbol"]
+
+_GREEDY_COVERAGE_COLUMNS = [
+    "rank",
+    "Ensembl_Gene_ID",
+    "Symbol",
+    "marginal_patients",
+    "marginal_fraction",
+    "cumulative_patients",
+    "cumulative_fraction",
+    "proteoform_key",
+    "proteoform_members",
+]
+
+_PERCENTILE_COVERAGE_COLUMNS = [
+    "cancer_code",
+    "within_sample_percentile",
+    "n_patients",
+    *_GREEDY_COVERAGE_COLUMNS,
+]
 
 
 def _clean_id(value: str) -> str:
@@ -251,6 +275,66 @@ def addressable_fraction(
     return float(hits.any(axis=0).mean())
 
 
+def _empty_greedy_coverage() -> pd.DataFrame:
+    """Schema-stable empty result for a cohort with no coverable patients."""
+    return pd.DataFrame(columns=_GREEDY_COVERAGE_COLUMNS)
+
+
+def _greedy_coverage_from_hits(
+    panel: pd.DataFrame,
+    samples: list[str],
+    hits: np.ndarray,
+    *,
+    max_genes: int | None,
+) -> pd.DataFrame:
+    """Run deterministic greedy set cover over an already-defined hit matrix."""
+    n_patients = len(samples)
+    if n_patients == 0 or hits.size == 0:
+        return _empty_greedy_coverage()
+
+    rows: list[dict] = []
+    covered = np.zeros(n_patients, dtype=bool)
+    remaining = set(range(len(panel)))
+    total_prevalence = hits.sum(axis=1)
+    limit = len(panel) if max_genes is None else max_genes
+
+    while remaining and len(rows) < limit:
+        best_gene = None
+        best_new = 0
+        best_prevalence = -1
+        for gene_index in sorted(remaining):
+            newly_covered = int(np.count_nonzero(hits[gene_index] & ~covered))
+            score = (newly_covered, int(total_prevalence[gene_index]))
+            if score > (best_new, best_prevalence):
+                best_gene = gene_index
+                best_new, best_prevalence = score
+        if best_gene is None or best_new == 0:
+            break
+
+        covered |= hits[best_gene]
+        remaining.remove(best_gene)
+        cumulative = int(covered.sum())
+        row = {
+            "rank": len(rows) + 1,
+            "Ensembl_Gene_ID": str(panel.at[best_gene, "Ensembl_Gene_ID"]),
+            "Symbol": str(panel.at[best_gene, "Symbol"]),
+            "marginal_patients": best_new,
+            "marginal_fraction": best_new / n_patients,
+            "cumulative_patients": cumulative,
+            "cumulative_fraction": cumulative / n_patients,
+            "proteoform_key": pd.NA,
+            "proteoform_members": pd.NA,
+        }
+        for column in ("proteoform_key", "proteoform_members"):
+            if column in panel.columns:
+                row[column] = str(panel.at[best_gene, column])
+        rows.append(row)
+    columns = list(_GREEDY_COVERAGE_COLUMNS)
+    if "proteoform_key" not in panel.columns:
+        columns = columns[:-2]
+    return pd.DataFrame(rows, columns=columns)
+
+
 def greedy_coverage(
     cancer_type,
     *,
@@ -270,59 +354,230 @@ def greedy_coverage(
     cumulative fraction is the coverage curve; its last value equals
     :func:`addressable_fraction` once the panel is exhausted (unless ``max_genes``
     truncates it first). Ties are broken by total prevalence (deterministic)."""
-    sub, samples, hits, _ = _hit_matrix(
+    panel, samples, hits, _ = _hit_matrix(
         cancer_type, threshold_tpm=threshold_tpm, gene_ids=gene_ids, proteoform=proteoform
     )
-    n = len(samples)
+    return _greedy_coverage_from_hits(panel, samples, hits, max_genes=max_genes)
+
+
+def _validate_within_sample_percentiles(percentiles) -> tuple[float, ...]:
+    """Normalize percentile ranks and enforce the shipped within-sample contract."""
+    from .expression_builders import WITHIN_SAMPLE_THRESHOLDS
+
+    raw = (percentiles,) if isinstance(percentiles, (int, float)) else tuple(percentiles)
+    values = tuple(dict.fromkeys(float(value) for value in raw))
+    allowed = tuple(sorted(WITHIN_SAMPLE_THRESHOLDS))
+    invalid = [value for value in values if value not in WITHIN_SAMPLE_THRESHOLDS]
+    if not values or invalid:
+        raise ValueError(f"percentiles must contain one or more of {list(allowed)}")
+    return values
+
+
+def _normalize_cohort_codes(cohorts: Iterable[str] | str) -> list[str]:
+    """Resolve one code or an iterable while retaining first-seen order."""
+    requested = [cohorts] if isinstance(cohorts, str) else list(cohorts)
+    return list(
+        dict.fromkeys(resolve_cancer_type(code, strict=False) or str(code) for code in requested)
+    )
+
+
+def _within_sample_percentile_panel_ranks(
+    cancer_type,
+    *,
+    gene_ids: Iterable[str] | None,
+    proteoform: bool,
+    sample_qc: str,
+) -> tuple[pd.DataFrame, list[str], np.ndarray]:
+    """Return panel rows and their whole-transcriptome ranks in each patient."""
+    from .expression import _biological_per_sample
+
+    biological = _biological_per_sample(
+        cancer_type,
+        proteoform=proteoform,
+        auto_fetch=False,
+        scope="cta",
+        sample_qc=sample_qc,
+    )
+    samples = [column for column in biological.columns if column not in _ANTIGEN_ID_COLS]
+    if not samples:
+        raise ValueError(f"no per-sample columns to rank for {cancer_type!r}")
+
+    panel_ids = _panel_ids(gene_ids)
+    if proteoform:
+        from .proteoforms import gene_to_proteoform_id
+
+        panel_keys = set(gene_to_proteoform_id(sorted(panel_ids), scope="cta").values())
+        in_panel = biological["proteoform_key"].astype(str).isin(panel_keys)
+    else:
+        row_ids = biological["Ensembl_Gene_ID"].astype(str).str.split(".").str[0]
+        in_panel = row_ids.isin(panel_ids)
+
+    panel = biological.loc[in_panel].reset_index(drop=True)
+    if panel.empty:
+        return panel, samples, np.empty((0, len(samples)), dtype=float)
+
+    # Use the same rank definition as the shipped within-sample artifacts:
+    # average ranks for ties, divided by the number of measured biological rows.
+    ranks = biological[samples].rank(axis=0, pct=True)
+    panel_ranks = ranks.loc[in_panel].to_numpy(dtype=float)
+    return panel, samples, panel_ranks
+
+
+def _zero_coverage_row(code: str, percentile: float, n_patients: int) -> dict:
+    """Represent an audited cohort with no CTA-positive patient at one cutoff."""
+    return {
+        "cancer_code": code,
+        "within_sample_percentile": percentile,
+        "n_patients": n_patients,
+        "rank": 0,
+        "Ensembl_Gene_ID": pd.NA,
+        "Symbol": pd.NA,
+        "marginal_patients": 0,
+        "marginal_fraction": 0.0,
+        "cumulative_patients": 0,
+        "cumulative_fraction": 0.0,
+        "proteoform_key": pd.NA,
+        "proteoform_members": pd.NA,
+    }
+
+
+def within_sample_percentile_coverage_sweep(
+    cohorts: Iterable[str] | None = None,
+    *,
+    percentiles: Iterable[float] = DEFAULT_WITHIN_SAMPLE_PERCENTILES,
+    gene_ids: Iterable[str] | None = None,
+    proteoform: bool = True,
+    sample_qc: str = "pass",
+    on_missing: str = "raise",
+) -> pd.DataFrame:
+    """Co-occurrence-aware antigen coverage at within-sample percentile cuts.
+
+    Each tumor is ranked across its biological clean-TPM transcriptome.  A panel
+    antigen is positive at ``0.95`` when it is in that tumor's top 5% of ranked
+    expression values.  The returned long table contains the deterministic greedy
+    set-cover order for every cohort and requested percentile.  Identical-protein
+    CTA loci are summed before ranking by default.
+
+    ``cohorts=None`` uses only locally cached per-sample matrices and never fetches.
+    Explicit cohorts are also read with downloads disabled.  ``on_missing='record'``
+    keeps available cohorts and records missing paths in ``attrs['missing_cohorts']``;
+    the default raises.  Audited cohorts with zero coverage receive one ``rank=0``
+    row so absence is distinguishable from missing data.
+    """
+    if on_missing not in {"raise", "record"}:
+        raise ValueError("on_missing must be 'raise' or 'record'")
+    percentile_values = _validate_within_sample_percentiles(percentiles)
+
+    from . import source_matrices
+
+    if cohorts is None:
+        requested = [
+            code for code in source_matrices.available_cohorts() if source_matrices.is_cached(code)
+        ]
+    else:
+        requested = cohorts
+    codes = _normalize_cohort_codes(requested)
+
     rows: list[dict] = []
-    if n == 0 or hits.size == 0:
-        return pd.DataFrame(
-            columns=[
-                "rank",
-                "Ensembl_Gene_ID",
-                "Symbol",
-                "marginal_patients",
-                "marginal_fraction",
-                "cumulative_patients",
-                "cumulative_fraction",
-                "proteoform_key",
-                "proteoform_members",
-            ]
-        )
+    audited: list[str] = []
+    missing: dict[str, str] = {}
+    for code in codes:
+        try:
+            panel, samples, panel_ranks = _within_sample_percentile_panel_ranks(
+                code,
+                gene_ids=gene_ids,
+                proteoform=proteoform,
+                sample_qc=sample_qc,
+            )
+        except FileNotFoundError as error:
+            if on_missing == "raise":
+                raise
+            missing[code] = str(error)
+            continue
 
-    covered = np.zeros(n, dtype=bool)
-    remaining = set(range(len(sub)))
-    total_prev = hits.sum(axis=1)  # tie-break: prefer the more broadly expressed gene
-    limit = max_genes if max_genes is not None else len(sub)
+        audited.append(code)
+        for percentile in percentile_values:
+            hits = panel_ranks >= percentile
+            greedy = _greedy_coverage_from_hits(panel, samples, hits, max_genes=None)
+            if greedy.empty:
+                rows.append(_zero_coverage_row(code, percentile, len(samples)))
+                continue
+            for record in greedy.to_dict(orient="records"):
+                rows.append(
+                    {
+                        "cancer_code": code,
+                        "within_sample_percentile": percentile,
+                        "n_patients": len(samples),
+                        **record,
+                    }
+                )
 
-    while remaining and len(rows) < limit:
-        # Pick the gene covering the most still-uncovered patients; ties by total
-        # prevalence, then by smallest row index — fully deterministic (sorted scan +
-        # strict tuple comparison), independent of set-iteration order.
-        best_g, best_new, best_prev = None, 0, -1
-        for g in sorted(remaining):
-            new = int(np.count_nonzero(hits[g] & ~covered))
-            if (new, total_prev[g]) > (best_new, best_prev):
-                best_g, best_new, best_prev = g, new, int(total_prev[g])
-        if best_g is None or best_new == 0:
-            break  # no remaining gene covers a new patient
-        covered |= hits[best_g]
-        remaining.discard(best_g)
-        cum = int(covered.sum())
-        row = {
-            "rank": len(rows) + 1,
-            "Ensembl_Gene_ID": str(sub.at[best_g, "Ensembl_Gene_ID"]),
-            "Symbol": str(sub.at[best_g, "Symbol"]),
-            "marginal_patients": best_new,
-            "marginal_fraction": best_new / n,
-            "cumulative_patients": cum,
-            "cumulative_fraction": cum / n,
+    out = pd.DataFrame(rows, columns=_PERCENTILE_COVERAGE_COLUMNS)
+    out.attrs.update(
+        {
+            "threshold_basis": "biological_clean_tpm_rank_within_sample",
+            "requested_cohorts": codes,
+            "audited_cohorts": audited,
+            "missing_cohorts": missing,
+            "percentiles": percentile_values,
+            "proteoform": proteoform,
+            "sample_qc": sample_qc,
         }
-        for _idcol in ("proteoform_key", "proteoform_members"):
-            if _idcol in sub.columns:
-                row[_idcol] = str(sub.at[best_g, _idcol])
-        rows.append(row)
-    return pd.DataFrame(rows)
+    )
+    return out
+
+
+def _coverage_at_percentile(coverage: pd.DataFrame, percentile: float) -> pd.DataFrame:
+    """Validate and select one percentile from a coverage sweep."""
+    required = set(_PERCENTILE_COVERAGE_COLUMNS)
+    missing = sorted(required - set(coverage.columns))
+    if missing:
+        raise ValueError(f"coverage table is missing required columns: {missing}")
+    target = _validate_within_sample_percentiles((percentile,))[0]
+    values = pd.to_numeric(coverage["within_sample_percentile"], errors="coerce")
+    if values.isna().any():
+        raise ValueError("coverage table contains a nonnumeric within_sample_percentile")
+    matches = np.isclose(values.to_numpy(dtype=float), target)
+    if not coverage.empty and not matches.any():
+        raise ValueError(f"coverage table does not contain percentile {target:g}")
+    return coverage.loc[matches].copy()
+
+
+def within_sample_percentile_addressable_fraction_by_cohort(
+    cohorts: Iterable[str] | None = None,
+    *,
+    percentile: float = 0.95,
+    gene_ids: Iterable[str] | None = None,
+    proteoform: bool = True,
+    sample_qc: str = "pass",
+    coverage: pd.DataFrame | None = None,
+    on_missing: str = "raise",
+) -> pd.Series:
+    """Fraction of patients with at least one panel antigen above a rank cutoff.
+
+    This is the faithful patient union, derived from the joint per-sample matrix;
+    it is not the maximum of independent per-gene prevalence summaries.  Supply a
+    precomputed :func:`within_sample_percentile_coverage_sweep` table to reuse one
+    matrix pass across plots.
+    """
+    if coverage is None:
+        coverage = within_sample_percentile_coverage_sweep(
+            cohorts,
+            percentiles=(percentile,),
+            gene_ids=gene_ids,
+            proteoform=proteoform,
+            sample_qc=sample_qc,
+            on_missing=on_missing,
+        )
+    selected = _coverage_at_percentile(coverage, percentile)
+    if cohorts is not None:
+        requested = set(_normalize_cohort_codes(cohorts))
+        selected = selected[selected["cancer_code"].astype(str).isin(requested)]
+    if selected.empty:
+        return pd.Series(dtype=float, name="addressable_fraction")
+    ordered = selected.sort_values(["cancer_code", "rank"], kind="stable")
+    final = ordered.groupby("cancer_code", sort=False)["cumulative_fraction"].last()
+    return pd.to_numeric(final, errors="raise").rename("addressable_fraction")
 
 
 def mean_antigens_per_patient(

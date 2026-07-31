@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from oncoref import expression, expression_builders
+from oncoref import data_bundle, expression, expression_builders, source_matrices
 
 
 def _matrix(genes, samples, values):
@@ -72,6 +72,40 @@ def within_sample_cache(monkeypatch, tmp_path):
 
 def test_available_within_sample_cohorts(within_sample_cache):
     assert expression.available_within_sample_cohorts() == ["PRAD"]
+
+
+def test_locally_available_within_sample_cohorts_unions_all_local_roots(
+    within_sample_cache, monkeypatch, tmp_path
+):
+    package_root = tmp_path / "package"
+    package_shards = package_root / "cancer-reference-expression-within-sample-top5"
+    package_shards.mkdir(parents=True)
+    (package_shards / "LUAD.parquet").write_text("present")
+    package_percentiles = package_root / "cancer-reference-expression-percentiles"
+    package_percentiles.mkdir(parents=True)
+    (package_percentiles / "LUAD.parquet").write_text("present")
+    cached_percentiles = within_sample_cache / "cancer-reference-expression-percentiles"
+    cached_percentiles.mkdir(parents=True)
+    (cached_percentiles / "PRAD.parquet").write_text("present")
+    monkeypatch.setattr(data_bundle, "_PACKAGE_DATA_DIR", package_root)
+    monkeypatch.setattr(source_matrices, "available_cohorts", lambda: ["BRCA", "SKCM"])
+    monkeypatch.setattr(source_matrices, "is_cached", lambda code: code == "BRCA")
+    monkeypatch.setattr(
+        data_bundle,
+        "ensure_local",
+        lambda: pytest.fail("local availability must not download the bundle"),
+    )
+
+    assert expression.locally_available_within_sample_cohorts() == ["BRCA", "LUAD", "PRAD"]
+    assert expression.locally_available_within_sample_cohorts(include_recomputable=False) == [
+        "LUAD",
+        "PRAD",
+    ]
+    assert expression.locally_available_percentile_cohorts() == ["BRCA", "LUAD", "PRAD"]
+    assert expression.locally_available_percentile_cohorts(include_recomputable=False) == [
+        "LUAD",
+        "PRAD",
+    ]
 
 
 def test_within_sample_top_fraction_default_threshold(within_sample_cache):

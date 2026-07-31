@@ -61,6 +61,9 @@ def test_greedy_coverage_is_set_cover(patched):
     # cumulative is monotonic non-decreasing
     assert (gc["cumulative_fraction"].diff().dropna() > 0).all()
 
+    gene_level = coverage.greedy_coverage("X", threshold_tpm=5, gene_ids=patched, proteoform=False)
+    assert "proteoform_key" not in gene_level.columns
+
 
 def test_mean_antigens_per_patient(patched):
     # hits: gA in p0,p1 (2) + gB in p2 (1) + gC in p1 (1) = 4 over 4 patients -> 1.0.
@@ -145,6 +148,104 @@ def test_proteoform_paralogs_are_summed(monkeypatch):
     # per-gene view: neither A1 nor A2 clears 10 alone -> 0 in p0
     pf_split = coverage.cta_patient_fractions("X", threshold_tpm=10, proteoform=False)
     assert pf_split[pf_split["Symbol"] == "A1"]["fraction_expressing"].iloc[0] == 0.0
+
+
+def test_within_sample_percentile_coverage_preserves_patient_cooccurrence(monkeypatch):
+    # Ten biological rows make p90 and p95 easy to inspect: each CTA is the top
+    # transcript in a different patient, so the true CTA union covers both patients.
+    biological = pd.DataFrame(
+        {
+            "proteoform_key": ["CTA_A", "CTA_B", *[f"BG{i}" for i in range(8)]],
+            "Ensembl_Gene_ID": ["CTA_A", "CTA_B", *[f"BG{i}" for i in range(8)]],
+            "Symbol": ["CTA-A", "CTA-B", *[f"BG{i}" for i in range(8)]],
+            "proteoform_members": ["CTA-A", "CTA-B", *[f"BG{i}" for i in range(8)]],
+            "patient_1": [100.0, 0.0, *range(1, 9)],
+            "patient_2": [0.0, 100.0, *range(1, 9)],
+        }
+    )
+    calls = []
+
+    def fake_biological(code, **kwargs):
+        calls.append((code, kwargs))
+        return biological.copy()
+
+    import oncoref.expression as expression
+
+    monkeypatch.setattr(expression, "_biological_per_sample", fake_biological)
+    monkeypatch.setattr(coverage, "_panel_ids", lambda gene_ids: {"CTA_A", "CTA_B"})
+    import oncoref.proteoforms as proteoforms
+
+    monkeypatch.setattr(
+        proteoforms,
+        "gene_to_proteoform_id",
+        lambda ids, scope="cta": {gene_id: gene_id for gene_id in ids},
+    )
+
+    sweep = coverage.within_sample_percentile_coverage_sweep(
+        ["NOT_A_REAL_CODE"], percentiles=(0.90, 0.95)
+    )
+
+    assert len(calls) == 1
+    assert calls[0][1] == {
+        "proteoform": True,
+        "auto_fetch": False,
+        "scope": "cta",
+        "sample_qc": "pass",
+    }
+    for percentile in (0.90, 0.95):
+        selected = sweep[sweep["within_sample_percentile"] == percentile]
+        assert selected["Symbol"].tolist() == ["CTA-A", "CTA-B"]
+        assert selected["cumulative_fraction"].iloc[-1] == 1.0
+
+    fractions = coverage.within_sample_percentile_addressable_fraction_by_cohort(
+        "NOT_A_REAL_CODE", percentile=0.95, coverage=sweep
+    )
+    assert fractions.to_dict() == {"NOT_A_REAL_CODE": 1.0}
+
+
+def test_within_sample_percentile_coverage_records_missing_and_zero(monkeypatch):
+    panel = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["CTA_A"],
+            "Symbol": ["CTA-A"],
+        }
+    )
+
+    def fake_ranks(code, **kwargs):
+        if code == "MISSING":
+            raise FileNotFoundError("not staged")
+        return panel, ["patient_1", "patient_2"], np.array([[0.1, 0.2]])
+
+    monkeypatch.setattr(coverage, "_within_sample_percentile_panel_ranks", fake_ranks)
+    result = coverage.within_sample_percentile_coverage_sweep(
+        ["ZERO", "MISSING"], percentiles=(0.95,), proteoform=False, on_missing="record"
+    )
+
+    assert result[["cancer_code", "rank", "cumulative_fraction"]].to_dict("records") == [
+        {"cancer_code": "ZERO", "rank": 0, "cumulative_fraction": 0.0}
+    ]
+    assert result.attrs["audited_cohorts"] == ["ZERO"]
+    assert result.attrs["missing_cohorts"] == {"MISSING": "not staged"}
+
+
+def test_within_sample_percentile_coverage_validates_inputs():
+    with pytest.raises(ValueError, match="percentiles"):
+        coverage.within_sample_percentile_coverage_sweep([], percentiles=(0.5,))
+    with pytest.raises(ValueError, match="on_missing"):
+        coverage.within_sample_percentile_coverage_sweep([], on_missing="skip")
+    with pytest.raises(ValueError, match="missing required columns"):
+        coverage.within_sample_percentile_addressable_fraction_by_cohort(
+            percentile=0.95, coverage=pd.DataFrame({"cancer_code": ["LUAD"]})
+        )
+    with pytest.raises(ValueError, match="does not contain percentile"):
+        coverage.within_sample_percentile_addressable_fraction_by_cohort(
+            percentile=0.90, coverage=_percentile_coverage_fixture(0.95)
+        )
+
+
+def _percentile_coverage_fixture(percentile):
+    row = coverage._zero_coverage_row("LUAD", percentile, 1)
+    return pd.DataFrame([row], columns=coverage._PERCENTILE_COVERAGE_COLUMNS)
 
 
 # ---- required real-data parity ----

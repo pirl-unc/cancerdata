@@ -113,6 +113,8 @@ from .coverage import (
     greedy_coverage,
     mean_antigens_per_patient,
     mean_antigens_per_patient_by_cohort,
+    within_sample_percentile_addressable_fraction_by_cohort,
+    within_sample_percentile_coverage_sweep,
 )
 from .cta import (
     CTA_by_axes,
@@ -192,6 +194,8 @@ from .expression import (
     housekeeping_cancer_expression_coverage,
     housekeeping_cancer_expression_coverage_from_matrix,
     housekeeping_cancer_expression_coverage_summary,
+    locally_available_percentile_cohorts,
+    locally_available_within_sample_cohorts,
     pan_cancer_expression,
     per_sample_expression,
     pooled_cohort_stats,
@@ -605,6 +609,8 @@ __all__ = [
     "is_protein_coding_gene",
     "is_rescue_feature",
     "known_cohort_ids",
+    "locally_available_percentile_cohorts",
+    "locally_available_within_sample_cohorts",
     "log1p_transform",
     "log2_transform",
     "matched_normal_tissue",
@@ -676,5 +682,7 @@ __all__ = [
     "tpm_to_housekeeping_normalized",
     "unversioned",
     "viral_status",
+    "within_sample_percentile_addressable_fraction_by_cohort",
+    "within_sample_percentile_coverage_sweep",
     "within_sample_top_fraction",
 ]

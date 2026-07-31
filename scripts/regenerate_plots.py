@@ -20,10 +20,10 @@ one. A ``latest`` symlink points at the most recent run; an ``index.md`` lists
 what was produced (and what was skipped).
 
 Each figure is independent: one that can't be drawn (missing per-sample matrix,
-empty data) is reported and skipped, never aborting the batch. Expression-backed
-figures need the relevant shards/matrices cached locally; the coverage/response
-panels in particular need per-sample matrices (see
-``plots._cached_per_sample_cohorts``), so they cover only the cached cohorts.
+empty data) is reported and skipped, never aborting the batch. The runner takes
+one side-effect-free inventory of package data and local caches before planning
+the batch. Joint p90/p95 patient coverage is computed once from the cached source
+matrices and shared by every dependent plot.
 
 Usage::
 
@@ -48,6 +48,8 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 from oncoref import cta_curation_plots, plots  # noqa: E402
+from oncoref.coverage import within_sample_percentile_coverage_sweep  # noqa: E402
+from oncoref.expression import locally_available_percentile_cohorts  # noqa: E402
 from oncoref.plots import _cached_per_sample_cohorts  # noqa: E402
 
 CTA_TPM_THRESHOLDS = (25.0, 50.0)
@@ -55,12 +57,48 @@ WITHIN_SAMPLE_THRESHOLDS = (0.90, 0.95)
 BURDEN_AXES = ("us_incidence", "us_mortality", "world_incidence", "world_mortality")
 REFERENCE_AXES = ("tmb", "apd1", "ici", *BURDEN_AXES)
 
+_PERCENTILE_COVERAGE_PLOTS = frozenset(
+    {
+        "cta_within_sample_percentile_addressable_burden",
+        "cta_within_sample_percentile_coverage_curves",
+        "cta_within_sample_percentile_coverage_stacked_bars",
+    }
+)
 
-def _jobs() -> list[tuple[str, str, str, dict]]:
+
+def _plot_data_availability() -> dict[str, tuple[str, ...]]:
+    """Side-effect-free local inputs available to the plot batch."""
+    per_sample = tuple(sorted(_cached_per_sample_cohorts()))
+    within_sample = tuple(
+        plots.locally_available_within_sample_cohorts(
+            proteoform=True,
+            scope="cta",
+            include_recomputable=True,
+        )
+    )
+    percentile_gene = tuple(locally_available_percentile_cohorts(proteoform=False, scope="cta"))
+    percentile_proteoform = tuple(
+        locally_available_percentile_cohorts(proteoform=True, scope="cta")
+    )
+    return {
+        "per_sample": per_sample,
+        "percentile_gene": percentile_gene,
+        "percentile_proteoform": percentile_proteoform,
+        "within_sample": within_sample,
+    }
+
+
+def _jobs(
+    availability: dict[str, tuple[str, ...]] | None = None,
+) -> list[tuple[str, str, str, dict]]:
     """``(family, name, fn_attr, kwargs)`` for every figure, with sensible
     defaults. Coverage/response panels are restricted to the cohorts that
     actually have a cached per-sample matrix."""
-    cached = sorted(_cached_per_sample_cohorts())
+    availability = availability or _plot_data_availability()
+    cached = list(availability["per_sample"])
+    percentile_gene = list(availability["percentile_gene"])
+    percentile_proteoform = list(availability["percentile_proteoform"])
+    within_sample = list(availability["within_sample"])
     jobs: list[tuple[str, str, str, dict]] = [
         # aPD-1 / ICI response. Match pirlygenes' two response scopes:
         # broad ICI anchors (PD-1 + proxies/fallbacks) and strict PD-1 monotherapy.
@@ -131,73 +169,69 @@ def _jobs() -> list[tuple[str, str, str, dict]]:
             "burden_category_bars",
             {"region": "world"},
         ),
-        # CTA expression
-        (
-            "cta_expression",
-            "cta_expression_heatmap_q1",
-            "cta_expression_heatmap",
-            {"stat": "q1"},
-        ),
-        (
-            "cta_expression",
-            "cta_expression_heatmap_median",
-            "cta_expression_heatmap",
-            {"stat": "median"},
-        ),
-        (
-            "cta_expression",
-            "cta_expression_heatmap_median_gene",
-            "cta_expression_heatmap",
-            {"stat": "median", "proteoform": False},
-        ),
-        (
-            "cta_expression",
-            "cta_expression_heatmap_q3",
-            "cta_expression_heatmap",
-            {"stat": "q3"},
-        ),
         # CTA addressable burden + per-patient prevalence. Uses the faithful
-        # per-sample source (cached cohorts); the portable within_sample source
-        # needs the within-sample bundle, which isn't always cached locally.
+        # patient union from cached per-sample matrices.
     ]
-    for axis in BURDEN_AXES:
-        metric = f"{axis}_pct"
+    if percentile_proteoform:
         jobs.extend(
             (
-                "cta_addressable",
-                f"cta_addressable_burden_within_sample_p{int(threshold * 100)}_{axis}",
-                "cta_addressable_burden",
-                {"source": "within_sample", "threshold": threshold, "metric": metric},
+                "cta_expression",
+                f"cta_expression_heatmap_{stat}",
+                "cta_expression_heatmap",
+                {"stat": stat, "cohorts": percentile_proteoform},
+            )
+            for stat in ("q1", "median", "q3")
+        )
+    if percentile_gene:
+        jobs.append(
+            (
+                "cta_expression",
+                "cta_expression_heatmap_median_gene",
+                "cta_expression_heatmap",
+                {"stat": "median", "proteoform": False, "cohorts": percentile_gene},
+            )
+        )
+    if cached:
+        for axis in BURDEN_AXES:
+            metric = f"{axis}_pct"
+            jobs.extend(
+                (
+                    "cta_addressable",
+                    f"cta_addressable_burden_per_sample_p{int(percentile * 100)}_{axis}",
+                    "cta_within_sample_percentile_addressable_burden",
+                    {"cohorts": cached, "percentile": percentile, "metric": metric},
+                )
+                for percentile in WITHIN_SAMPLE_THRESHOLDS
+            )
+            jobs.extend(
+                (
+                    "cta_addressable",
+                    f"cta_addressable_burden_per_sample_t{threshold:g}_{axis}",
+                    "cta_addressable_burden",
+                    {"source": "per_sample", "threshold_tpm": threshold, "metric": metric},
+                )
+                for threshold in CTA_TPM_THRESHOLDS
+            )
+    if within_sample:
+        jobs.extend(
+            (
+                "cta_patient",
+                f"cta_patient_count_heatmap_p{int(threshold * 100)}",
+                "cta_patient_count_heatmap",
+                {"threshold": threshold, "cohorts": within_sample},
             )
             for threshold in WITHIN_SAMPLE_THRESHOLDS
         )
+    if cached:
         jobs.extend(
             (
-                "cta_addressable",
-                f"cta_addressable_burden_per_sample_t{threshold:g}_{axis}",
-                "cta_addressable_burden",
-                {"source": "per_sample", "threshold_tpm": threshold, "metric": metric},
+                "cta_patient",
+                f"cta_patient_count_heatmap_t{threshold:g}",
+                "cta_patient_count_heatmap",
+                {"threshold_tpm": threshold, "cohorts": cached},
             )
             for threshold in CTA_TPM_THRESHOLDS
         )
-    jobs.extend(
-        (
-            "cta_patient",
-            f"cta_patient_count_heatmap_p{int(threshold * 100)}",
-            "cta_patient_count_heatmap",
-            {"threshold": threshold},
-        )
-        for threshold in WITHIN_SAMPLE_THRESHOLDS
-    )
-    jobs.extend(
-        (
-            "cta_patient",
-            f"cta_patient_count_heatmap_t{threshold:g}",
-            "cta_patient_count_heatmap",
-            {"threshold_tpm": threshold},
-        )
-        for threshold in CTA_TPM_THRESHOLDS
-    )
     for threshold in CTA_TPM_THRESHOLDS:
         for axis in REFERENCE_AXES:
             jobs.append(
@@ -234,7 +268,75 @@ def _jobs() -> list[tuple[str, str, str, dict]]:
                     {"cancer_types": cached, "threshold_tpm": threshold},
                 ),
             ]
+        for percentile in WITHIN_SAMPLE_THRESHOLDS:
+            jobs += [
+                (
+                    "cta_coverage",
+                    f"cta_coverage_curves_p{int(percentile * 100)}",
+                    "cta_within_sample_percentile_coverage_curves",
+                    {"cancer_types": cached, "percentile": percentile},
+                ),
+                (
+                    "cta_coverage",
+                    f"cta_coverage_stacked_bars_p{int(percentile * 100)}",
+                    "cta_within_sample_percentile_coverage_stacked_bars",
+                    {"cancer_types": cached, "percentile": percentile},
+                ),
+            ]
     return jobs
+
+
+def _attach_shared_percentile_coverage(jobs, availability):
+    """Compute p90/p95 coverage once and attach it to every dependent plot."""
+    if not any(function in _PERCENTILE_COVERAGE_PLOTS for _, _, function, _ in jobs):
+        return jobs, None
+    coverage = within_sample_percentile_coverage_sweep(
+        availability["per_sample"],
+        percentiles=WITHIN_SAMPLE_THRESHOLDS,
+        on_missing="record",
+    )
+    prepared = []
+    for family, name, function, kwargs in jobs:
+        plot_kwargs = dict(kwargs)
+        if function in _PERCENTILE_COVERAGE_PLOTS:
+            plot_kwargs["coverage_table"] = coverage
+        prepared.append((family, name, function, plot_kwargs))
+    return prepared, coverage
+
+
+def _availability_index_lines(availability, percentile_coverage):
+    """Human-readable audit of the local data used for one plot run."""
+    per_sample = availability["per_sample"]
+    percentile_gene = availability["percentile_gene"]
+    percentile_proteoform = availability["percentile_proteoform"]
+    within_sample = availability["within_sample"]
+    lines = [
+        "## Local data",
+        "",
+        f"- Cached per-sample matrices: {len(per_sample)}",
+        f"- Local or locally recomputable gene percentile cohorts: {len(percentile_gene)}",
+        "- Local or locally recomputable proteoform percentile cohorts: "
+        f"{len(percentile_proteoform)}",
+        f"- Local or locally recomputable within-sample cohorts: {len(within_sample)}",
+    ]
+    if percentile_coverage is not None:
+        audited = percentile_coverage.attrs.get("audited_cohorts", ())
+        missing = percentile_coverage.attrs.get("missing_cohorts", {})
+        lines.extend(
+            [
+                f"- p90/p95 joint coverage cohorts audited: {len(audited)}",
+                f"- p90/p95 joint coverage cohorts missing: {len(missing)}",
+            ]
+        )
+        if missing:
+            lines.extend(
+                [
+                    "",
+                    "Missing p90/p95 inputs:",
+                    *(f"- `{code}`: {reason}" for code, reason in sorted(missing.items())),
+                ]
+            )
+    return lines
 
 
 def _resolve_run_dir(args: argparse.Namespace) -> Path:
@@ -294,7 +396,9 @@ def main() -> int:
     args = ap.parse_args()
 
     run_dir = _resolve_run_dir(args)
-    jobs = _jobs()
+    availability = _plot_data_availability()
+    jobs = _jobs(availability)
+    jobs, percentile_coverage = _attach_shared_percentile_coverage(jobs, availability)
     print(f"Regenerating {len(jobs)} figures into {run_dir}")
 
     done: list[str] = []
@@ -338,6 +442,8 @@ def main() -> int:
         f"{len(done)} generated, {len(skipped)} skipped.",
         "",
         f"Combined PDF: `{pdf.name}`" if pdf is not None else "Combined PDF: not generated.",
+        "",
+        *_availability_index_lines(availability, percentile_coverage),
         "",
         "## Generated",
         *(f"- `{p}`" for p in done),
