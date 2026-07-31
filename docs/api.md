@@ -435,6 +435,12 @@ cancer code. They are related planning surfaces, not interchangeable provenance:
 the selected ACC matrix, for example, currently comes from Treehouse even though
 `tcga-acc` is a registered acquisition source.
 
+An acquisition source with a known physical cohort also carries a nonempty
+`source_project`. This makes `expression_sources()` self-contained for display
+provenance. Its label may be more specific than the cohort registry's shared
+project label, so consumers should preserve the source-owned value instead of
+replacing it with a cohort-level fallback.
+
 Use `oncoref.source_matrices.codes_for_source(source_id)` for the selected code
 list. Use `oncoref.source_matrices.resolution_for_source(source_id)` when
 provenance matters. Its `resolution_method` is `physical_source` only when the

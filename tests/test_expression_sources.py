@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 import oncoref
-from oncoref import expression_builders, samples
+from oncoref import expression_builders, samples, source_matrices
 from oncoref import expression_registry as es
 from oncoref.cancer_types import resolve_cancer_type
 from oncoref.load_dataset import get_data
@@ -172,6 +172,45 @@ def test_expression_sources_df_shape():
         "citation",
     } <= set(df.columns)
     assert len(df) == len(es.expression_sources())
+
+
+def test_selected_physical_sources_preserve_known_availability_projects():
+    availability = get_data("cancer-reference-expression-availability")
+    projects_by_cohort = {
+        str(source_cohort): {
+            str(project)
+            for project in rows["source_project"]
+            if pd.notna(project) and str(project).strip()
+        }
+        for source_cohort, rows in availability.groupby("source_cohort", observed=True)
+    }
+    missing = []
+    for source in es.expression_sources():
+        resolution = source_matrices.resolution_for_source(source.id)
+        if resolution.resolution_method != "physical_source":
+            continue
+        known_projects = set().union(
+            *(projects_by_cohort.get(matrix.source_cohort, set()) for matrix in resolution.matrices)
+        )
+        if known_projects and not source.source_project:
+            missing.append((source.id, sorted(known_projects)))
+
+    assert not missing
+
+
+def test_previously_missing_source_projects_use_canonical_cohort_labels():
+    expected = {
+        "gse114922-mds": "GEO",
+        "gse118014-pannet": "GEO",
+        "drmetrics-lnen-2020": "GEO (DR-metrics / Alcala LNEN)",
+        "gse98894-midnet": "GEO",
+        "gse32662-mtc": "GEO",
+        "gse30929-lps": "GEO",
+    }
+
+    assert {
+        source_id: es.expression_source(source_id).source_project for source_id in expected
+    } == expected
 
 
 def test_expression_source_registry_raw_helpers_are_public():
