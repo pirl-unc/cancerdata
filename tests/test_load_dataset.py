@@ -78,3 +78,23 @@ def test_reference_expression_csv_shards_are_compacted_before_concatenation(tmp_
     assert loaded == optimized_shards
     assert len(loaded) == 2
     assert all(isinstance(frame["source_cohort"].dtype, pd.CategoricalDtype) for frame in loaded)
+
+
+def test_ncbi_synonym_loader_preserves_na_like_aliases():
+    load_dataset._clear_cache()
+    synonyms = load_dataset.get_data("ncbi-symbol-synonyms")
+
+    expected = {"NA": "XK", "NaN": "SCN11A"}
+    observed = synonyms[synonyms["alias"].isin(expected)].set_index("alias")["official_symbol"]
+    assert observed.to_dict() == expected
+    assert isinstance(synonyms["alias"].dtype, pd.StringDtype)
+
+
+def test_ncbi_synonym_loader_keeps_empty_cells_missing(tmp_path):
+    path = tmp_path / "ncbi-symbol-synonyms.csv"
+    path.write_text("alias,official_symbol\nNA,XK\nNaN,SCN11A\n,EMPTY\n")
+
+    loaded = load_dataset._read_csv_for_cache(path, "ncbi-symbol-synonyms")
+
+    assert loaded["alias"].iloc[:2].tolist() == ["NA", "NaN"]
+    assert pd.isna(loaded["alias"].iloc[2])

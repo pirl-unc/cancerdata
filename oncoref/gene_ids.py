@@ -24,7 +24,7 @@ from functools import lru_cache
 
 import pandas as pd
 
-from .load_dataset import get_data
+from .load_dataset import _register_derived_cache, get_data
 
 
 def unversioned(gene_id: str) -> str:
@@ -290,16 +290,61 @@ def ensembl_id_alias_symbols() -> dict[str, str]:
 
 
 @lru_cache(maxsize=1)
-def symbol_synonyms() -> dict[str, str]:
-    """``{ALIAS (uppercased): official_symbol}`` from NCBI gene synonyms."""
+def _symbol_synonym_indexes() -> tuple[dict[str, str], dict[str, str]]:
+    """Build exact-case and safe case-insensitive NCBI synonym indexes."""
     df = get_data("ncbi-symbol-synonyms", copy=False)
-    return {str(a).upper(): str(o) for a, o in zip(df["alias"], df["official_symbol"])}
+    exact: dict[str, str] = {}
+    targets_by_uppercase_alias: dict[str, set[str]] = {}
+    for alias_value, official_value in zip(df["alias"], df["official_symbol"]):
+        if pd.isna(alias_value) or pd.isna(official_value):
+            continue
+        alias = str(alias_value)
+        official = str(official_value)
+        if not alias or not official:
+            continue
+        previous = exact.get(alias)
+        if previous is not None and previous != official:
+            raise ValueError(
+                f"NCBI synonym alias {alias!r} maps to both {previous!r} and {official!r}"
+            )
+        exact[alias] = official
+        targets_by_uppercase_alias.setdefault(alias.upper(), set()).add(official)
+
+    case_insensitive: dict[str, str] = {}
+    for uppercase_alias, targets in targets_by_uppercase_alias.items():
+        if len(targets) == 1:
+            case_insensitive[uppercase_alias] = next(iter(targets))
+        elif uppercase_alias in exact:
+            # The snapshot's exact uppercase row is the deterministic fallback.
+            case_insensitive[uppercase_alias] = exact[uppercase_alias]
+    return exact, case_insensitive
+
+
+_register_derived_cache(_symbol_synonym_indexes.cache_clear)
+
+
+def symbol_synonyms() -> dict[str, str]:
+    """Safe case-insensitive ``{ALIAS: official_symbol}`` NCBI synonym index.
+
+    Keys are uppercase. Ambiguous case-folded aliases are omitted unless the
+    NCBI snapshot contains an exact uppercase alias, which supplies the stable
+    fallback. Use :func:`resolve_symbol` when exact-case distinctions matter.
+    """
+    return _symbol_synonym_indexes()[1].copy()
 
 
 def resolve_symbol(symbol: str) -> str:
-    """Map a gene-symbol synonym to its official symbol (case-insensitive); returns
-    the input unchanged if it's already official / unknown."""
-    return symbol_synonyms().get(str(symbol).upper(), str(symbol))
+    """Resolve an NCBI gene-symbol synonym without collapsing case collisions.
+
+    Exact-case aliases win. Other casing uses the safe case-insensitive index;
+    an ambiguous fold with no exact uppercase row is returned unchanged.
+    """
+    raw = str(symbol)
+    exact, case_insensitive = _symbol_synonym_indexes()
+    exact_match = exact.get(raw)
+    if exact_match is not None:
+        return exact_match
+    return case_insensitive.get(raw.upper(), raw)
 
 
 def gene_identifier_mapping_coverage() -> pd.DataFrame:

@@ -942,6 +942,13 @@ but it is not the clean-TPM biological denominator.
 
 ## Genes and Proteoforms
 
+Gene-symbol aliases are loaded as lossless strings, including literal aliases
+such as `NA` and `NaN`. `gene_ids.resolve_symbol()` checks the NCBI alias's exact
+case first. It falls back case-insensitively only when the folded alias is
+unambiguous or the pinned NCBI snapshot supplies an exact uppercase row;
+otherwise the input is returned unchanged rather than selecting a gene by row
+order.
+
 - `oncoref.gene_ids` — bundled canonical Ensembl gene space, cross-release alias
   resolution, symbol synonyms, and biotype checks.
 - `oncoref.genome` — optional (`pip install 'oncoref[genome]'`) pyensembl-backed
