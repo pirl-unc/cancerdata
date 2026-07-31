@@ -396,11 +396,22 @@ processing plan.
 
 ### Builder APIs
 
+Every published source matrix has one regeneration path owned by oncoref. The
+path may use a generic builder or a small source-specific adapter, but it always
+ends at the same canonical matrix, mapping-audit, parse-diagnostic, sample-QC,
+and summary-row contract. Source-scale caveats remain data: microarray TPM
+proxies and CTCL single-cell pseudobulk nTPM are retained for within-sample rank
+uses while explicitly marked unsuitable for absolute comparison with bulk
+RNA-seq TPM.
+
 - `oncoref.expression_builders` — build-time ingestion and artifact cores used by
   data-bundle generation scripts. `GeoMatrixSource` /
   `build_source_matrices` own the generic supplementary-matrix path from raw
   source file to canonical per-code per-sample TPM parquet, mapping audit, parse
   diagnostics, sample-QC sidecars, and `SourceMatrixBuildResult.summary_rows`.
+  Raw-count inputs are canonicalized first and use Ensembl gene lengths from
+  the requested pyensembl release in an `oncoref[genome]` build environment;
+  `--gene-lengths-kb` remains available as an explicit build-input override.
   `summarize_source_matrix` is the standalone producer for those
   per-gene-per-cohort reference-expression rows: raw TPM stats, clean-TPM
   16/9/75 stats, `n_samples`, `n_detected`, and source provenance in one schema.
@@ -457,6 +468,13 @@ processing plan.
   builds retain curated cohorts that have no strict QC-pass samples only through
   explicit source-aware fallbacks recorded in the build metadata, and clip
   invalid negative source expression values to zero with per-cohort counts.
+- `oncoref.expression_source_adapters` — narrow parsers and routers for public
+  sources whose sample labels live outside the primary expression matrix. These
+  adapters cover TARGET ALL phase-matrix B/T lineage, TARGET NBL cBioPortal MYCN
+  status, GSE75885 histology titles, DRMetrics histology attributes, audited GEO
+  microarrays, and GSE171811 CTCL TCR-beta-selected case pseudobulks. They
+  delegate normalization, canonicalization, QC, summaries, and artifact writing
+  to `expression_builders` rather than defining parallel data contracts.
 
 ### Registry and low-level APIs
 
@@ -465,7 +483,9 @@ processing plan.
   for the full raw YAML dictionaries, `expression_source_registry_entries(source_type="geo-matrix")`
   for generic GEO build configs, or `expression_source_registry_path()` only when
   a subprocess needs the packaged registry path. Downstream packages should use
-  these helpers instead of shipping a second copy of the registry.
+  these helpers instead of shipping a second copy of the registry. GEO
+  accessions named anywhere in a source's citation or file metadata are also
+  stored in the structured `accession` field.
 - `oncoref.expression_engine` — reusable low-level builder primitives for
   expression tables: identity/value column detection, transcript-to-gene
   aggregation, source row ID-type detection, source gene-row mapping audits,
@@ -482,6 +502,14 @@ processing plan.
   `source_expression_nonzero_samples`, and
   `source_expression_sample_with_max`.
 - `oncoref.source_matrices` — raw per-cohort source-matrix cache/fetch helpers.
+  `source_matrix_regeneration_audit()` matches each selected matrix by the exact
+  `(cancer_code, source_cohort)` physical-source pair. A pair must have exactly
+  one registry owner declaring either an existing repository-relative builder
+  script or an `external_build_exemption`; `validate_source_matrix_regeneration()`
+  raises for missing, ambiguous, invalid, or nonexistent builder ownership. The
+  sole current exemption is the controlled UNC NUTM1 case series. This audit is
+  a source-checkout/release-build check because builder scripts are not installed
+  in the runtime wheel.
   Use `source_matrices.sample_qc(code)` for the live source-matrix QC audit and
   `source_matrices.sample_qc_manifest(...)` for the optional generated-bundle QC
   manifest that records which samples fed derived artifacts.

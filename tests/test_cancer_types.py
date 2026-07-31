@@ -247,6 +247,37 @@ def test_source_cohort_counts_are_derived_from_expression_registry(monkeypatch):
     assert int(row["n_codes"]) == 2
 
 
+def test_source_cohort_counts_require_explicit_boolean_for_overlapping_routes(monkeypatch):
+    from oncoref import expression_registry
+
+    source = {
+        "id": "overlap-test",
+        "source_cohort": "OVERLAP_TEST",
+        "cancer_codes": ["PARENT", "CHILD"],
+        "expected_source_samples": 5,
+        "expected_samples_by_code": {"PARENT": 5, "CHILD": 5},
+    }
+    monkeypatch.setattr(
+        expression_registry,
+        "expression_source_registry_entries",
+        lambda: (source,),
+    )
+    cancer_types._expression_source_cohort_counts.cache_clear()
+    with pytest.raises(ValueError, match="routes more samples than it contains"):
+        cancer_types._expression_source_cohort_counts()
+
+    source["routed_samples_may_overlap"] = "true"
+    cancer_types._expression_source_cohort_counts.cache_clear()
+    with pytest.raises(ValueError, match="must be a YAML boolean"):
+        cancer_types._expression_source_cohort_counts()
+
+    source["routed_samples_may_overlap"] = True
+    cancer_types._expression_source_cohort_counts.cache_clear()
+    counts = cancer_types._expression_source_cohort_counts()
+    assert counts["OVERLAP_TEST"]["physical_samples"] == 5
+    cancer_types._expression_source_cohort_counts.cache_clear()
+
+
 def test_cohort_source_version_parses_ensembl_release():
     # The per-cohort source_version for auditing the canonical gene-ID space: a code
     # resolves to its source cohort, whose provenance records the harmonized Ensembl

@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+"""Build DRMetrics lung carcinoid and LCNEC matrices from public files."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from oncoref.expression_engine import sample_columns
+from oncoref.expression_source_adapters import build_drmetrics_source_matrices
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--cache-dir", type=Path, default=None)
+    parser.add_argument("--output-dir", type=Path, default=None)
+    parser.add_argument("--counts-path", type=Path, default=None)
+    parser.add_argument("--attributes-path", type=Path, default=None)
+    parser.add_argument("--force-download", action="store_true")
+    parser.add_argument("--ensembl-release", type=int, default=112)
+    parser.add_argument("--high-expression-threshold", type=float, default=1.0)
+    args = parser.parse_args(argv)
+
+    cache = args.cache_dir or (
+        Path.home() / ".cache" / "oncoref" / "expression" / "drmetrics-lnen-2020"
+    )
+    result = build_drmetrics_source_matrices(
+        cache_dir=cache,
+        output_dir=args.output_dir,
+        counts_path=args.counts_path,
+        attributes_path=args.attributes_path,
+        force_download=args.force_download,
+        ensembl_release=args.ensembl_release,
+        high_expression_threshold=args.high_expression_threshold,
+    )
+    print(
+        json.dumps(
+            {
+                "source_id": "drmetrics-lnen-2020",
+                "matrix_paths": {code: str(path) for code, path in result.matrix_paths.items()},
+                "sample_counts": {
+                    code: len(sample_columns(matrix)) for code, matrix in result.matrices.items()
+                },
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

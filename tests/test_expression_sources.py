@@ -4,6 +4,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -24,8 +25,13 @@ def test_registry_loads_all_sources():
 
 def test_source_types_cover_the_major_providers():
     types = {s.source_type for s in es.expression_sources()}
-    for t in ("gdc", "treehouse-compendium", "recount3", "sra-ncbi-counts", "broad-cllmap"):
+    for t in ("gdc", "treehouse-compendium", "recount3", "sra-ncbi-counts", "geo-matrix"):
         assert t in types
+
+    cllmap = es.expression_source("cllmap")
+    assert cllmap is not None
+    assert cllmap.source_type == "geo-matrix"
+    assert cllmap.source_project == "CLL-map"
 
 
 def test_lookup_by_id_and_code():
@@ -188,6 +194,35 @@ def test_expression_source_registry_raw_helpers_are_public():
     assert es.expression_source_registry_entries(source_type=["not-a-source-type"]) == ()
     assert oncoref.expression_source_registry_entries() == entries
     assert "expression_source_registry_entries" in oncoref.__all__
+
+
+def test_geo_accessions_are_structured_when_source_metadata_names_them():
+    pattern = re.compile(r"\bGSE\d+\b", flags=re.IGNORECASE)
+
+    def nested_strings(value):
+        if isinstance(value, dict):
+            for nested in value.values():
+                yield from nested_strings(nested)
+        elif isinstance(value, (list, tuple)):
+            for nested in value:
+                yield from nested_strings(nested)
+        else:
+            yield str(value)
+
+    def metadata_values(entry):
+        for key, value in entry.items():
+            if key in {"citation", "url"} or "file" in key:
+                yield from nested_strings(value)
+
+    for entry in es.expression_source_registry_entries():
+        named = {
+            match.upper() for value in metadata_values(entry) for match in pattern.findall(value)
+        }
+        structured = {match.upper() for match in pattern.findall(str(entry.get("accession") or ""))}
+        assert named <= structured, (
+            f"{entry['id']} names GEO accession(s) {sorted(named - structured)} "
+            "outside its structured accession field"
+        )
 
 
 def test_sample_manifest_loads():
