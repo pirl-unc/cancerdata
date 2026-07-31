@@ -345,6 +345,30 @@ read-time choices do not get mixed with source-ingestion details.
 Expression values use transcripts per million (TPM) unless a section states a
 different unit.
 
+### Acquisition sources and selected matrices
+
+The expression-source registry describes datasets that can be acquired or built.
+The source-matrix registry describes the matrix currently selected for each
+cancer code. They are related planning surfaces, not interchangeable provenance:
+the selected ACC matrix, for example, currently comes from Treehouse even though
+`tcga-acc` is a registered acquisition source.
+
+Use `oncoref.source_matrices.codes_for_source(source_id)` for the selected code
+list. Use `oncoref.source_matrices.resolution_for_source(source_id)` when
+provenance matters. Its `resolution_method` is `physical_source` only when the
+registered and selected `source_cohort` values match; `declared_cancer_code`
+means the source's declared codes route to matrices built from other physical
+sources. Each returned `SelectedSourceMatrix` always retains the selected
+matrix's real `source_cohort`. A registered source without a published matrix
+returns `unavailable` plus a machine-readable `availability_reason`.
+
+`expression_registry.expression_source_candidates()` remains an acquisition
+planning table. A row is marked `direct_reference_available` only when it names
+the same physical source as the selected matrix; its `reference_code` is then
+the exact `cancer_code`. A selected matrix for the same cancer code but a
+different cohort does not overwrite that candidate's accession, URL, or
+processing plan.
+
 ### Reader APIs
 
 - `oncoref.expression` — read-time accessors for per-sample expression,

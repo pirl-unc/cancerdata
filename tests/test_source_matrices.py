@@ -23,6 +23,39 @@ def test_registry_and_available_cohorts():
     assert info["source_cohort"] and info["n_samples"] > 0
 
 
+def test_source_id_resolver_distinguishes_physical_and_declared_code_routes():
+    beataml = sm.resolution_for_source("beataml-ohsu-2022")
+    assert beataml.resolution_method == "declared_cancer_code"
+    assert beataml.codes == ("LAML_APL", "LAML_ELNadv", "LAML_ELNfav", "LAML_ELNint")
+    assert {matrix.source_cohort for matrix in beataml.matrices} == {"BEATAML_OHSU_2022"}
+
+    tcga_acc = sm.resolution_for_source("tcga-acc")
+    assert tcga_acc.resolution_method == "declared_cancer_code"
+    assert tcga_acc.codes == ("ACC",)
+    assert tcga_acc.matrices[0].source_cohort == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
+
+    mmnst = sm.resolution_for_source("prjna1083972-mmnst")
+    assert mmnst.resolution_method == "physical_source"
+    assert mmnst.codes == ("SARC_MMNST",)
+    assert mmnst.matrices[0].source_cohort == "SRP493407_MMNST_2024"
+    assert sm.codes_for_source("prjna1083972-mmnst") == ["SARC_MMNST"]
+
+
+def test_source_id_resolver_does_not_mix_selected_physical_sources():
+    treehouse = sm.resolution_for_source("treehouse-polya-25-01")
+    assert treehouse.resolution_method == "physical_source"
+    assert "NUTM" not in treehouse.codes
+    assert {matrix.source_cohort for matrix in treehouse.matrices} == {"TREEHOUSE_POLYA_25_01"}
+
+    unavailable = sm.resolution_for_source("tcga-sarc")
+    assert unavailable.resolution_method == "unavailable"
+    assert unavailable.codes == ()
+    assert unavailable.availability_reason == "no_selected_matrix_for_declared_cancer_codes"
+
+    with pytest.raises(sm.SourceMatrixError, match="unknown expression source"):
+        sm.codes_for_source("not-a-source")
+
+
 def test_mbl_molecular_subgroups_are_source_matrix_cohorts():
     expected = {
         "MBL_WNT": 17,
