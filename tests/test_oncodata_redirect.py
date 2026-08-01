@@ -7,7 +7,7 @@ from pathlib import Path
 
 import oncoref
 
-REDIRECT_ROOT = Path(__file__).resolve().parents[1]
+REDIRECT_ROOT = Path(__file__).resolve().parents[1] / "pypi-oncodata-redirect"
 LEGACY_SUBMODULES = (
     "apd1",
     "cancer_genes",
