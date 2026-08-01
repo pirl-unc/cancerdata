@@ -360,6 +360,20 @@ from .samples import (
     samples_for_cohort,
 )
 from .tmb import cancer_tmb, cancer_tmb_df, cancer_tmb_record, resolve_tmb_source
+from .tumor_references import (
+    TUMOR_REFERENCE_DERIVATION_METHODS,
+    TUMOR_REFERENCE_DERIVATION_STATUSES,
+    TUMOR_REFERENCE_PROVENANCE_COLUMNS,
+    TUMOR_REFERENCE_SAMPLE_QC_POLICIES,
+    TUMOR_REFERENCE_SCALE_VALUES,
+    TUMOR_REFERENCE_SOURCE_SCALES,
+    TUMOR_REFERENCE_VALUE_COLUMNS,
+    TumorReferenceDataError,
+    subtype_deconvolved_expression,
+    subtype_tumor_reference_expression,
+    tcga_deconvolved_expression,
+    tumor_reference_expression_provenance,
+)
 from .version import __version__
 
 __all__ = [
@@ -385,6 +399,13 @@ __all__ = [
     "TECHNICAL_FRACTION",
     "TECHNICAL_RNA_FAMILIES",
     "TECHNICAL_RNA_GROUPS",
+    "TUMOR_REFERENCE_DERIVATION_METHODS",
+    "TUMOR_REFERENCE_DERIVATION_STATUSES",
+    "TUMOR_REFERENCE_PROVENANCE_COLUMNS",
+    "TUMOR_REFERENCE_SAMPLE_QC_POLICIES",
+    "TUMOR_REFERENCE_SCALE_VALUES",
+    "TUMOR_REFERENCE_SOURCE_SCALES",
+    "TUMOR_REFERENCE_VALUE_COLUMNS",
     "WHO_AUDIT_STATUS_VALUES",
     "CTA_by_axes",
     "CTA_excluded_gene_ids",
@@ -406,6 +427,7 @@ __all__ = [
     "ExpressionSource",
     "GeneQcClass",
     "ShardDataset",
+    "TumorReferenceDataError",
     "__version__",
     # expression (read accessors over the downloadable bundle)
     "addressable_fraction",
@@ -678,8 +700,12 @@ __all__ = [
     "source_matrices",
     "source_matrix_sample_qc_manifest",
     "sources_for_cancer_code",
+    "subtype_deconvolved_expression",
+    "subtype_tumor_reference_expression",
+    "tcga_deconvolved_expression",
     "tissue_of_origin",
     "tpm_to_housekeeping_normalized",
+    "tumor_reference_expression_provenance",
     "unversioned",
     "viral_status",
     "within_sample_percentile_addressable_fraction_by_cohort",

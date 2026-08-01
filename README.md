@@ -101,6 +101,7 @@ od.within_sample_top_fraction("PRAD")     # per-gene frac of samples top-5% (wit
 | --- | --- |
 | What does this cancer code mean? | `oncoref.cancer_ontology`, `oncoref.cohorts` |
 | What expression reference is available? | `oncoref.expression`, `oncoref.source_matrices` |
+| What tumor-attributed or subtype summary is available? | `oncoref.tumor_references` |
 | How is expression normalized or filtered? | `oncoref.normalization`, `oncoref.gene_families` |
 | What is the canonical gene identity? | `oncoref.gene_ids`, `oncoref.genome`, `oncoref.proteoforms` |
 | What is the TMB, burden, or ICI response evidence? | `oncoref.tmb`, `oncoref.incidence`, `oncoref.ici_response` |

@@ -92,6 +92,9 @@ oncoref = [
     "data/cancer-reference-expression-within-sample-top5-proteoform/*",
     "data/pan-cancer-expression.csv",
     "data/hpa-cell-type-expression.csv",
+    "data/tcga-deconvolved-expression.csv.gz",
+    "data/subtype-deconvolved-expression.csv.gz",
+    "data/tumor-reference-expression-provenance.csv",
 ]
 
 [tool.ruff]

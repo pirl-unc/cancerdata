@@ -21,6 +21,9 @@ def test_is_downloadable_distinguishes_bundle_from_wheel():
     assert data_bundle.is_downloadable("cancer-reference-expression-within-sample-top5")
     assert data_bundle.is_downloadable("source-matrix-sample-qc.csv")
     assert data_bundle.is_downloadable("pan-cancer-expression.csv")
+    assert data_bundle.is_downloadable("tcga-deconvolved-expression")
+    assert data_bundle.is_downloadable("tcga-deconvolved-expression.csv")
+    assert data_bundle.is_downloadable("tcga-deconvolved-expression.csv.gz")
     # Small wheel-bundled tables are NOT downloadable items.
     assert not data_bundle.is_downloadable("cancer-type-registry")
     assert not data_bundle.is_downloadable("cancer-tmb")
