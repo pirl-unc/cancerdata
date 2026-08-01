@@ -18,12 +18,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-_PACKAGE = Path(__file__).resolve().parents[1] / "oncoref"
-_PROJECT = _PACKAGE.parent
+PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "oncoref"
+REPOSITORY_ROOT = PACKAGE_ROOT.parent
 
 # Downstream consumers that depend on oncoref; importing any of them would
 # invert the dependency pyramid.
-_CONSUMERS = {"pirlygenes", "tsarina", "hitlist", "trufflepig"}
+DOWNSTREAM_PACKAGES = {"pirlygenes", "tsarina", "hitlist", "trufflepig"}
 
 
 def _imported_top_level_modules(path):
@@ -42,16 +42,16 @@ def _imported_top_level_modules(path):
 
 def test_package_imports_no_consumer():
     offenders = []
-    for py in sorted(_PACKAGE.rglob("*.py")):
+    for py in sorted(PACKAGE_ROOT.rglob("*.py")):
         for mod in _imported_top_level_modules(py):
-            if mod in _CONSUMERS:
-                offenders.append(f"{py.relative_to(_PACKAGE)} imports {mod}")
+            if mod in DOWNSTREAM_PACKAGES:
+                offenders.append(f"{py.relative_to(PACKAGE_ROOT)} imports {mod}")
     assert not offenders, "oncoref must not import its consumers:\n  " + "\n  ".join(offenders)
 
 
 def test_project_metadata_depends_on_no_consumer():
     """Keep downstream projects out of build, runtime, and optional requirements."""
-    metadata = (_PROJECT / "pyproject.toml").read_text()
+    metadata = (REPOSITORY_ROOT / "pyproject.toml").read_text()
     dependency_sections = re.findall(
         r"(?ms)^\[(?:build-system|project|project\.optional-dependencies)\]\n(.*?)(?=^\[|\Z)",
         metadata,
@@ -62,18 +62,18 @@ def test_project_metadata_depends_on_no_consumer():
         for requirement in re.findall(r'^\s*"([^"]+)"', section)
     }
 
-    assert declared_names.isdisjoint(_CONSUMERS), (
+    assert declared_names.isdisjoint(DOWNSTREAM_PACKAGES), (
         "oncoref metadata must not depend on downstream consumers: "
-        f"{sorted(declared_names & _CONSUMERS)}"
+        f"{sorted(declared_names & DOWNSTREAM_PACKAGES)}"
     )
 
 
 def test_migration_scripts_import_no_consumer():
     offenders = []
-    for py in sorted((_PROJECT / "scripts").rglob("*.py")):
+    for py in sorted((REPOSITORY_ROOT / "scripts").rglob("*.py")):
         for mod in _imported_top_level_modules(py):
-            if mod in _CONSUMERS:
-                offenders.append(f"{py.relative_to(_PROJECT)} imports {mod}")
+            if mod in DOWNSTREAM_PACKAGES:
+                offenders.append(f"{py.relative_to(REPOSITORY_ROOT)} imports {mod}")
     assert not offenders, "oncoref migration scripts must not import consumers:\n  " + "\n  ".join(
         offenders
     )
@@ -91,7 +91,7 @@ assert root.level == logging.WARNING, logging.getLevelName(root.level)
 """
     result = subprocess.run(
         [sys.executable, "-c", code],
-        cwd=_PROJECT,
+        cwd=REPOSITORY_ROOT,
         capture_output=True,
         text=True,
         check=False,
@@ -116,7 +116,7 @@ assert root.level == logging.WARNING, logging.getLevelName(root.level)
 """
     result = subprocess.run(
         [sys.executable, "-c", code],
-        cwd=_PROJECT,
+        cwd=REPOSITORY_ROOT,
         capture_output=True,
         text=True,
         check=False,
