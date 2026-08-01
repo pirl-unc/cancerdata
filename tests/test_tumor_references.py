@@ -116,6 +116,9 @@ def test_subtype_accessor_canonicalizes_legacy_labels_and_keeps_sources_separate
     assert set(brca["source_cohort"]) == {"TREEHOUSE_POLYA_25_01_TCGA_BRCA_PAM50"}
     assert laml["tumor_tpm_median"].sum() == pytest.approx(1_000_000)
     assert brca["tumor_tpm_median"].sum() == pytest.approx(1_000_000)
+    assert laml.attrs["oncoref"]["derivation_method"] is None
+    assert laml.attrs["oncoref"]["derivation_scope"] == "source"
+    assert laml.attrs["oncoref"]["provenance_dataset"] == "tumor-reference-expression-provenance"
 
 
 @pytest.mark.parametrize(

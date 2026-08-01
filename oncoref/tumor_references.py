@@ -13,8 +13,8 @@ tables does not create a runtime dependency on Trufflepig.
 There are two distinct products:
 
 * the TCGA table contains tumor-attributed TPM from per-sample decomposition;
-* the historically named subtype table contains observed-TPM cohort summaries,
-  not universal tumor-microenvironment deconvolution.
+* the historically named subtype table contains passthrough cohort summaries on
+  source-declared scales, not universal tumor-microenvironment deconvolution.
 
 Use :func:`tumor_reference_expression_provenance` to inspect that distinction
 without inferring a method from a filename.
@@ -116,7 +116,7 @@ class _ReferenceDatasetSpec:
     columns: tuple[str, ...]
     identity_columns: tuple[str, ...]
     normalization_groups: tuple[str, ...]
-    derivation_method: str
+    derivation_method: str | None
 
 
 _TCGA_REFERENCE = _ReferenceDatasetSpec(
@@ -131,7 +131,7 @@ _SUBTYPE_REFERENCE = _ReferenceDatasetSpec(
     columns=_SUBTYPE_COLUMNS,
     identity_columns=("cancer_code", "subtype", "source_cohort"),
     normalization_groups=("cancer_code", "subtype", "source_cohort"),
-    derivation_method="mixed_passthrough; inspect provenance",
+    derivation_method=None,
 )
 _REFERENCE_DATASETS = {
     spec.name: spec
@@ -436,6 +436,8 @@ def _reference_expression(
         "data_version": DATA_VERSION,
         "scale": scale,
         "derivation_method": spec.derivation_method,
+        "derivation_scope": "dataset" if spec.derivation_method is not None else "source",
+        "provenance_dataset": _PROVENANCE_DATASET,
     }
     return frame
 

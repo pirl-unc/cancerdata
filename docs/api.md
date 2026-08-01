@@ -618,9 +618,9 @@ contracts are parity-clean for the specific accessor they want to replace.
 Oncoref exposes two related products with different biological meanings. The
 TCGA table is tumor-attributed TPM produced by Trufflepig's existing per-sample
 TME decomposition. Oncoref migrates the pinned output and does not implement a
-second decomposition algorithm. The subtype/cohort table is primarily observed
-TPM passthrough aggregation; its historical filename says "deconvolved", but
-callers must not infer that method from the name.
+second decomposition algorithm. The subtype/cohort table contains passthrough
+aggregations on source-declared scales; its historical filename says
+"deconvolved", but callers must not infer that method from the name.
 
 - `tumor_references.tcga_deconvolved_expression()` returns TCGA tumor-attributed
   median, Q1, Q3, and contributing-sample counts by cancer code.
@@ -644,6 +644,12 @@ Ensembl gene ID; BeatAML rows are rebuilt from Oncoref's ID-bearing raw source
 matrices using only samples marked `sample_qc_status="pass"`, normalized through
 the canonical 16/9/75 `clean_tpm` API before aggregation, because the legacy
 table contained invalid negative Q1 values.
+
+Each expression result has the same `DataFrame.attrs["oncoref"]` metadata
+shape. TCGA records its dataset-wide derivation method directly. Because the
+subtype artifact mixes source-level derivations, it records
+`derivation_method=None`, `derivation_scope="source"`, and the provenance
+dataset to query instead of inventing a fourth derivation-method label.
 
 ### Pan-cancer table
 
