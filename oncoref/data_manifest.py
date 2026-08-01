@@ -173,10 +173,32 @@ BUNDLE_ORIGINATED: dict[str, tuple[str, str]] = {
     ),
 }
 
+#: {name: (category, description)} — artifacts migrated from Trufflepig. The
+#: importer and release provenance live in oncoref, but the pinned TCGA
+#: decomposition output and legacy subtype source table originated downstream.
+BUNDLE_TRUFFLEPIG: dict[str, tuple[str, str]] = {
+    "tcga-deconvolved-expression.csv.gz": (
+        "expression",
+        "TCGA tumor-attributed TPM summaries migrated from pinned Trufflepig output",
+    ),
+    "subtype-deconvolved-expression.csv.gz": (
+        "expression",
+        "source-separated tumor-reference subtype and cohort summaries",
+    ),
+    "tumor-reference-expression-provenance": (
+        "expression",
+        "source-level derivation metadata for tumor-reference summary artifacts",
+    ),
+}
+
 #: {name: (category, description)} — every heavy artifact in the release tarball.
 #: Names match ``data_bundle.DOWNLOADABLE_PATHS`` (sans extension for ``.csv``);
 #: kept in sync by a test.
-BUNDLE: dict[str, tuple[str, str]] = {**BUNDLE_PIRLYGENES, **BUNDLE_ORIGINATED}
+BUNDLE: dict[str, tuple[str, str]] = {
+    **BUNDLE_PIRLYGENES,
+    **BUNDLE_ORIGINATED,
+    **BUNDLE_TRUFFLEPIG,
+}
 
 #: {name: (category, description)} — HPA tables fetched per-source (not pirlygenes files).
 HPA: dict[str, tuple[str, str]] = {

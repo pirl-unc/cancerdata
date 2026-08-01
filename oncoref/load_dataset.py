@@ -57,6 +57,22 @@ _CATEGORICAL_COLUMNS_BY_DATASET = {
         "notes",
         "tumor_origin",
     ),
+    "tcga-deconvolved-expression": ("cancer_code",),
+    "subtype-deconvolved-expression": ("cancer_code", "subtype", "source_cohort"),
+    "tumor-reference-expression-provenance": (
+        "artifact",
+        "cancer_code",
+        "subtype",
+        "source_cohort",
+        "derivation_method",
+        "derivation_status",
+        "source_scale",
+        "processing_pipeline",
+        "source_artifact",
+        "source_artifact_commit",
+        "source_matrix_version",
+        "notes",
+    ),
 }
 
 # NCBI uses literal aliases such as "NA" and "NaN". Preserve every nonempty
@@ -106,9 +122,10 @@ def _ensure_downloadable(name: str) -> None:
     stem = name.removesuffix(".csv").removesuffix(".gz")
     candidates = {name, stem, stem_with_csv, stem_with_csv.removesuffix(".csv")}
     for cand in candidates:
-        if not data_bundle.is_downloadable(cand):
+        downloadable_path = data_bundle._canonical_downloadable_path(cand)
+        if downloadable_path is None:
             continue
-        if data_bundle.find_local_item(cand) is not None:
+        if data_bundle.find_local_item(downloadable_path) is not None:
             return
         data_bundle.ensure_local()
         return

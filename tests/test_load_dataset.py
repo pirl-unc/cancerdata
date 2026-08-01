@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from oncoref import load_dataset
+from oncoref import data_bundle, load_dataset
 
 
 def _reference_rows(n_rows=20_000):
@@ -98,3 +98,24 @@ def test_ncbi_synonym_loader_keeps_empty_cells_missing(tmp_path):
 
     assert loaded["alias"].iloc[:2].tolist() == ["NA", "NaN"]
     assert pd.isna(loaded["alias"].iloc[2])
+
+
+def test_extensionless_gzip_bundle_name_uses_exact_local_member(monkeypatch, tmp_path):
+    artifact = tmp_path / "tcga-deconvolved-expression.csv.gz"
+    artifact.write_bytes(b"data")
+    requested = []
+
+    def find_local_item(path):
+        requested.append(path)
+        return artifact if path == artifact.name else None
+
+    monkeypatch.setattr(data_bundle, "find_local_item", find_local_item)
+    monkeypatch.setattr(
+        data_bundle,
+        "ensure_local",
+        lambda: (_ for _ in ()).throw(AssertionError("local artifact must not fetch full bundle")),
+    )
+
+    load_dataset._ensure_downloadable("tcga-deconvolved-expression")
+
+    assert artifact.name in requested

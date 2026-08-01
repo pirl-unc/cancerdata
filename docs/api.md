@@ -613,6 +613,36 @@ accessors and bundles are also reusable, but downstream packages may keep their
 own packaged expression artifacts until row-set, value, provenance, and QC
 contracts are parity-clean for the specific accessor they want to replace.
 
+### Tumor-reference summaries
+
+Oncoref exposes two related products with different biological meanings. The
+TCGA table is tumor-attributed TPM produced by Trufflepig's existing per-sample
+TME decomposition. Oncoref migrates the pinned output and does not implement a
+second decomposition algorithm. The subtype/cohort table is primarily observed
+TPM passthrough aggregation; its historical filename says "deconvolved", but
+callers must not infer that method from the name.
+
+- `tumor_references.tcga_deconvolved_expression()` returns TCGA tumor-attributed
+  median, Q1, Q3, and contributing-sample counts by cancer code.
+- `tumor_references.subtype_tumor_reference_expression()` is the preferred name
+  for source-separated subtype/cohort summaries. The historical
+  `subtype_deconvolved_expression()` name remains as a compatibility alias.
+- `tumor_references.tumor_reference_expression_provenance()` states the
+  derivation for each physical source: `tme_deconvolution`,
+  `high_purity_passthrough`, or `observed_tpm_passthrough`.
+
+Both expression accessors validate finite nonnegative values, quantile order,
+positive sample counts, and logical-key uniqueness. They canonicalize cancer and
+cohort identities without pooling physical sources. Known subtype aliases are
+canonicalized; source-defined subgroup labels that are not ontology nodes remain
+explicit source labels. `scale="classifier_tpm"`
+is the default comparable analysis view: technical RNA is removed within each
+source group and median mass is scaled to one million. `scale="native"` returns
+the validated migrated values without that read-time transform. Subtype rows
+may remain symbol-only when the legacy source did not provide an unambiguous
+Ensembl gene ID; BeatAML rows are rebuilt from Oncoref's ID-bearing source
+matrices because the legacy table contained invalid negative Q1 values.
+
 ### Pan-cancer table
 
 `expression.pan_cancer_expression()` defaults to oncoref's entity-first schema:

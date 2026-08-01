@@ -25,6 +25,9 @@ Cache layout (version-pinned so upgrades trigger a re-fetch):
     cancer-reference-expression-percentiles-proteoform-cta/...
     pan-cancer-expression.csv
     hpa-cell-type-expression.csv
+    tcga-deconvolved-expression.csv.gz
+    subtype-deconvolved-expression.csv.gz
+    tumor-reference-expression-provenance.csv
     source-matrix-sample-qc.csv
     expression-artifact-build-metadata.*
 
@@ -145,6 +148,9 @@ DOWNLOADABLE_PATHS: tuple[str, ...] = (
     "expression-artifact-build-metadata.json",  # bundle-level build/QC provenance
     "pan-cancer-expression.csv",
     "hpa-cell-type-expression.csv",
+    "tcga-deconvolved-expression.csv.gz",
+    "subtype-deconvolved-expression.csv.gz",
+    "tumor-reference-expression-provenance.csv",
 )
 
 
@@ -775,13 +781,27 @@ def verify_local() -> dict:
     return snap
 
 
-def is_downloadable(relative_path: str) -> bool:
-    """True if ``relative_path`` falls under one of the downloadable roots."""
+def _canonical_downloadable_path(relative_path: str) -> str | None:
+    """Resolve extensionless CSV aliases to their physical bundle path."""
     parts = Path(relative_path).parts
     if not parts:
-        return False
+        return None
     first = parts[0]
-    return first in DOWNLOADABLE_PATHS or relative_path in DOWNLOADABLE_PATHS
+    for root in DOWNLOADABLE_PATHS:
+        aliases = {
+            root,
+            root.removesuffix(".gz"),
+            root.removesuffix(".csv"),
+            root.removesuffix(".csv.gz"),
+        }
+        if first in aliases:
+            return str(Path(root, *parts[1:]))
+    return None
+
+
+def is_downloadable(relative_path: str) -> bool:
+    """True if ``relative_path`` falls under one of the downloadable roots."""
+    return _canonical_downloadable_path(relative_path) is not None
 
 
 def _dir_size_bytes(path: Path) -> int:
