@@ -641,7 +641,8 @@ source group and median mass is scaled to one million. `scale="native"` returns
 the validated migrated values without that read-time transform. Subtype rows
 may remain symbol-only when the legacy source did not provide an unambiguous
 Ensembl gene ID; BeatAML rows are rebuilt from Oncoref's ID-bearing source
-matrices because the legacy table contained invalid negative Q1 values.
+matrices using only samples marked `sample_qc_status="pass"` because the legacy
+table contained invalid negative Q1 values.
 
 ### Pan-cancer table
 

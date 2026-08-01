@@ -54,6 +54,21 @@ def _tcga_rows() -> pd.DataFrame:
     )
 
 
+def _sample_qc() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "cancer_code": subtype,
+                "source_cohort": "BEATAML_OHSU_2022",
+                "sample_id": sample,
+                "sample_qc_status": status,
+            }
+            for subtype in BEATAML_SUBTYPES
+            for sample, status in (("sample-a", "pass"), ("sample-b", "fail"))
+        ]
+    )
+
+
 def test_passthrough_summary_preserves_unversioned_gene_ids_and_quantiles():
     result = summarize_passthrough_matrix(_matrix(), subtype_code="LAML_APL")
 
@@ -85,6 +100,8 @@ def test_import_replaces_only_invalid_beataml_rows_and_records_derivation(tmp_pa
         path = tmp_path / f"{subtype}.parquet"
         _matrix().to_parquet(path, index=False)
         matrices[subtype] = path
+    sample_qc_path = tmp_path / "source-matrix-sample-qc.csv"
+    _sample_qc().to_csv(sample_qc_path, index=False)
 
     first_dir = tmp_path / "first"
     second_dir = tmp_path / "second"
@@ -92,15 +109,17 @@ def test_import_replaces_only_invalid_beataml_rows_and_records_derivation(tmp_pa
         tcga_path=tcga_path,
         subtype_path=subtype_path,
         beataml_matrices=matrices,
+        sample_qc_path=sample_qc_path,
         output_dir=first_dir,
-        source_commit="abc123",
+        source_commit="a" * 40,
     )
     second = import_artifacts(
         tcga_path=tcga_path,
         subtype_path=subtype_path,
         beataml_matrices=matrices,
+        sample_qc_path=sample_qc_path,
         output_dir=second_dir,
-        source_commit="abc123",
+        source_commit="a" * 40,
     )
 
     subtype = pd.read_csv(first[1])
@@ -108,6 +127,7 @@ def test_import_replaces_only_invalid_beataml_rows_and_records_derivation(tmp_pa
     beataml = subtype[subtype["source_cohort"].eq("BEATAML_OHSU_2022")]
     brca = subtype[subtype["cancer_code"].eq("BRCA")]
     assert len(beataml) == 2 * len(BEATAML_SUBTYPES)
+    assert set(beataml["n_samples"]) == {1}
     assert (beataml[["tumor_tpm_median", "tumor_tpm_q1", "tumor_tpm_q3"]] >= 0).all().all()
     assert set(brca["source_cohort"]) == {"TREEHOUSE_POLYA_25_01_TCGA_BRCA_PAM50"}
     assert set(provenance["derivation_method"]) == {
@@ -137,6 +157,33 @@ def test_import_rejects_negative_non_beataml_rows(tmp_path):
             tcga_path=tcga_path,
             subtype_path=subtype_path,
             beataml_matrices=matrices,
+            sample_qc_path=tmp_path / "unused.csv",
             output_dir=tmp_path / "out",
-            source_commit="abc123",
+            source_commit="a" * 40,
+        )
+
+
+def test_import_requires_qc_coverage_for_every_matrix_sample(tmp_path):
+    tcga_path = tmp_path / "input-tcga.csv.gz"
+    subtype_path = tmp_path / "input-subtype.csv.gz"
+    sample_qc_path = tmp_path / "source-matrix-sample-qc.csv"
+    _tcga_rows().to_csv(tcga_path, index=False)
+    _reference_rows(beataml=False).to_csv(subtype_path, index=False)
+    sample_qc = _sample_qc()
+    sample_qc = sample_qc[~sample_qc["sample_id"].eq("sample-b")]
+    sample_qc.to_csv(sample_qc_path, index=False)
+    matrices = {}
+    for subtype in BEATAML_SUBTYPES:
+        path = tmp_path / f"{subtype}.parquet"
+        _matrix().to_parquet(path, index=False)
+        matrices[subtype] = path
+
+    with pytest.raises(ValueError, match="matrix/QC sample mismatch"):
+        import_artifacts(
+            tcga_path=tcga_path,
+            subtype_path=subtype_path,
+            beataml_matrices=matrices,
+            sample_qc_path=sample_qc_path,
+            output_dir=tmp_path / "out",
+            source_commit="a" * 40,
         )

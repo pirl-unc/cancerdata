@@ -23,6 +23,7 @@ Run::
       --beataml-matrix LAML_ELNadv=~/.cache/oncoref/source-matrices/v5.22.9/LAML_ELNadv.parquet \
       --beataml-matrix LAML_ELNfav=~/.cache/oncoref/source-matrices/v5.22.9/LAML_ELNfav.parquet \
       --beataml-matrix LAML_ELNint=~/.cache/oncoref/source-matrices/v5.22.9/LAML_ELNint.parquet \
+      --sample-qc ~/.cache/oncoref/bundled_data/v5.23.14/source-matrix-sample-qc.csv \
       --source-commit f4a87c39b1c8b8939e89778113614a9f2c303d59 \
       --output-dir /tmp/oncoref-data-v5.23.15-source
 """
@@ -33,6 +34,7 @@ import argparse
 import gzip
 import hashlib
 import io
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -179,7 +181,10 @@ def _provenance_rows(
     processing_pipeline: str,
     source_artifact: str,
     source_artifact_sha256: str,
-    source_commit: str,
+    source_commit: str | None,
+    sample_qc_policy: str,
+    sample_qc_artifact: str | None,
+    sample_qc_artifact_sha256: str | None,
     output_artifact_sha256: str,
     notes: str,
 ) -> list[dict]:
@@ -208,6 +213,9 @@ def _provenance_rows(
                 "source_matrix_version": SOURCE_MATRIX_VERSION
                 if derivation_status == "rebuilt_from_oncoref_source_matrix"
                 else pd.NA,
+                "sample_qc_policy": sample_qc_policy,
+                "sample_qc_artifact": sample_qc_artifact,
+                "sample_qc_artifact_sha256": sample_qc_artifact_sha256,
                 "output_artifact_sha256": output_artifact_sha256,
                 "n_genes": len(group),
                 "n_reference_samples": int(pd.to_numeric(group["n_samples"]).max()),
@@ -217,11 +225,52 @@ def _provenance_rows(
     return rows
 
 
+def _pass_sample_columns(
+    sample_qc: pd.DataFrame,
+    matrix: pd.DataFrame,
+    *,
+    subtype_code: str,
+) -> list[str]:
+    required = {"cancer_code", "source_cohort", "sample_id", "sample_qc_status"}
+    missing = sorted(required - set(sample_qc.columns))
+    if missing:
+        raise ValueError(f"sample QC manifest lacks required columns: {missing}")
+
+    records = sample_qc[
+        sample_qc["cancer_code"].astype(str).eq(subtype_code)
+        & sample_qc["source_cohort"].astype(str).eq(BEATAML_SOURCE_COHORT)
+    ].copy()
+    if records.empty:
+        raise ValueError(f"sample QC manifest has no records for {subtype_code}")
+    if records["sample_id"].astype(str).duplicated().any():
+        raise ValueError(f"sample QC manifest has duplicate sample IDs for {subtype_code}")
+
+    matrix_samples = [
+        column for column in matrix.columns if column not in {"Ensembl_Gene_ID", "Symbol"}
+    ]
+    manifest_samples = set(records["sample_id"].astype(str))
+    if set(matrix_samples) != manifest_samples:
+        missing_qc = sorted(set(matrix_samples) - manifest_samples)
+        missing_matrix = sorted(manifest_samples - set(matrix_samples))
+        raise ValueError(
+            f"{subtype_code} matrix/QC sample mismatch: "
+            f"missing QC={missing_qc[:8]}, missing matrix={missing_matrix[:8]}"
+        )
+
+    pass_samples = set(
+        records.loc[records["sample_qc_status"].astype(str).eq("pass"), "sample_id"].astype(str)
+    )
+    if not pass_samples:
+        raise ValueError(f"sample QC manifest has no passing samples for {subtype_code}")
+    return [sample for sample in matrix_samples if sample in pass_samples]
+
+
 def import_artifacts(
     *,
     tcga_path: Path,
     subtype_path: Path,
     beataml_matrices: dict[str, Path],
+    sample_qc_path: Path,
     output_dir: Path,
     source_commit: str,
 ) -> tuple[Path, Path, Path]:
@@ -232,6 +281,8 @@ def import_artifacts(
     unexpected_subtypes = sorted(set(beataml_matrices) - set(BEATAML_SUBTYPES))
     if unexpected_subtypes:
         raise ValueError(f"unexpected BeatAML matrices: {unexpected_subtypes}")
+    if re.fullmatch(r"[0-9a-f]{40}", source_commit) is None:
+        raise ValueError("source_commit must be a full 40-character lowercase Git commit")
 
     tcga = _validated_reference(
         _read_reference(tcga_path),
@@ -250,11 +301,15 @@ def import_artifacts(
         identity_columns=("cancer_code", "subtype", "source_cohort"),
     )
 
+    sample_qc = pd.read_csv(sample_qc_path, low_memory=False)
+    sample_qc_hash = sha256_file(sample_qc_path)
     repaired_parts = []
     for subtype_code in BEATAML_SUBTYPES:
+        matrix = pd.read_parquet(beataml_matrices[subtype_code])
+        pass_samples = _pass_sample_columns(sample_qc, matrix, subtype_code=subtype_code)
         repaired_parts.append(
             summarize_passthrough_matrix(
-                pd.read_parquet(beataml_matrices[subtype_code]),
+                matrix[["Ensembl_Gene_ID", "Symbol", *pass_samples]],
                 subtype_code=subtype_code,
             )
         )
@@ -296,6 +351,9 @@ def import_artifacts(
         source_artifact=tcga_path.name,
         source_artifact_sha256=tcga_hash,
         source_commit=source_commit,
+        sample_qc_policy="legacy_artifact",
+        sample_qc_artifact=None,
+        sample_qc_artifact_sha256=None,
         output_artifact_sha256=tcga_output_hash,
         notes="Pinned Trufflepig output; Oncoref does not reimplement the decomposition model.",
     )
@@ -310,6 +368,9 @@ def import_artifacts(
             source_artifact=subtype_path.name,
             source_artifact_sha256=subtype_hash,
             source_commit=source_commit,
+            sample_qc_policy="legacy_artifact",
+            sample_qc_artifact=None,
+            sample_qc_artifact_sha256=None,
             output_artifact_sha256=subtype_output_hash,
             notes="Source-level passthrough summary; not labeled as TME-deconvolved.",
         )
@@ -326,7 +387,10 @@ def import_artifacts(
                 processing_pipeline="oncoref.import_tumor_reference_artifacts",
                 source_artifact=matrix_path.name,
                 source_artifact_sha256=sha256_file(matrix_path),
-                source_commit=pd.NA,
+                source_commit=None,
+                sample_qc_policy="pass",
+                sample_qc_artifact=sample_qc_path.name,
+                sample_qc_artifact_sha256=sample_qc_hash,
                 output_artifact_sha256=subtype_output_hash,
                 notes="Observed clean TPM is used as tumor TPM for high-purity BeatAML samples.",
             )
@@ -357,6 +421,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tcga", type=Path, required=True)
     parser.add_argument("--subtype", type=Path, required=True)
     parser.add_argument("--beataml-matrix", action="append", type=_parse_matrix, default=[])
+    parser.add_argument("--sample-qc", type=Path, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -364,6 +429,7 @@ def main(argv: list[str] | None = None) -> int:
         tcga_path=args.tcga.expanduser(),
         subtype_path=args.subtype.expanduser(),
         beataml_matrices=dict(args.beataml_matrix),
+        sample_qc_path=args.sample_qc.expanduser(),
         output_dir=args.output_dir.expanduser(),
         source_commit=args.source_commit,
     )

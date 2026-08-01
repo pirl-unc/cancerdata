@@ -22,7 +22,6 @@ without inferring a method from a filename.
 
 from __future__ import annotations
 
-import re
 from typing import Literal
 
 import numpy as np
@@ -59,6 +58,7 @@ TUMOR_REFERENCE_SOURCE_SCALES = (
     "observed_tpm",
     "clean_tpm_16_9_75",
 )
+TUMOR_REFERENCE_SAMPLE_QC_POLICIES = ("legacy_artifact", "pass")
 TUMOR_REFERENCE_PROVENANCE_COLUMNS = (
     "artifact",
     "cancer_code",
@@ -72,6 +72,9 @@ TUMOR_REFERENCE_PROVENANCE_COLUMNS = (
     "source_artifact_sha256",
     "source_artifact_commit",
     "source_matrix_version",
+    "sample_qc_policy",
+    "sample_qc_artifact",
+    "sample_qc_artifact_sha256",
     "output_artifact_sha256",
     "n_genes",
     "n_reference_samples",
@@ -219,7 +222,10 @@ def _validate_reference(
 
     if frame["symbol"].isna().any() or frame["symbol"].astype(str).str.strip().eq("").any():
         raise TumorReferenceDataError(f"{dataset} contains missing gene symbols")
-    required_identities = ["cancer_code", *[c for c in identity_columns if c != "subtype"]]
+    required_identities = [
+        "cancer_code",
+        *[column for column in identity_columns if column not in {"cancer_code", "subtype"}],
+    ]
     for column in required_identities:
         if frame[column].isna().any() or frame[column].astype(str).str.strip().eq("").any():
             raise TumorReferenceDataError(f"{dataset} contains missing {column} values")
@@ -426,6 +432,12 @@ def tumor_reference_expression_provenance(
     )
     if unknown:
         raise TumorReferenceDataError(f"unknown tumor-reference source scales: {unknown}")
+    unknown = sorted(
+        set(frame["sample_qc_policy"].dropna().astype(str))
+        - set(TUMOR_REFERENCE_SAMPLE_QC_POLICIES)
+    )
+    if unknown:
+        raise TumorReferenceDataError(f"unknown tumor-reference sample QC policies: {unknown}")
     expected_methods = frame["derivation_status"].map(_DERIVATION_METHOD_BY_STATUS)
     if not frame["derivation_method"].astype(str).eq(expected_methods.astype(str)).all():
         raise TumorReferenceDataError(
@@ -445,13 +457,27 @@ def tumor_reference_expression_provenance(
         if frame[column].isna().any() or frame[column].astype(str).str.strip().eq("").any():
             raise TumorReferenceDataError(f"{_PROVENANCE_DATASET} contains missing {column}")
     for column in ("source_artifact_sha256", "output_artifact_sha256"):
-        valid = frame[column].astype(str).map(lambda value: re.fullmatch(r"[0-9a-f]{64}", value))
-        if valid.isna().any():
+        valid = frame[column].astype("string").str.fullmatch(r"[0-9a-f]{64}", na=False)
+        if not valid.all():
             raise TumorReferenceDataError(f"{_PROVENANCE_DATASET} contains invalid {column}")
     rebuilt = frame["derivation_status"].eq("rebuilt_from_oncoref_source_matrix")
     if frame.loc[rebuilt, "source_matrix_version"].isna().any():
         raise TumorReferenceDataError(
             f"{_PROVENANCE_DATASET} lacks source_matrix_version for rebuilt records"
+        )
+    if not frame.loc[rebuilt, "sample_qc_policy"].eq("pass").all():
+        raise TumorReferenceDataError(
+            f"{_PROVENANCE_DATASET} rebuilt records must use sample_qc_policy='pass'"
+        )
+    for column in ("sample_qc_artifact", "sample_qc_artifact_sha256"):
+        if frame.loc[rebuilt, column].isna().any():
+            raise TumorReferenceDataError(
+                f"{_PROVENANCE_DATASET} lacks {column} for rebuilt records"
+            )
+    qc_checksums = frame.loc[rebuilt, "sample_qc_artifact_sha256"].astype("string")
+    if not qc_checksums.str.fullmatch(r"[0-9a-f]{64}", na=False).all():
+        raise TumorReferenceDataError(
+            f"{_PROVENANCE_DATASET} contains invalid sample_qc_artifact_sha256"
         )
     frame = _canonicalize_codes(frame)
     _validate_identities(frame, dataset=_PROVENANCE_DATASET)

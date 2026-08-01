@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "1.8.169"
+__version__ = "1.8.170"
 
 # Version of the downloadable data bundle (the heavy per-cohort percentile +
 # representative shards). Bump when the DERIVED reference artifacts change — it pins
@@ -38,7 +38,11 @@ __version__ = "1.8.169"
 # leakage-resistant train, validation, external-validation, or audit-only role.
 # 5.23.14 adds the three-tumor SARC_MMNST source and derived artifacts from
 # checksum-pinned NCBI SRA Gene Feature count analyses for PRJNA1083972.
-DATA_VERSION = "5.23.14"
+# 5.23.15 adds the pinned TCGA tumor-attributed and source-separated subtype
+# tumor-reference summaries, including source-level derivation provenance and
+# repaired BeatAML passthrough summaries from QC-pass samples in the existing
+# clean source matrices.
+DATA_VERSION = "5.23.15"
 
 # Version of the per-cohort RAW source matrices (source_matrices.py). Independent of
 # DATA_VERSION: the source matrices are the unchanging raw-TPM inputs, while DATA_VERSION

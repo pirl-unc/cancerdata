@@ -71,6 +71,8 @@ _CATEGORICAL_COLUMNS_BY_DATASET = {
         "source_artifact",
         "source_artifact_commit",
         "source_matrix_version",
+        "sample_qc_policy",
+        "sample_qc_artifact",
         "notes",
     ),
 }
