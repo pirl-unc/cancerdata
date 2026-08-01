@@ -10,7 +10,7 @@ from scripts.import_tumor_reference_artifacts import (
     BEATAML_SUBTYPES,
     import_artifacts,
     sha256_file,
-    summarize_passthrough_matrix,
+    summarize_clean_tpm_matrix,
 )
 
 
@@ -70,22 +70,39 @@ def _sample_qc() -> pd.DataFrame:
 
 
 def test_passthrough_summary_preserves_unversioned_gene_ids_and_quantiles():
-    result = summarize_passthrough_matrix(_matrix(), subtype_code="LAML_APL")
+    result = summarize_clean_tpm_matrix(_matrix(), subtype_code="LAML_APL")
 
     assert result["Ensembl_Gene_ID"].tolist() == ["ENSG1", "ENSG2"]
-    assert result["tumor_tpm_median"].tolist() == pytest.approx([2.0, 6.0])
-    assert result["tumor_tpm_q1"].tolist() == pytest.approx([1.5, 5.0])
-    assert result["tumor_tpm_q3"].tolist() == pytest.approx([2.5, 7.0])
+    assert result["tumor_tpm_median"].tolist() == pytest.approx([177_272.7272727, 572_727.2727273])
+    assert result["tumor_tpm_q1"].tolist() == pytest.approx([163_636.3636364, 559_090.9090909])
+    assert result["tumor_tpm_q3"].tolist() == pytest.approx([190_909.0909091, 586_363.6363636])
     assert result["n_samples"].tolist() == [2, 2]
+
+
+def test_clean_tpm_summary_uses_canonical_compartment_budgets():
+    matrix = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG00000089157", "ENSG00000210082", "ENSG1"],
+            "Symbol": ["RPLP0", "MT-RNR2", "GENE1"],
+            "sample-a": [1.0, 20.0, 300.0],
+            "sample-b": [10.0, 2.0, 30.0],
+        }
+    )
+
+    result = summarize_clean_tpm_matrix(matrix, subtype_code="LAML_APL").set_index("symbol")
+
+    expected = {"RPLP0": 160_000.0, "MT-RNR2": 90_000.0, "GENE1": 750_000.0}
+    for column in ("tumor_tpm_q1", "tumor_tpm_median", "tumor_tpm_q3"):
+        assert result[column].to_dict() == pytest.approx(expected)
 
 
 def test_passthrough_summary_collapses_duplicate_symbols_without_guessing_an_id():
     matrix = pd.concat([_matrix(), _matrix().iloc[[0]].assign(Ensembl_Gene_ID="ENSG9")])
-    result = summarize_passthrough_matrix(matrix, subtype_code="LAML_APL")
+    result = summarize_clean_tpm_matrix(matrix, subtype_code="LAML_APL")
     gene1 = result[result["symbol"].eq("GENE1")].iloc[0]
 
     assert pd.isna(gene1["Ensembl_Gene_ID"])
-    assert gene1["tumor_tpm_median"] == pytest.approx(4.0)
+    assert gene1["tumor_tpm_median"] == pytest.approx(285_714.2857143)
 
 
 def test_import_replaces_only_invalid_beataml_rows_and_records_derivation(tmp_path):
@@ -128,6 +145,10 @@ def test_import_replaces_only_invalid_beataml_rows_and_records_derivation(tmp_pa
     brca = subtype[subtype["cancer_code"].eq("BRCA")]
     assert len(beataml) == 2 * len(BEATAML_SUBTYPES)
     assert set(beataml["n_samples"]) == {1}
+    apl = beataml[beataml["subtype"].eq("LAML_APL")].set_index("symbol")
+    assert apl["tumor_tpm_median"].to_dict() == pytest.approx(
+        {"GENE1": 150_000.0, "GENE2": 600_000.0}
+    )
     assert (beataml[["tumor_tpm_median", "tumor_tpm_q1", "tumor_tpm_q3"]] >= 0).all().all()
     assert set(brca["source_cohort"]) == {"TREEHOUSE_POLYA_25_01_TCGA_BRCA_PAM50"}
     assert set(provenance["derivation_method"]) == {

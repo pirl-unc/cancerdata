@@ -57,8 +57,14 @@ _CATEGORICAL_COLUMNS_BY_DATASET = {
         "notes",
         "tumor_origin",
     ),
-    "tcga-deconvolved-expression": ("cancer_code",),
-    "subtype-deconvolved-expression": ("cancer_code", "subtype", "source_cohort"),
+    "tcga-deconvolved-expression": ("Ensembl_Gene_ID", "symbol", "cancer_code"),
+    "subtype-deconvolved-expression": (
+        "Ensembl_Gene_ID",
+        "symbol",
+        "cancer_code",
+        "subtype",
+        "source_cohort",
+    ),
     "tumor-reference-expression-provenance": (
         "artifact",
         "cancer_code",
@@ -120,17 +126,10 @@ def _data_roots() -> list[Path]:
 def _ensure_downloadable(name: str) -> None:
     """Fetch the bundle if ``name`` maps to a downloadable item missing from
     BOTH the bundled checkout AND the cache. No-op when present in either."""
-    stem_with_csv = name if name.endswith(".csv") else f"{name}.csv"
-    stem = name.removesuffix(".csv").removesuffix(".gz")
-    candidates = {name, stem, stem_with_csv, stem_with_csv.removesuffix(".csv")}
-    for cand in candidates:
-        downloadable_path = data_bundle._canonical_downloadable_path(cand)
-        if downloadable_path is None:
-            continue
-        if data_bundle.find_local_item(downloadable_path) is not None:
-            return
-        data_bundle.ensure_local()
+    downloadable_path = data_bundle._canonical_downloadable_path(name)
+    if downloadable_path is None or data_bundle.find_local_item(downloadable_path) is not None:
         return
+    data_bundle.ensure_local()
 
 
 def _shard_directories() -> list[Path]:
@@ -179,6 +178,11 @@ def _read_csv_for_cache(path: Path, dataset_name: str) -> pd.DataFrame:
     """Read one CSV with the owning dataset's lossless parsing contract."""
     options = _CSV_READ_OPTIONS_BY_DATASET.get(dataset_name, {})
     return pd.read_csv(str(path), low_memory=False, **options)
+
+
+def _dataset_key(name: str) -> str:
+    """Return one case-insensitive cache key for logical and physical CSV names."""
+    return str(name).lower().removesuffix(".gz").removesuffix(".csv")
 
 
 def _read_shards_for_cache(shard_dir: Path, paths: list[Path]) -> list[pd.DataFrame]:
@@ -242,6 +246,14 @@ def _load_shard_directory(shard_dir: Path) -> pd.DataFrame:
     return df
 
 
+def _load_resolved_dataset(path: Path, dataset_name: str) -> pd.DataFrame:
+    """Load one resolved file or shard directory into its optimized owning form."""
+    if path.is_dir():
+        return _load_shard_directory(path)
+    frame = _read_csv_for_cache(path, dataset_name)
+    return _optimize_cached_dataframe(dataset_name, frame)
+
+
 def _invalidate_dataset_paths() -> None:
     global _DATASET_PATHS
     _DATASET_PATHS = None
@@ -255,15 +267,9 @@ def _dataset_paths():
 
     paths: dict[str, Path] = {}
     for csv_path in get_all_csv_paths():
-        csv_key = csv_path.name.removesuffix(".gz")
-        stem_key = csv_key.removesuffix(".csv")
-        for key in {csv_key, csv_key.lower(), stem_key, stem_key.lower()}:
-            paths[key] = csv_path
+        paths[_dataset_key(csv_path.name)] = csv_path
     for shard_dir in _shard_directories():
-        stem_key = shard_dir.name
-        csv_key = stem_key + ".csv"
-        for key in {csv_key, csv_key.lower(), stem_key, stem_key.lower()}:
-            paths[key] = shard_dir
+        paths[_dataset_key(shard_dir.name)] = shard_dir
     _DATASET_PATHS = paths
     return paths
 
@@ -275,38 +281,28 @@ def get_data(name, _dataframes_dict=None, *, copy=True):
     can't corrupt the shared cache. Pass ``copy=False`` for read-only callers
     that slice/copy before mutating.
     """
-    candidates = [name, name.lower()]
-    for candidate in list(candidates):
-        candidates.append(candidate + ".csv")
+    dataset_name = _dataset_key(name)
 
     if _dataframes_dict is not None:
-        for candidate in candidates:
-            if candidate in _dataframes_dict:
-                return _dataframes_dict[candidate].copy() if copy else _dataframes_dict[candidate]
+        fixtures_by_name = {_dataset_key(key): frame for key, frame in _dataframes_dict.items()}
+        if dataset_name in fixtures_by_name:
+            frame = fixtures_by_name[dataset_name]
+            return frame.copy() if copy else frame
         raise ValueError(f"Dataset {name} not found")
 
     # Trigger download for downloadable items before resolving paths.
     _ensure_downloadable(name)
     paths = _dataset_paths()
 
-    miss = not any(c in paths for c in candidates)
-    if miss and data_bundle.is_downloadable(name):
+    if dataset_name not in paths and data_bundle.is_downloadable(name):
         data_bundle.ensure_local()
         _invalidate_dataset_paths()
         paths = _dataset_paths()
 
-    for candidate in candidates:
-        if candidate in paths:
-            resolved = paths[candidate]
-            if resolved.is_dir():
-                cache_key = resolved.name + ".csv"
-                if cache_key not in _CACHED_DATAFRAMES:
-                    _CACHED_DATAFRAMES[cache_key] = _load_shard_directory(resolved)
-            else:
-                cache_key = resolved.name.removesuffix(".gz")
-                if cache_key not in _CACHED_DATAFRAMES:
-                    dataset_name = cache_key.removesuffix(".csv")
-                    _CACHED_DATAFRAMES[cache_key] = _read_csv_for_cache(resolved, dataset_name)
-            cached = _CACHED_DATAFRAMES[cache_key]
-            return cached.copy() if copy else cached
-    raise ValueError(f"Dataset {name} not found")
+    resolved = paths.get(dataset_name)
+    if resolved is None:
+        raise ValueError(f"Dataset {name} not found")
+    if dataset_name not in _CACHED_DATAFRAMES:
+        _CACHED_DATAFRAMES[dataset_name] = _load_resolved_dataset(resolved, dataset_name)
+    cached = _CACHED_DATAFRAMES[dataset_name]
+    return cached.copy() if copy else cached

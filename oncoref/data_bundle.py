@@ -786,13 +786,13 @@ def _canonical_downloadable_path(relative_path: str) -> str | None:
     parts = Path(relative_path).parts
     if not parts:
         return None
-    first = parts[0]
+    first = parts[0].lower()
     for root in DOWNLOADABLE_PATHS:
         aliases = {
-            root,
-            root.removesuffix(".gz"),
-            root.removesuffix(".csv"),
-            root.removesuffix(".csv.gz"),
+            root.lower(),
+            root.removesuffix(".gz").lower(),
+            root.removesuffix(".csv").lower(),
+            root.removesuffix(".csv.gz").lower(),
         }
         if first in aliases:
             return str(Path(root, *parts[1:]))

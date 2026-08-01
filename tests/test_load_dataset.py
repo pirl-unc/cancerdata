@@ -1,8 +1,16 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from oncoref import data_bundle, load_dataset
+
+
+@pytest.fixture(autouse=True)
+def _clear_loader_cache():
+    load_dataset._clear_cache()
+    yield
+    load_dataset._clear_cache()
 
 
 def _reference_rows(n_rows=20_000):
@@ -119,3 +127,55 @@ def test_extensionless_gzip_bundle_name_uses_exact_local_member(monkeypatch, tmp
     load_dataset._ensure_downloadable("tcga-deconvolved-expression")
 
     assert artifact.name in requested
+
+
+@pytest.mark.parametrize(
+    "requested_name",
+    [
+        "subtype-deconvolved-expression",
+        "subtype-deconvolved-expression.csv",
+        "subtype-deconvolved-expression.csv.gz",
+        "SUBTYPE-DECONVOLVED-EXPRESSION.CSV.GZ",
+    ],
+)
+def test_top_level_gzip_aliases_share_one_compact_owning_cache(
+    requested_name,
+    monkeypatch,
+    tmp_path,
+):
+    package_data = tmp_path / "package-data"
+    package_data.mkdir()
+    path = package_data / "subtype-deconvolved-expression.csv.gz"
+    source = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG1", "ENSG2"] * 20,
+            "symbol": ["GENE1", "GENE2"] * 20,
+            "cancer_code": ["LAML"] * 40,
+            "subtype": ["LAML_APL"] * 40,
+            "source_cohort": ["BEATAML_OHSU_2022"] * 40,
+            "tumor_tpm_median": [1.0] * 40,
+            "tumor_tpm_q1": [0.5] * 40,
+            "tumor_tpm_q3": [2.0] * 40,
+            "n_samples": [10] * 40,
+        }
+    )
+    source.to_csv(path, index=False)
+    monkeypatch.setattr(load_dataset, "_BUNDLED_DATA_DIR", package_data)
+    monkeypatch.setattr(data_bundle, "_PACKAGE_DATA_DIR", package_data)
+    monkeypatch.setenv("CANCERDATA_BUNDLED_DATA", str(tmp_path / "cache"))
+    monkeypatch.setattr(
+        data_bundle,
+        "ensure_local",
+        lambda: (_ for _ in ()).throw(AssertionError("packaged artifact must not fetch")),
+    )
+
+    requested = load_dataset.get_data(requested_name, copy=False)
+    canonical = load_dataset.get_data("subtype-deconvolved-expression", copy=False)
+
+    assert requested is canonical
+    for column in load_dataset._CATEGORICAL_COLUMNS_BY_DATASET["subtype-deconvolved-expression"]:
+        assert isinstance(canonical[column].dtype, pd.CategoricalDtype)
+    assert canonical.memory_usage(index=True, deep=True).sum() < (
+        source.memory_usage(index=True, deep=True).sum() * 0.5
+    )
+    assert list(load_dataset._CACHED_DATAFRAMES) == ["subtype-deconvolved-expression"]

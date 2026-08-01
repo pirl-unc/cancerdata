@@ -9,8 +9,8 @@
 This is an offline migration boundary, not a second decomposition pipeline. The
 TCGA artifact is copied byte-for-byte after validation. The legacy subtype table
 is also preserved except for its BeatAML rows: those rows contain negative Q1
-values and are rebuilt as high-purity passthrough summaries from Oncoref's clean,
-per-sample BeatAML matrices.
+values and are rebuilt as high-purity passthrough summaries by normalizing
+Oncoref's raw per-sample BeatAML matrices through the canonical clean-TPM API.
 
 No network tools, Salmon binaries, or Trufflepig imports are used.
 
@@ -25,7 +25,7 @@ Run::
       --beataml-matrix LAML_ELNint=~/.cache/oncoref/source-matrices/v5.22.9/LAML_ELNint.parquet \
       --sample-qc ~/.cache/oncoref/bundled_data/v5.23.14/source-matrix-sample-qc.csv \
       --source-commit f4a87c39b1c8b8939e89778113614a9f2c303d59 \
-      --output-dir /tmp/oncoref-data-v5.23.15-source
+      --output-dir /tmp/oncoref-data-v5.23.16-source
 """
 
 from __future__ import annotations
@@ -44,6 +44,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from oncoref.normalization import clean_tpm
 from oncoref.tumor_references import (
     _SUBTYPE_COLUMNS,
     _TCGA_COLUMNS,
@@ -109,13 +110,13 @@ def _validated_reference(
     )
 
 
-def summarize_passthrough_matrix(
+def summarize_clean_tpm_matrix(
     matrix: pd.DataFrame,
     *,
     subtype_code: str,
     min_tpm: float = 0.01,
 ) -> pd.DataFrame:
-    """Aggregate one clean BeatAML gene-by-sample matrix without deconvolution."""
+    """Normalize a raw BeatAML matrix to clean TPM, then aggregate without deconvolution."""
     required = {"Ensembl_Gene_ID", "Symbol"}
     missing = sorted(required - set(matrix.columns))
     if missing:
@@ -138,7 +139,8 @@ def summarize_passthrough_matrix(
             "symbol": symbols.loc[keep],
         }
     )
-    collapsed = values.groupby(gene_rows["symbol"], sort=False).sum()
+    normalized = clean_tpm(values, gene_table=gene_rows[["Ensembl_Gene_ID"]])
+    collapsed = normalized.groupby(gene_rows["symbol"], sort=False).sum()
     identifiers = gene_rows.groupby("symbol", sort=False)["Ensembl_Gene_ID"].agg(
         lambda series: _unambiguous_identifier(series)
     )
@@ -308,7 +310,7 @@ def import_artifacts(
         matrix = pd.read_parquet(beataml_matrices[subtype_code])
         pass_samples = _pass_sample_columns(sample_qc, matrix, subtype_code=subtype_code)
         repaired_parts.append(
-            summarize_passthrough_matrix(
+            summarize_clean_tpm_matrix(
                 matrix[["Ensembl_Gene_ID", "Symbol", *pass_samples]],
                 subtype_code=subtype_code,
             )
@@ -384,7 +386,7 @@ def import_artifacts(
                 derivation_method="high_purity_passthrough",
                 derivation_status="rebuilt_from_oncoref_source_matrix",
                 source_scale="clean_tpm_16_9_75",
-                processing_pipeline="oncoref.import_tumor_reference_artifacts",
+                processing_pipeline="oncoref.clean_tpm_then_tumor_reference_summary",
                 source_artifact=matrix_path.name,
                 source_artifact_sha256=sha256_file(matrix_path),
                 source_commit=None,
@@ -392,7 +394,10 @@ def import_artifacts(
                 sample_qc_artifact=sample_qc_path.name,
                 sample_qc_artifact_sha256=sample_qc_hash,
                 output_artifact_sha256=subtype_output_hash,
-                notes="Observed clean TPM is used as tumor TPM for high-purity BeatAML samples.",
+                notes=(
+                    "Raw source TPM is normalized through oncoref.normalization.clean_tpm; "
+                    "the resulting clean TPM is used as tumor TPM for high-purity BeatAML samples."
+                ),
             )
         )
     provenance_frame = pd.DataFrame(provenance).sort_values(

@@ -7,7 +7,16 @@
 import pandas as pd
 import pytest
 
-from oncoref import tumor_references
+from oncoref import load_dataset, tumor_references
+
+
+@pytest.fixture(autouse=True)
+def _clear_tumor_reference_caches():
+    tumor_references._validated_reference_dataset.cache_clear()
+    tumor_references._validated_provenance_dataset.cache_clear()
+    yield
+    tumor_references._validated_reference_dataset.cache_clear()
+    tumor_references._validated_provenance_dataset.cache_clear()
 
 
 def _tcga_fixture():
@@ -46,7 +55,13 @@ def _subtype_fixture():
 
 def test_tcga_accessor_filters_normalizes_and_returns_defensive_copy(monkeypatch):
     source = _tcga_fixture()
-    monkeypatch.setattr(tumor_references, "get_data", lambda name, **kwargs: source)
+    calls = []
+
+    def load_source(name, **kwargs):
+        calls.append(name)
+        return source
+
+    monkeypatch.setattr(tumor_references, "get_data", load_source)
 
     first = tumor_references.tcga_deconvolved_expression("LUAD")
     second = tumor_references.tcga_deconvolved_expression("LUAD")
@@ -56,6 +71,28 @@ def test_tcga_accessor_filters_normalizes_and_returns_defensive_copy(monkeypatch
     first.loc[0, "tumor_tpm_median"] = -1
     assert second.loc[0, "tumor_tpm_median"] >= 0
     assert source.loc[0, "tumor_tpm_median"] == 1.0
+    assert calls == ["tcga-deconvolved-expression"]
+
+
+def test_canonical_reference_cache_reuses_owning_frame_and_clears_with_loader(monkeypatch):
+    source = _tcga_fixture()
+    calls = []
+
+    def load_source(name, **kwargs):
+        calls.append(name)
+        return source
+
+    monkeypatch.setattr(tumor_references, "get_data", load_source)
+
+    first = tumor_references._validated_reference_dataset("tcga-deconvolved-expression")
+    second = tumor_references._validated_reference_dataset("tcga-deconvolved-expression")
+    load_dataset._clear_cache()
+    third = tumor_references._validated_reference_dataset("tcga-deconvolved-expression")
+
+    assert first is source
+    assert second is source
+    assert third is source
+    assert calls == ["tcga-deconvolved-expression", "tcga-deconvolved-expression"]
 
 
 def test_subtype_accessor_canonicalizes_legacy_labels_and_keeps_sources_separate(
@@ -186,4 +223,16 @@ def test_classifier_scale_preserves_quantile_order_when_technical_mass_differs(m
     assert technical[list(tumor_references.TUMOR_REFERENCE_VALUE_COLUMNS)].tolist() == [0, 0, 0]
     assert biological["tumor_tpm_q1"] <= biological["tumor_tpm_median"]
     assert biological["tumor_tpm_median"] <= biological["tumor_tpm_q3"]
+    assert result["tumor_tpm_median"].sum() == pytest.approx(1_000_000)
+
+
+def test_classifier_scale_accepts_compact_categorical_gene_columns(monkeypatch):
+    source = _tcga_fixture()
+    source["Ensembl_Gene_ID"] = source["Ensembl_Gene_ID"].astype("category")
+    source["symbol"] = source["symbol"].astype("category")
+    source["cancer_code"] = source["cancer_code"].astype("category")
+    monkeypatch.setattr(tumor_references, "get_data", lambda name, **kwargs: source)
+
+    result = tumor_references.tcga_deconvolved_expression("LUAD")
+
     assert result["tumor_tpm_median"].sum() == pytest.approx(1_000_000)

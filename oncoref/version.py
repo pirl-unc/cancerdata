@@ -41,8 +41,9 @@ __version__ = "1.8.170"
 # 5.23.15 adds the pinned TCGA tumor-attributed and source-separated subtype
 # tumor-reference summaries, including source-level derivation provenance and
 # repaired BeatAML passthrough summaries from QC-pass samples in the existing
-# clean source matrices.
-DATA_VERSION = "5.23.15"
+# source matrices. 5.23.16 corrects those BeatAML summaries by applying the
+# declared canonical 16/9/75 clean-TPM transform to the raw source matrices.
+DATA_VERSION = "5.23.16"
 
 # Version of the per-cohort RAW source matrices (source_matrices.py). Independent of
 # DATA_VERSION: the source matrices are the unchanging raw-TPM inputs, while DATA_VERSION

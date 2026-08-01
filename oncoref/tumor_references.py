@@ -22,6 +22,8 @@ without inferring a method from a filename.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from functools import cache
 from typing import Literal
 
 import numpy as np
@@ -34,7 +36,7 @@ from .cancer_types import (
     resolve_cancer_type,
 )
 from .gene_qc import TECHNICAL_RNA_GROUPS, classify_gene_qc
-from .load_dataset import get_data
+from .load_dataset import _register_derived_cache, get_data
 from .version import DATA_VERSION
 
 TUMOR_REFERENCE_VALUE_COLUMNS = (
@@ -107,6 +109,38 @@ _SUBTYPE_COLUMNS = (
     "n_samples",
 )
 
+
+@dataclass(frozen=True)
+class _ReferenceDatasetSpec:
+    name: str
+    columns: tuple[str, ...]
+    identity_columns: tuple[str, ...]
+    normalization_groups: tuple[str, ...]
+    derivation_method: str
+
+
+_TCGA_REFERENCE = _ReferenceDatasetSpec(
+    name=_TCGA_DATASET,
+    columns=_TCGA_COLUMNS,
+    identity_columns=("cancer_code",),
+    normalization_groups=("cancer_code",),
+    derivation_method="tme_deconvolution",
+)
+_SUBTYPE_REFERENCE = _ReferenceDatasetSpec(
+    name=_SUBTYPE_DATASET,
+    columns=_SUBTYPE_COLUMNS,
+    identity_columns=("cancer_code", "subtype", "source_cohort"),
+    normalization_groups=("cancer_code", "subtype", "source_cohort"),
+    derivation_method="mixed_passthrough; inspect provenance",
+)
+_REFERENCE_DATASETS = {
+    spec.name: spec
+    for spec in (
+        _TCGA_REFERENCE,
+        _SUBTYPE_REFERENCE,
+    )
+}
+
 # These values are acquisition-cohort labels in the migrated artifact, not
 # cancer ontology codes. Map them to the biological code explicitly.
 _LEGACY_CANCER_CODES = {
@@ -154,22 +188,43 @@ def _canonical_source_cohort(value: object) -> object:
     return canonical_cohort_id(_LEGACY_SOURCE_COHORTS.get(raw, raw))
 
 
+def _identity_replacements(series: pd.Series, canonicalizer) -> dict[object, object]:
+    replacements = {}
+    for value in series.drop_duplicates():
+        canonical = canonicalizer(value)
+        same_missing_value = pd.isna(value) and pd.isna(canonical)
+        if not same_missing_value and str(value) != str(canonical):
+            replacements[value] = canonical
+    return replacements
+
+
 def _canonicalize_codes(frame: pd.DataFrame) -> pd.DataFrame:
-    frame["cancer_code"] = frame["cancer_code"].map(_canonical_code).astype("string")
-    if "subtype" in frame.columns:
-        frame["subtype"] = (
-            frame["subtype"]
-            .map(lambda value: _canonical_code(value, subtype=True))
-            .astype("string")
-        )
-    if "source_cohort" in frame.columns:
-        frame["source_cohort"] = (
-            frame["source_cohort"].map(_canonical_source_cohort).astype("string")
-        )
-    return frame
+    """Canonicalize identity columns, copying only when a value actually changes."""
+    canonicalizers = {
+        "cancer_code": _canonical_code,
+        "subtype": lambda value: _canonical_code(value, subtype=True),
+        "source_cohort": _canonical_source_cohort,
+    }
+    replacements = {
+        column: _identity_replacements(frame[column], canonicalizer)
+        for column, canonicalizer in canonicalizers.items()
+        if column in frame.columns
+    }
+    replacements = {column: values for column, values in replacements.items() if values}
+    if not replacements:
+        return frame
+
+    out = frame.copy()
+    for column, values in replacements.items():
+        categorical = isinstance(out[column].dtype, pd.CategoricalDtype)
+        canonical = out[column].astype("string").replace(values)
+        out[column] = canonical.astype("category" if categorical else "string")
+    return out
 
 
 def _with_stable_schema(frame: pd.DataFrame, columns: tuple[str, ...]) -> pd.DataFrame:
+    if tuple(frame.columns) == columns:
+        return frame
     out = frame.copy()
     for column in columns:
         if column not in out.columns:
@@ -177,14 +232,23 @@ def _with_stable_schema(frame: pd.DataFrame, columns: tuple[str, ...]) -> pd.Dat
     return out[list(columns)]
 
 
-def _logical_gene_key(frame: pd.DataFrame) -> pd.Series:
-    symbols = frame["symbol"].astype("string").str.strip().str.upper()
-    fallback = "symbol:" + symbols
-    if "Ensembl_Gene_ID" not in frame.columns:
-        return fallback
+def _duplicate_logical_gene_count(
+    frame: pd.DataFrame,
+    *,
+    identity_columns: tuple[str, ...],
+) -> int:
     gene_ids = frame["Ensembl_Gene_ID"].astype("string").str.strip()
     has_gene_id = gene_ids.notna() & gene_ids.ne("")
-    return ("id:" + gene_ids).where(has_gene_id, fallback)
+
+    identified = frame.loc[has_gene_id, list(identity_columns)].copy()
+    identified.insert(0, "_gene", gene_ids.loc[has_gene_id])
+    symbols = frame.loc[~has_gene_id, list(identity_columns)].copy()
+    symbols.insert(
+        0,
+        "_gene",
+        frame.loc[~has_gene_id, "symbol"].astype("string").str.strip().str.upper(),
+    )
+    return int(identified.duplicated().sum() + symbols.duplicated().sum())
 
 
 def _validate_identities(frame: pd.DataFrame, *, dataset: str) -> None:
@@ -231,14 +295,17 @@ def _validate_reference(
             raise TumorReferenceDataError(f"{dataset} contains missing {column} values")
     _validate_identities(frame, dataset=dataset)
 
-    out = frame
     numeric_columns = [*TUMOR_REFERENCE_VALUE_COLUMNS, "n_samples"]
-    numeric = out[numeric_columns].apply(pd.to_numeric, errors="coerce")
-    if numeric.isna().any().any() or not np.isfinite(numeric.to_numpy()).all():
+    numeric = {column: pd.to_numeric(frame[column], errors="coerce") for column in numeric_columns}
+    if any(values.isna().any() for values in numeric.values()) or any(
+        not np.isfinite(values.to_numpy()).all() for values in numeric.values()
+    ):
         raise TumorReferenceDataError(f"{dataset} contains missing or non-finite numeric values")
-    if (numeric[list(TUMOR_REFERENCE_VALUE_COLUMNS)] < 0).any().any():
-        count = int((numeric[list(TUMOR_REFERENCE_VALUE_COLUMNS)] < 0).sum().sum())
-        raise TumorReferenceDataError(f"{dataset} contains {count} negative TPM values")
+    negative_count = sum(
+        int((numeric[column] < 0).sum()) for column in TUMOR_REFERENCE_VALUE_COLUMNS
+    )
+    if negative_count:
+        raise TumorReferenceDataError(f"{dataset} contains {negative_count} negative TPM values")
     invalid_quantiles = (numeric["tumor_tpm_q1"] > numeric["tumor_tpm_median"]) | (
         numeric["tumor_tpm_median"] > numeric["tumor_tpm_q3"]
     )
@@ -250,15 +317,39 @@ def _validate_reference(
     if ((samples <= 0) | (samples % 1 != 0)).any():
         raise TumorReferenceDataError(f"{dataset} contains invalid sample counts")
 
-    out[numeric_columns] = numeric
-    logical_keys = out[list(identity_columns)].copy()
-    logical_keys.insert(0, "_gene", _logical_gene_key(out))
-    duplicate_count = int(logical_keys.duplicated().sum())
+    out = frame
+    converted = {
+        column: values
+        for column, values in numeric.items()
+        if not pd.api.types.is_numeric_dtype(frame[column])
+    }
+    if converted:
+        out = frame.copy()
+        for column, values in converted.items():
+            out[column] = values
+
+    duplicate_count = _duplicate_logical_gene_count(out, identity_columns=identity_columns)
     if duplicate_count:
         raise TumorReferenceDataError(
             f"{dataset} contains {duplicate_count} duplicate logical gene rows"
         )
     return out
+
+
+@cache
+def _validated_reference_dataset(dataset: str) -> pd.DataFrame:
+    """Return one canonical, validated owning frame shared by all reference accessors."""
+    spec = _REFERENCE_DATASETS[dataset]
+    frame = _with_stable_schema(get_data(dataset, copy=False), spec.columns)
+    frame = _canonicalize_codes(frame)
+    return _validate_reference(
+        frame,
+        dataset=spec.name,
+        identity_columns=spec.identity_columns,
+    )
+
+
+_register_derived_cache(_validated_reference_dataset.cache_clear)
 
 
 def _classifier_tpm(
@@ -267,9 +358,11 @@ def _classifier_tpm(
     group_columns: tuple[str, ...],
 ) -> pd.DataFrame:
     out = frame
-    symbols = out["symbol"].fillna("").astype(str).str.strip()
+    symbols = out["symbol"].astype("string").fillna("").str.strip()
     if "Ensembl_Gene_ID" in out.columns:
-        gene_ids = out["Ensembl_Gene_ID"].fillna("").astype(str).str.split(".").str[0].str.strip()
+        gene_ids = (
+            out["Ensembl_Gene_ID"].astype("string").fillna("").str.split(".").str[0].str.strip()
+        )
         groups = (
             classify_gene_qc(symbol, ensembl_id=gene_id).group
             for symbol, gene_id in zip(symbols, gene_ids)
@@ -285,7 +378,7 @@ def _classifier_tpm(
 
     groupers = [out[column] for column in group_columns]
     medians = out["tumor_tpm_median"]
-    totals = medians.groupby(groupers, dropna=False).transform("sum")
+    totals = medians.groupby(groupers, dropna=False, observed=True).transform("sum")
     if (totals <= 0).any():
         raise TumorReferenceDataError("tumor-reference group has no positive median TPM mass")
     scales = 1_000_000.0 / totals
@@ -310,14 +403,41 @@ def _filter_rows(
     mask = pd.Series(True, index=frame.index)
     if cancer_code is not None:
         requested = str(_canonical_code(cancer_code))
-        mask &= frame["cancer_code"].astype(str).eq(requested)
+        mask &= frame["cancer_code"].eq(requested)
     if subtype_code is not None:
         requested = str(_canonical_code(subtype_code, subtype=True))
-        mask &= frame["subtype"].astype(str).eq(requested)
+        mask &= frame["subtype"].eq(requested)
     if source_cohort is not None:
         requested = str(_canonical_source_cohort(source_cohort))
-        mask &= frame["source_cohort"].astype(str).eq(requested)
+        mask &= frame["source_cohort"].eq(requested)
     return frame.loc[mask].reset_index(drop=True)
+
+
+def _reference_expression(
+    spec: _ReferenceDatasetSpec,
+    *,
+    cancer_code: str | None,
+    subtype_code: str | None = None,
+    source_cohort: str | None = None,
+    scale: str,
+) -> pd.DataFrame:
+    """Apply the common filter, scale, and metadata contract to one reference dataset."""
+    scale = _validate_scale(scale)
+    frame = _filter_rows(
+        _validated_reference_dataset(spec.name),
+        cancer_code=cancer_code,
+        subtype_code=subtype_code,
+        source_cohort=source_cohort,
+    )
+    if scale == "classifier_tpm" and not frame.empty:
+        frame = _classifier_tpm(frame, group_columns=spec.normalization_groups)
+    frame.attrs["oncoref"] = {
+        "dataset": spec.name,
+        "data_version": DATA_VERSION,
+        "scale": scale,
+        "derivation_method": spec.derivation_method,
+    }
+    return frame
 
 
 def tcga_deconvolved_expression(
@@ -332,24 +452,11 @@ def tcga_deconvolved_expression(
     the same group scale. ``scale="native"`` preserves the migrated numeric
     values. Both modes canonicalize cancer codes and validate the artifact.
     """
-    scale = _validate_scale(scale)
-    frame = _with_stable_schema(get_data(_TCGA_DATASET, copy=False), _TCGA_COLUMNS)
-    frame = _canonicalize_codes(frame)
-    frame = _validate_reference(
-        frame,
-        dataset=_TCGA_DATASET,
-        identity_columns=("cancer_code",),
+    return _reference_expression(
+        _TCGA_REFERENCE,
+        cancer_code=cancer_code,
+        scale=scale,
     )
-    frame = _filter_rows(frame, cancer_code=cancer_code)
-    if scale == "classifier_tpm" and not frame.empty:
-        frame = _classifier_tpm(frame, group_columns=("cancer_code",))
-    frame.attrs["oncoref"] = {
-        "dataset": _TCGA_DATASET,
-        "data_version": DATA_VERSION,
-        "scale": scale,
-        "derivation_method": "tme_deconvolution",
-    }
-    return frame
 
 
 def subtype_tumor_reference_expression(
@@ -366,32 +473,13 @@ def subtype_tumor_reference_expression(
     filtering and normalization. See :func:`tumor_reference_expression_provenance`
     for the derivation recorded for each source.
     """
-    scale = _validate_scale(scale)
-    frame = _with_stable_schema(get_data(_SUBTYPE_DATASET, copy=False), _SUBTYPE_COLUMNS)
-    frame = _canonicalize_codes(frame)
-    frame = _validate_reference(
-        frame,
-        dataset=_SUBTYPE_DATASET,
-        identity_columns=("cancer_code", "subtype", "source_cohort"),
-    )
-    frame = _filter_rows(
-        frame,
+    return _reference_expression(
+        _SUBTYPE_REFERENCE,
         cancer_code=cancer_code,
         subtype_code=subtype_code,
         source_cohort=source_cohort,
+        scale=scale,
     )
-    if scale == "classifier_tpm" and not frame.empty:
-        frame = _classifier_tpm(
-            frame,
-            group_columns=("cancer_code", "subtype", "source_cohort"),
-        )
-    frame.attrs["oncoref"] = {
-        "dataset": _SUBTYPE_DATASET,
-        "data_version": DATA_VERSION,
-        "scale": scale,
-        "derivation_method": "mixed_passthrough; inspect provenance",
-    }
-    return frame
 
 
 def subtype_deconvolved_expression(*args, **kwargs) -> pd.DataFrame:
@@ -404,14 +492,10 @@ def subtype_deconvolved_expression(*args, **kwargs) -> pd.DataFrame:
     return subtype_tumor_reference_expression(*args, **kwargs)
 
 
-def tumor_reference_expression_provenance(
-    *,
-    artifact: str | None = None,
-    cancer_code: str | None = None,
-    source_cohort: str | None = None,
-) -> pd.DataFrame:
-    """Return one derivation record per tumor-reference source/group."""
-    frame = get_data(_PROVENANCE_DATASET, copy=False).copy()
+@cache
+def _validated_provenance_dataset() -> pd.DataFrame:
+    """Return the shared canonical, validated tumor-reference provenance frame."""
+    frame = get_data(_PROVENANCE_DATASET, copy=False)
     missing = sorted(set(TUMOR_REFERENCE_PROVENANCE_COLUMNS) - set(frame.columns))
     if missing:
         raise TumorReferenceDataError(f"{_PROVENANCE_DATASET} lacks required columns: {missing}")
@@ -484,14 +568,34 @@ def tumor_reference_expression_provenance(
     duplicate_columns = ["artifact", "cancer_code", "subtype", "source_cohort"]
     if frame.duplicated(duplicate_columns).any():
         raise TumorReferenceDataError(f"{_PROVENANCE_DATASET} contains duplicate source records")
+    converted = {}
     for column in ("n_genes", "n_reference_samples"):
         values = pd.to_numeric(frame[column], errors="coerce")
         if values.isna().any() or (values <= 0).any() or (values % 1 != 0).any():
             raise TumorReferenceDataError(f"{_PROVENANCE_DATASET} contains invalid {column}")
-        frame[column] = values
+        if not pd.api.types.is_numeric_dtype(frame[column]):
+            converted[column] = values
+    if converted:
+        frame = frame.copy()
+        for column, values in converted.items():
+            frame[column] = values
+    return _with_stable_schema(frame, TUMOR_REFERENCE_PROVENANCE_COLUMNS)
+
+
+_register_derived_cache(_validated_provenance_dataset.cache_clear)
+
+
+def tumor_reference_expression_provenance(
+    *,
+    artifact: str | None = None,
+    cancer_code: str | None = None,
+    source_cohort: str | None = None,
+) -> pd.DataFrame:
+    """Return one derivation record per tumor-reference source/group."""
+    frame = _validated_provenance_dataset()
     if artifact is not None:
         requested = str(artifact).removesuffix(".gz").removesuffix(".csv")
-        frame = frame[frame["artifact"].astype(str).eq(requested)]
+        frame = frame[frame["artifact"].eq(requested)]
     frame = _filter_rows(
         frame,
         cancer_code=cancer_code,
