@@ -24,6 +24,8 @@ REPOSITORY_ROOT = PACKAGE_ROOT.parent
 # Downstream consumers that depend on oncoref; importing any of them would
 # invert the dependency pyramid.
 DOWNSTREAM_PACKAGES = {"pirlygenes", "tsarina", "hitlist", "trufflepig"}
+LEGACY_PACKAGE_NAMES = {"oncodata"}
+FORBIDDEN_DEPENDENCIES = DOWNSTREAM_PACKAGES | LEGACY_PACKAGE_NAMES
 
 
 def _imported_top_level_modules(path):
@@ -40,17 +42,19 @@ def _imported_top_level_modules(path):
             yield node.module.split(".")[0]
 
 
-def test_package_imports_no_consumer():
+def test_package_imports_no_downstream_or_legacy_package():
     offenders = []
     for py in sorted(PACKAGE_ROOT.rglob("*.py")):
         for mod in _imported_top_level_modules(py):
-            if mod in DOWNSTREAM_PACKAGES:
+            if mod in FORBIDDEN_DEPENDENCIES:
                 offenders.append(f"{py.relative_to(PACKAGE_ROOT)} imports {mod}")
-    assert not offenders, "oncoref must not import its consumers:\n  " + "\n  ".join(offenders)
+    assert not offenders, (
+        "oncoref must not import downstream or legacy packages:\n  " + "\n  ".join(offenders)
+    )
 
 
-def test_project_metadata_depends_on_no_consumer():
-    """Keep downstream projects out of build, runtime, and optional requirements."""
+def test_project_metadata_depends_on_no_downstream_or_legacy_package():
+    """Check build, runtime, and optional requirements without a TOML dependency."""
     metadata = (REPOSITORY_ROOT / "pyproject.toml").read_text()
     dependency_sections = re.findall(
         r"(?ms)^\[(?:build-system|project|project\.optional-dependencies)\]\n(.*?)(?=^\[|\Z)",
@@ -61,21 +65,22 @@ def test_project_metadata_depends_on_no_consumer():
         for section in dependency_sections
         for requirement in re.findall(r'^\s*"([^"]+)"', section)
     }
+    forbidden_names = declared_names & FORBIDDEN_DEPENDENCIES
 
-    assert declared_names.isdisjoint(DOWNSTREAM_PACKAGES), (
-        "oncoref metadata must not depend on downstream consumers: "
-        f"{sorted(declared_names & DOWNSTREAM_PACKAGES)}"
+    assert not forbidden_names, (
+        "oncoref metadata must not depend on downstream or legacy packages: "
+        f"{sorted(forbidden_names)}"
     )
 
 
-def test_migration_scripts_import_no_consumer():
+def test_migration_scripts_import_no_downstream_or_legacy_package():
     offenders = []
     for py in sorted((REPOSITORY_ROOT / "scripts").rglob("*.py")):
         for mod in _imported_top_level_modules(py):
-            if mod in DOWNSTREAM_PACKAGES:
+            if mod in FORBIDDEN_DEPENDENCIES:
                 offenders.append(f"{py.relative_to(REPOSITORY_ROOT)} imports {mod}")
-    assert not offenders, "oncoref migration scripts must not import consumers:\n  " + "\n  ".join(
-        offenders
+    assert not offenders, "oncoref scripts must not import downstream or legacy packages:\n  " + (
+        "\n  ".join(offenders)
     )
 
 
