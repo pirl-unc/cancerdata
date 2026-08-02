@@ -116,7 +116,6 @@ jobs:
           python - <<'PY'
           import hashlib
           import os
-          import shutil
           import urllib.request
 
           from oncoref import source_matrices
@@ -155,6 +154,7 @@ jobs:
           python - <<'PY'
           import hashlib
           import os
+          import shutil
           import urllib.request
           from pathlib import Path
 

@@ -88,6 +88,7 @@ def test_test_workflow_stages_required_real_data():
         step for step in test_job["steps"] if step["name"] == "Stage required reference data"
     )
     assert 'os.environ["ONCOREF_CI_ACC_PERCENTILE_REFERENCE"]' in reference_step["run"]
+    assert "import shutil" in reference_step["run"]
     assert '"cancer-reference-expression-percentiles"' in reference_step["run"]
     assert "shutil.copy2(acc_reference, bundle_acc_reference)" in reference_step["run"]
     assert '"hpa_rna_consensus": os.environ["CI_HPA_RNA_SHA256"]' in reference_step["run"]
