@@ -74,27 +74,32 @@ data-driven:
 
 - `own_cohort` — this code has its own separable expression cohort.
 - `member_union` — this code is backed by a union of expression-bearing member
-  cohorts and can be reported as a coarser call.
+  cohorts; reportability is controlled separately by `is_classification_target`.
 - `parent` — this code carries an annotation/slice but should be reported at
   its nearest reportable ancestor.
 - `none` — pure provenance or unsupported scope; walk up the tree if a coarser
   call is needed.
 
+Classification eligibility and reference availability are separate gates.
 `is_classification_target`, `classification_target_codes`, and
-`cancer_type_records(classification_target=True)` are compatibility views over
-that enum: a code is returnable when `reference_source` is `own_cohort` or
-`member_union`. For example `COAD_MSI`, `COAD_MSS`, `READ_MSI`, and `READ_MSS`
-are `own_cohort` because the TCGA COAD/READ MSI partitions have separable
-expression; `CRC_MSI` is a legitimate `member_union` over
-`COAD_MSI ∪ READ_MSI`, not merely an annotation. A molecular slice only falls to
-`parent` when oncoref has not measured a separable cohort, as with the current
-STAD/UCEC molecular subtype rows.
+`cancer_type_records(classification_target=True)` preserve the reviewed owner
+registry policy and additionally require `reference_source` to be `own_cohort`
+or `member_union`. A reference can therefore make a reviewed target unavailable,
+but adding comparison data cannot promote a validation-only cohort into a
+diagnosis. CMN, for example, remains non-classifying even though its microarray
+TPM proxy is returnable for marker/rank validation. `COAD_MSI`, `COAD_MSS`,
+`READ_MSI`, and `READ_MSS` are `own_cohort` because the TCGA COAD/READ MSI
+partitions have separable expression; `CRC_MSI` is a reviewed classification
+target backed by a `member_union` over `COAD_MSI ∪ READ_MSI`, not merely an
+annotation. A molecular slice falls to `parent` when oncoref has not measured a
+separable cohort, as with the current STAD/UCEC molecular subtype rows.
 
 Computed expression pools are also explicit. Use `computed_union_codes()` for
 registry rows whose `expression_source="computed"` and
-`reference_source_codes("member_union")` for all reportable member-union
+`reference_source_codes("member_union")` for all member-union
 references, including source-scope unions such as `CRC_MSI`, `NSCLC`, `BTC`, and
-`SGC`.
+`SGC`. The latter remains a reference-only union because its reviewed
+`is_classification_target` policy is false.
 
 ### Category queries
 
@@ -440,6 +445,11 @@ An acquisition source with a known physical cohort also carries a nonempty
 provenance. Its label may be more specific than the cohort registry's shared
 project label, so consumers should preserve the source-owned value instead of
 replacing it with a cohort-level fallback.
+
+When a GEO dataset publication has been verified, `source_pmid` records it as a
+structured `PMID:<digits>` value. Selected cancer-registry rows for that same
+physical source must carry the same PMID; biological background citations remain
+separate and should not be inferred from citation prose.
 
 Use `oncoref.source_matrices.codes_for_source(source_id)` for the selected code
 list. Use `oncoref.source_matrices.resolution_for_source(source_id)` when

@@ -52,6 +52,7 @@ class ExpressionSource:
     unit: str | None = None
     expected_size_gb: float | None = None
     citation: str | None = None
+    source_pmid: str | None = None
     special_handling: str | None = None
     recount3_srp: str | None = None
     source_cohort: str | None = None
@@ -161,6 +162,7 @@ def load_registry() -> tuple[ExpressionSource, ...]:
                 unit=_clean(entry.get("unit")),
                 expected_size_gb=_coerce_float(entry.get("expected_size_gb")),
                 citation=_clean(entry.get("citation")),
+                source_pmid=_clean(entry.get("source_pmid")),
                 special_handling=_clean(entry.get("special_handling")),
                 recount3_srp=_clean(entry.get("recount3_srp")),
                 source_cohort=_clean(entry.get("source_cohort")),
@@ -222,6 +224,7 @@ def expression_sources_df() -> pd.DataFrame:
             "molecular_annotation_status": s.molecular_annotation_status,
             "expected_size_gb": s.expected_size_gb,
             "citation": s.citation,
+            "source_pmid": s.source_pmid,
             "builder": s.builder,
             "builder_args": " ".join(s.builder_args),
             "external_build_exemption": s.external_build_exemption,

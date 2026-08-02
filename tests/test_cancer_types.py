@@ -655,6 +655,7 @@ def test_reference_source_and_review_policy_drive_classification_targets():
             "THYM_EPITHELIAL",
             "THYMCA",
             "NEC_LUNG",
+            "CMN",
         ]
     ).set_index("code")
 
@@ -663,6 +664,7 @@ def test_reference_source_and_review_policy_drive_classification_targets():
         "READ_MSI",
         "STAD_MSI",
         "OV",
+        "CMN",
     }
     assert set(records.loc[records["reference_source"] == "member_union"].index) == {
         "CRC_MSI",
@@ -696,6 +698,7 @@ def test_reference_source_and_review_policy_drive_classification_targets():
         "THYMCA",
         "NET_NONPANCREATIC",
         "NEN_EXTRAPULMONARY_HG",
+        "CMN",
     }
     assert not records.loc[list(non_targets), "is_classification_target"].any()
     assert (
@@ -715,7 +718,10 @@ def test_reference_source_and_review_policy_drive_classification_targets():
     reference_backed_codes = cancer_types.cancer_type_codes(
         reference_source={"own_cohort", "member_union"}
     )
-    assert set(reference_backed_codes) - set(cancer_types.classification_target_codes()) == {"SGC"}
+    assert set(reference_backed_codes) - set(cancer_types.classification_target_codes()) == {
+        "CMN",
+        "SGC",
+    }
     assert cancer_types.reference_source_codes("member_union") == cancer_types.cancer_type_codes(
         reference_source="member_union"
     )
@@ -738,6 +744,17 @@ def test_reference_source_and_review_policy_drive_classification_targets():
     )
     assert cd.cancer_ontology.cancer_type_reference_source("CRC_MSI") == "member_union"
     assert cd.cancer_ontology.cancer_type_reference_code("THYMCA") == "THYM_EPITHELIAL"
+
+
+def test_reference_availability_never_promotes_unreviewed_classification_targets():
+    raw = get_data("cancer-type-registry").set_index("code")
+    public = cancer_types.cancer_type_registry().set_index("code")
+    reviewed_targets = cancer_types._truthy_registry_flag(raw["is_classification_target"])
+    effective_targets = cancer_types._truthy_registry_flag(public["is_classification_target"])
+
+    assert set(effective_targets.index[effective_targets]) <= set(
+        reviewed_targets.index[reviewed_targets]
+    )
 
 
 def test_cancer_type_siblings_use_parent_hierarchy():

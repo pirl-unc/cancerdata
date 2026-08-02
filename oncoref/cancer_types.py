@@ -730,9 +730,9 @@ def cancer_type_registry():
     ``reference_source`` / ``classification_reference_code`` classification
     backing contract, and the independently audited ``who_category`` /
     ``who_behavior`` fields. Returns a defensive copy so callers can mutate
-    freely. The shipped CSV still carries a historical
-    ``is_classification_target`` column. This public frame derives the value
-    from reference availability plus the reviewed source-scope policy.
+    freely. ``is_classification_target`` is the reviewed registry policy gated
+    by returnable reference availability: data can make a reviewed target
+    unavailable, but cannot promote a validation-only cohort into a diagnosis.
     """
     df = _registry_frame().copy()
     df = df.merge(_who_registry_metadata(), how="left", on="code", validate="one_to_one")
@@ -1309,14 +1309,6 @@ REFERENCE_SOURCE_VALUES = ("own_cohort", "member_union", "parent", "none")
 _RETURNABLE_REFERENCE_SOURCES = frozenset({"own_cohort", "member_union"})
 _SOURCE_SCOPE_MEMBER_UNION_CODES = frozenset({"BTC", "NSCLC", "SGC"})
 
-# A pooled source/therapy scope is not a classification label by default. These
-# two established diagnostic umbrellas are the reviewed exceptions. The reason
-# map makes each exception auditable instead of hiding it in branching logic.
-_REVIEWED_SOURCE_SCOPE_CLASSIFICATION_TARGETS = {
-    "BTC": "established clinicopathologic biliary-tract diagnosis umbrella",
-    "NSCLC": "established histologic non-small-cell lung diagnosis umbrella",
-}
-
 _ONTOLOGY_LEVEL_DESCRIPTIONS = {
     "grouping": (
         "coarser ontology node that groups distinct cancer types or source "
@@ -1479,28 +1471,18 @@ def _reference_source_map() -> dict[str, str]:
 def _classification_target_map() -> dict[str, bool]:
     """Whether each code may be emitted as a sample-classification label.
 
-    Usable direct and member-union references are normally eligible. A
-    source-scoped mixture backed by a member union is eligible only when it is
-    named in the reviewed exception map above.
+    The owner registry is the policy authority. A reviewed target is returnable
+    only while it has a direct or member-union reference; reference availability
+    never promotes a registry row that was reviewed as non-classifying.
     """
 
     registry = _registry_frame().set_index("code")
+    reviewed_targets = _truthy_registry_flag(registry["is_classification_target"])
     reference_sources = _reference_source_map()
     out: dict[str, bool] = {}
     for code, reference_source in reference_sources.items():
         has_returnable_reference = reference_source in _RETURNABLE_REFERENCE_SOURCES
-        row = registry.loc[code]
-        ontology_kind = str(row.get("ontology_kind", "")).strip().lower()
-        mixture_flag = str(row.get("mixture_cohort", "")).strip().lower()
-        is_source_scope_mixture = ontology_kind == "source_scope" and mixture_flag in {
-            "true",
-            "1",
-            "yes",
-        }
-        needs_reviewed_exception = reference_source == "member_union" and is_source_scope_mixture
-        out[code] = has_returnable_reference and (
-            not needs_reviewed_exception or code in _REVIEWED_SOURCE_SCOPE_CLASSIFICATION_TARGETS
-        )
+        out[code] = bool(reviewed_targets.loc[code]) and has_returnable_reference
     return out
 
 
@@ -2261,10 +2243,9 @@ def _coerce_bool_filter(value, *, name: str) -> bool:
 def classification_target_codes():
     """Return cancer codes that are valid sample-classification targets.
 
-    Direct and member-union references are normally eligible. Source-scoped
-    mixtures require an explicit reviewed exception; this keeps therapy/source
-    aggregates such as SGC from becoming expression diagnoses merely because a
-    pooled reference can be constructed.
+    A code must be reviewed as eligible in the owner registry and have a direct
+    or member-union reference. This keeps validation and therapy/source scopes
+    from becoming diagnoses merely because comparison data are available.
     """
     return cancer_type_records(classification_target=True)["code"].tolist()
 

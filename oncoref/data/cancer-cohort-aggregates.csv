@@ -34,3 +34,9 @@ RCC,KICH,renal cell carcinoma rollup
 RCC,KIRC,renal cell carcinoma rollup
 RCC,KIRP,renal cell carcinoma rollup
 THYM_EPITHELIAL,THYM,thymic epithelial tumor rollup (available expression matrix)
+BTC,CHOL,biliary tract cancer rollup (reference-backed member)
+BTC,GBC,biliary tract cancer rollup (member awaiting a selected expression matrix)
+SGC,ACINIC,salivary gland carcinoma rollup (reference-backed member)
+SGC,ADCC,salivary gland carcinoma rollup (reference-backed member)
+NSCLC,LUAD,non-small-cell lung cancer histology rollup
+NSCLC,LUSC,non-small-cell lung cancer histology rollup

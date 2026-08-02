@@ -2845,6 +2845,48 @@ def test_cancer_reference_expression_request_metadata_for_aggregate(monkeypatch)
     assert out["missing_reason"].tolist() == ["", ""]
 
 
+def test_source_scope_member_unions_expand_and_load_supported_members():
+    expected_members = {
+        "BTC": ["CHOL", "GBC"],
+        "SGC": ["ACINIC", "ADCC"],
+        "NSCLC": ["LUAD", "LUSC"],
+    }
+    expected_loaded = {
+        "BTC": {"CHOL"},
+        "SGC": {"ACINIC", "ADCC"},
+        "NSCLC": {"LUAD", "LUSC"},
+    }
+
+    for aggregate, members in expected_members.items():
+        availability = expression.cancer_reference_expression_availability(
+            aggregate,
+            sample_qc="artifact",
+        )
+        assert availability["requested_code"].unique().tolist() == [aggregate]
+        assert availability["cancer_code"].tolist() == members
+        assert set(availability["request_kind"]) == {"aggregate_member"}
+
+        result = expression.cancer_reference_expression(
+            aggregate,
+            genes=["TP53"],
+            sample_qc="artifact",
+            include_request_metadata=True,
+            on_missing="empty",
+        )
+        assert set(result["cancer_code"]) == expected_loaded[aggregate]
+        assert set(result["request_kind"]) == {"aggregate_member"}
+
+    btc_missing = expression.cancer_reference_expression(
+        "BTC",
+        genes=["TP53"],
+        sample_qc="artifact",
+        on_missing="empty",
+    ).attrs["missing_requests"]
+    assert [(row["cancer_code"], row["missing_reason"]) for row in btc_missing] == [
+        ("GBC", "no_percentile_artifact")
+    ]
+
+
 def test_cancer_reference_expression_raw_tpm_uses_source_stats(monkeypatch):
     stats = pd.DataFrame(
         {
