@@ -17,6 +17,7 @@ from oncoref._reference_sources import (
     TREEHOUSE_TCGA_SARC_HISTOLOGY_CODES,
     TREEHOUSE_TCGA_SARC_HISTOLOGY_COHORT,
 )
+from oncoref.source_matrices import registry as source_matrix_registry
 
 SOURCE_COLUMNS = [
     "cancer_code",
@@ -89,8 +90,31 @@ def _shard_source_records(path: Path, *, chunksize: int) -> list[dict]:
     return list(records.values())
 
 
-def build_reference_availability(shard_dir: Path, *, chunksize: int = 100_000) -> pd.DataFrame:
-    """Build one row per ``(cancer_code, source_cohort)`` without concatenating shards."""
+def _selected_sources() -> dict[str, str]:
+    registry = source_matrix_registry()
+    if registry["cancer_code"].astype(str).duplicated().any():
+        raise ValueError("source-matrix registry contains duplicate cancer codes")
+    return dict(
+        zip(
+            registry["cancer_code"].astype(str),
+            registry["source_cohort"].astype(str),
+        )
+    )
+
+
+def build_reference_availability(
+    shard_dir: Path,
+    *,
+    chunksize: int = 100_000,
+    selected_sources: dict[str, str] | None = None,
+) -> pd.DataFrame:
+    """Build one row per physical source and mark only registry-selected rows.
+
+    Gene/sample counts describe availability; they never decide selection. The
+    authoritative ``cancer_code -> source_cohort`` mapping comes from
+    ``source-matrices.csv`` so adding a broader alternative source cannot silently
+    promote it or pool it into the selected reference.
+    """
     records = []
     seen = set()
     paths = sorted(list(shard_dir.glob("*.csv")) + list(shard_dir.glob("*.csv.gz")))
@@ -105,6 +129,25 @@ def build_reference_availability(shard_dir: Path, *, chunksize: int = 100_000) -
             records.append(record)
 
     table = pd.DataFrame.from_records(records)
+    selected_sources = _selected_sources() if selected_sources is None else selected_sources
+    available_keys = set(zip(table["cancer_code"].astype(str), table["source_cohort"].astype(str)))
+    missing = sorted(
+        (code, source)
+        for code, source in selected_sources.items()
+        if code in set(table["cancer_code"].astype(str)) and (code, source) not in available_keys
+    )
+    if missing:
+        raise ValueError(f"selected source rows are absent from summary shards: {missing}")
+    unregistered_codes = sorted(set(table["cancer_code"].astype(str)) - set(selected_sources))
+    if unregistered_codes:
+        raise ValueError(
+            "summary shards contain cancer codes absent from the source-matrix registry: "
+            f"{unregistered_codes}"
+        )
+    table["selected"] = [
+        selected_sources.get(str(code)) == str(source)
+        for code, source in zip(table["cancer_code"], table["source_cohort"])
+    ]
     origin_rank = (
         table["tumor_origin"]
         .fillna("")
@@ -116,15 +159,15 @@ def build_reference_availability(shard_dir: Path, *, chunksize: int = 100_000) -
     table = table.sort_values(
         [
             "cancer_code",
+            "selected",
             "n_reference_genes",
             "n_reference_samples",
             "_origin_rank",
             "source_cohort",
         ],
-        ascending=[True, False, False, True, True],
+        ascending=[True, False, False, False, True, True],
         kind="stable",
     )
-    table["selected"] = ~table["cancer_code"].duplicated()
     return table.drop(columns="_origin_rank").reset_index(drop=True)[OUTPUT_COLUMNS]
 
 

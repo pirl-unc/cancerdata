@@ -425,6 +425,10 @@ def test_geo_matrix_builder_writes_canonical_per_sample_matrix_and_sidecars(tmp_
         summary.loc["ENSG00000141510", "processing_pipeline"]
         == "test_geo_fpkm_to_tpm_oncoref_canonical_clean_tpm_16_9_75"
     )
+    assert (
+        "clean_tpm_profile=treehouse_polya_25_01_median_v1"
+        in summary.loc["ENSG00000141510", "source_version"]
+    )
 
 
 def test_canonical_source_builder_preserves_nonstandard_native_unit(tmp_path):
@@ -1286,7 +1290,40 @@ def test_treehouse_source_from_registry_loads_direct_cohort_routes():
     assert "SARC_MPNST" in {cohort.cancer_code for cohort in rare}
 
     ribod = expression_builders.treehouse_source_from_registry("treehouse-ribod-25-01")
-    assert [cohort.cancer_code for cohort in ribod.cohorts] == ["SARC_CHOR", "RB"]
+    assert [cohort.cancer_code for cohort in ribod.cohorts] == [
+        "SARC_CHOR",
+        "RB",
+        "SARC_IFS",
+        "CMN",
+    ]
+
+
+def test_treehouse_sample_manifest_keeps_libraries_and_donors_distinct():
+    source = expression_builders.treehouse_source_from_registry("treehouse-ribod-25-01")
+    clinical = pd.DataFrame(
+        {
+            "th_dataset_id": ["THR24_3082_S01", "THR24_3082_S02", "TH27_1160_S01"],
+            "disease": ["infantile fibrosarcoma"] * 3,
+            "study_donor_id": ["SJ030375", "SJ030375", None],
+            "study_dataset_id": ["SJST030375_R1", "SJST030375_R2", None],
+            "age_at_dx": [0.81, 0.81, 0.0027],
+        }
+    )
+
+    manifest = expression_builders.treehouse_sample_manifest(
+        source,
+        clinical,
+        {"SARC_IFS": clinical["th_dataset_id"]},
+    )
+
+    assert manifest["sample_id"].nunique() == 3
+    assert manifest["donor_id"].nunique() == 2
+    assert manifest["donor_id"].tolist() == ["SJ030375", "SJ030375", "TH27_1160"]
+    assert manifest["source_sample_id"].tolist() == [
+        "SJST030375_R1",
+        "SJST030375_R2",
+        "TH27_1160_S01",
+    ]
 
 
 def _synthetic_mbl_matrix():
@@ -4363,7 +4400,7 @@ def test_rebuild_expression_artifacts_defaults_to_qc_passing_samples(tmp_path, m
     assert bool(prov.loc[0, "linear_tpm_comparable"]) is True
     assert bool(prov.loc[0, "recommended_for_absolute_tpm_floor"]) is True
     assert prov.loc[0, "selection_scale_class"] == "linear_rnaseq_tpm"
-    assert prov.loc[0, "sample_qc_policy_version"] == "sample_expression_qc_v2"
+    assert prov.loc[0, "sample_qc_policy_version"] == "sample_expression_qc_v3"
     assert prov.loc[0, "n_qc_pass"] == 1
     assert prov.loc[0, "n_qc_warn"] == 1
     assert prov.loc[0, "n_qc_fail"] == 1
@@ -4379,7 +4416,7 @@ def test_rebuild_expression_artifacts_defaults_to_qc_passing_samples(tmp_path, m
     assert build_meta.loc[0, "build_source_cohort"] == "TEST_SOURCE"
     assert build_meta.loc[0, "n_source_samples"] == 3
     assert build_meta.loc[0, "n_cohort_samples"] == 1
-    assert build_meta.loc[0, "sample_qc_policy_version"] == "sample_expression_qc_v2"
+    assert build_meta.loc[0, "sample_qc_policy_version"] == "sample_expression_qc_v3"
     assert build_meta.loc[0, "partition_status"] == "insufficient_independent_groups"
     assert build_meta.loc[0, "n_partition_train"] == 1
     assert build_meta.loc[0, "n_partition_validation"] == 0
@@ -4511,7 +4548,7 @@ def test_rebuild_expression_artifacts_keeps_warn_proxy_source_when_pass_empty(
     build_meta = pd.read_csv(out / "expression-artifact-build-metadata.csv")
     assert build_meta.loc[0, "sample_qc"] == "pass"
     assert build_meta.loc[0, "sample_qc_effective"] == "pass_or_warn"
-    assert build_meta.loc[0, "sample_qc_fallback_reason"] == "no_pass_samples_tpm_proxy_source"
+    assert build_meta.loc[0, "sample_qc_fallback_reason"] == "proxy_rank_only_retention"
     prov = pd.read_csv(out / "cancer-reference-expression-representatives" / "_provenance.csv")
     assert set(prov["source_sample_qc_reasons"]) == {"nonlinear_or_proxy_expression_scale"}
     assert set(prov["source_scale_class"]) == {"microarray_tpm_proxy"}
@@ -4585,6 +4622,54 @@ def test_rebuild_expression_artifacts_clips_negative_source_values():
     assert n_negative == 2
     assert out[["s1", "s2"]].to_numpy().min() == 0.0
     assert df[["s1", "s2"]].to_numpy().min() < 0.0
+
+
+def test_additional_source_summary_uses_same_clean_tpm_contract(tmp_path, monkeypatch):
+    gen = _load_script("rebuild_expression_artifacts")
+    from oncoref import gene_families, normalization
+
+    reference = gene_families.clean_tpm_censored_reference_tpm()
+    technical = next(
+        gene_id
+        for gene_id in sorted(gene_families.clean_tpm_other_technical_gene_ids())
+        if reference[gene_id] > 0
+    )
+    raw = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": [technical, "TEST_BIO"],
+            "Symbol": ["TECH", "BIO"],
+            "sample": [999_999.0, 1.0],
+        }
+    )
+    matrix_path = tmp_path / "additional.parquet"
+    raw.to_parquet(matrix_path, index=False)
+    monkeypatch.setattr(
+        gen,
+        "_summary_source_metadata",
+        lambda code, source: gen._SummarySourceMetadata(
+            source_cohort=source,
+            source_project="test",
+            source_version="v1",
+            processing_pipeline="test",
+            notes="",
+            tumor_origin="primary",
+            metastasis_site=None,
+        ),
+    )
+
+    out = tmp_path / "out"
+    gen.rebuild_additional_source_summaries(
+        [gen.SummarySourceSpec("X", "TEST_SOURCE", matrix_path)],
+        out,
+    )
+
+    summary = pd.read_csv(out / "cancer-reference-expression" / "TEST_SOURCE.csv.gz")
+    technical_row = summary.loc[summary["Ensembl_Gene_ID"].eq(technical)].iloc[0]
+    biology_row = summary.loc[summary["Ensembl_Gene_ID"].eq("TEST_BIO")].iloc[0]
+    assert technical_row["TPM_clean_mean"] == pytest.approx(
+        normalization.OTHER_TECHNICAL_FRACTION * 1e6
+    )
+    assert biology_row["TPM_clean_mean"] == pytest.approx(normalization.BIOLOGICAL_FRACTION * 1e6)
 
 
 def test_rebuild_expression_artifacts_disambiguates_source_by_registry_sample_count(

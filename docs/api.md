@@ -483,6 +483,32 @@ processing plan.
   `recommended_for_absolute_tpm_floor` is true; microarray/proxy or otherwise
   non-linear sources stay visible as warning/rank calibration inputs, not vetoes.
 
+### Diagnosis and molecular evidence
+
+A diagnosis-labelled reference sample is not automatically positive for a common
+driver. Oncoref represents three separate facts: the canonical cancer entity, the
+entity-level published driver spectrum, and any sample-level molecular observation.
+This matters for infantile fibrosarcoma (`SARC_IFS`) and congenital mesoblastic
+nephroma (`CMN`): they share an infantile MAPK-rearranged spindle-cell spectrum, but
+are distinct diagnoses with different sites and driver distributions. `ETV6-NTRK3`
+is common in IFS, not required for the diagnosis and never inferred for a
+diagnosis-only Treehouse sample.
+
+- `oncoref.drivers.cancer_driver_spectrum(code)` returns the structured observed
+  fusion, intragenic-rearrangement, and unresolved states for an entity.
+- `oncoref.samples.molecular_provenance_for_cancer_code(code)` returns public
+  sample/library evidence with donor identity, diagnosis, driver event, assay,
+  confirmation status, expression availability, and access level.
+- `oncoref.samples.molecular_sample_counts(code)` reports libraries and distinct
+  donors separately for each physical source cohort.
+
+Public Treehouse PolyA and RiboD cohorts remain separate even after clean TPM, and
+the GSE11482 CMN array cohort remains an explicitly non-comparable TPM proxy.
+Applying the common censored-gene composition to that proxy does not turn array
+intensities into absolute TPM; use it only for marker patterns and ranks.
+Controlled EGA, St. Jude, and CCDI sources expose acquisition state and public
+molecular annotations without claiming that their expression is currently loadable.
+
 ### Builder APIs
 
 Every published source matrix has one regeneration path owned by oncoref. The
@@ -692,10 +718,11 @@ separately in the upstream parity issues.
 comes from shipped percentile shards, and raw TPM is recomputed from source
 matrices. `reference_source="summary_rows"` uses the shipped
 `cancer-reference-expression` per-source sidecars when `sample_qc="all"` and
-selects one source per cancer code by a deterministic richest-source-wins rule:
-most genes, then most samples, then primary before mixed/metastatic, then source
-cohort name. For `sample_qc="pass"` or `"pass_or_warn"`, the summary-row source
-selector intentionally recomputes via `cohort_stats(..., sample_qc=...)` so
+uses the one physical source explicitly selected by `source-matrices.csv` and the
+availability manifest. Gene and sample counts describe each source; they never
+promote an alternative source or pool it into the selected reference. For
+`sample_qc="pass"` or `"pass_or_warn"`, the summary-row source selector
+intentionally recomputes via `cohort_stats(..., sample_qc=...)` so
 QC-filtered reference-expression views are shaped at read time rather than by a
 build-time drop. This keeps the source sidecars as all-sample evidence while
 allowing downstream code to ask for QC-passing summaries without maintaining a
@@ -896,13 +923,32 @@ does not synthesize missing expression rows or alter artifact values.
 
 ### Clean TPM compartments
 
-Clean TPM has one public compartment contract:
+Clean TPM has one assay-independent censored-gene table and one public
+compartment contract. `clean-tpm-censored-genes.csv` carries each gene's
+`category`, `reference_tpm`, `reference_source`, and `reference_profile_version`.
+The transform replaces measured censored-gene composition with this Treehouse
+25.01 PolyA median profile for every assay:
 
 - `clean-tpm-censored-genes.csv:category == "ribosomal_protein"` — 16%
   ribosomal compartment.
 - `clean-tpm-censored-genes.csv:category == "technical"` — 9% other-technical
-  compartment.
+  compartment. This includes mitochondrial/rRNA artifacts, nuclear-retained
+  polyA-bias lncRNAs, and structural noncoding RNA biotypes whose measured abundance
+  can change artifactually by 10-fold or more with library preparation
+  (`snRNA`, `snoRNA`, `scaRNA`, `misc_RNA`, `ribozyme`, `sRNA`, `vault_RNA`). It
+  deliberately does not classify all small ncRNAs or miRNAs as technical.
 - genes absent from the censored table — 75% biological compartment.
+
+The fixed compartment budgets and within-compartment PolyA weights make the
+biological 75% comparable across library preparations; they do not make the assays
+physically equivalent. `clean_tpm`, `filter_technical_rna`, gene-QC classification,
+and `technical_rna_gene_ids()` use this same global membership, never an assay-specific
+list. The structural ncRNAs added for ribo-depleted data are therefore also technical
+in PolyA and every other assay; only their raw measured abundance differs. Keep
+polyA-selected, ribo-depleted, and microarray sources distinct in source
+selection and pooling. Sample QC reports raw top-gene fractions for audit, but applies
+its concentration gates to the clean-TPM fractions so depletion-sensitive structural
+RNA cannot fail an otherwise usable ribo-depleted library.
 
 The category-specific helper sets are available from `oncoref.gene_families`:
 
@@ -912,6 +958,7 @@ from oncoref import gene_families
 gene_families.clean_tpm_ribosomal_gene_ids()
 gene_families.clean_tpm_other_technical_gene_ids()
 gene_families.clean_tpm_censored_gene_ids()
+gene_families.clean_tpm_censored_genes()
 ```
 
 ### Housekeeping normalization

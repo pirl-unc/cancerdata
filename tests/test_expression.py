@@ -332,7 +332,7 @@ def test_stad_ucec_subtype_expression_artifacts_ship():
         "TREEHOUSE_POLYA_25_01_TCGA_UCEC_SUBTYPE",
     }
     assert metadata.set_index("cancer_code").loc["UCEC_CNH", "n_source_samples"] == 85
-    assert metadata.set_index("cancer_code").loc["UCEC_CNH", "n_cohort_samples"] == 83
+    assert metadata.set_index("cancer_code").loc["UCEC_CNH", "n_cohort_samples"] == 85
 
 
 def test_mbl_molecular_subgroup_expression_artifacts_ship_with_provenance():
@@ -342,12 +342,7 @@ def test_mbl_molecular_subgroup_expression_artifacts_ship_with_provenance():
         "MBL_G3": 44,
         "MBL_G4": 39,
     }
-    expected_reference_samples = {
-        "MBL_WNT": 4,
-        "MBL_SHH": 7,
-        "MBL_G3": 29,
-        "MBL_G4": 18,
-    }
+    expected_reference_samples = expected_source_samples
     codes = set(expected_source_samples)
 
     assert codes <= set(expression.available_representative_cohorts())
@@ -378,8 +373,8 @@ def test_mbl_molecular_subgroup_expression_artifacts_ship_with_provenance():
 
 def test_sparse_source_qc_release_artifacts_have_count_and_diagnostic_parity():
     expected = {
-        "BL": {"source": 184, "pass": 175, "fail": 9},
-        "SARC_PEC": {"source": 69, "pass": 60, "fail": 9},
+        "BL": {"source": 184, "pass": 182, "fail": 2},
+        "SARC_PEC": {"source": 69, "pass": 66, "fail": 3},
     }
     codes = list(expected)
 
@@ -416,7 +411,7 @@ def test_sparse_source_qc_release_artifacts_have_count_and_diagnostic_parity():
         assert metadata.loc[code, "n_qc_pass"] == counts["pass"]
         assert metadata.loc[code, "n_qc_fail"] == counts["fail"]
         assert metadata.loc[code, "sample_qc_effective"] == "pass"
-        assert summary_availability.loc[code, "n_reference_samples"] == counts["pass"]
+        assert summary_availability.loc[code, "n_reference_samples"] == counts["source"]
         assert artifact_availability.loc[code, "n_reference_samples"] == counts["pass"]
         reference_rows = artifact_reference.loc[artifact_reference["cancer_code"] == code]
         assert not reference_rows.empty
@@ -431,7 +426,6 @@ def test_sparse_source_qc_release_artifacts_have_count_and_diagnostic_parity():
     diagnostics = {
         "JNGR150": "low_detected_genes;low_housekeeping_detection;high_zero_fraction",
         "JNGR175": "high_zero_fraction",
-        "JNGR178": "high_top_gene_fraction",
         "JNGR179": "low_detected_genes;high_zero_fraction",
         "BLGSP-71-23-00437-01A": "high_zero_fraction",
     }
@@ -444,6 +438,12 @@ def test_sparse_source_qc_release_artifacts_have_count_and_diagnostic_parity():
         assert qc.loc[sample_id, "parse_missing_fraction"] == 0.0
         assert qc.loc[sample_id, "zero_fraction_raw"] > 0.0
     assert qc.loc["JNGR150", "n_detected_genes"] == 1223
+    # MALAT1 remains auditable as the raw top gene, but the shared PolyA technical
+    # profile prevents its assay-driven abundance from failing the sample.
+    assert qc.loc["JNGR178", "sample_qc_status"] == "pass"
+    assert qc.loc["JNGR178", "top_gene_symbol"] == "MALAT1"
+    assert qc.loc["JNGR178", "top_gene_fraction"] > 0.20
+    assert qc.loc["JNGR178", "top1_fraction_clean"] < 0.02
 
 
 def test_expression_artifact_gene_universe_delta_summary():
@@ -958,8 +958,8 @@ def test_released_representative_partition_is_source_grouped_and_stratified():
     assert by_code.loc["SARC_EHE", "partition_status"] == ("insufficient_independent_groups")
     assert by_code.loc["SARC_EHE", "n_partition_train"] == 1
     for code in ("RB", "SARC_CHOR"):
-        assert by_code.loc[code, "partition_status"] == ("no_benchmark_eligible_groups")
-        assert by_code.loc[code, "n_partition_audit_only"] == 5
+        assert by_code.loc[code, "partition_status"] == "available"
+        assert by_code.loc[code, "n_partition_audit_only"] == 0
 
     build_summary = expression.expression_artifact_build_summary(on_missing="raise")
     assert build_summary["representative_partition"]["grouping_key"] == ("source_group_id")
@@ -984,7 +984,7 @@ def test_representative_availability_routes_proxy_and_qc_fallback_cohorts(monkey
             "linear": False,
             "floor": False,
             "effective": "pass_or_warn",
-            "fallback": "no_pass_samples_tpm_proxy_source",
+            "fallback": "proxy_rank_only_retention",
             "role": "standard",
             "benchmark": True,
         },
@@ -1610,6 +1610,37 @@ def test_sample_expression_qc_flags_high_literal_zero_fraction():
     assert "high_zero_fraction" in qc.loc["sparse_zero", "sample_qc_reasons"]
     assert qc.loc["less_sparse", "zero_fraction_raw"] == pytest.approx(0.6)
     assert qc.loc["less_sparse", "sample_qc_status"] == "pass"
+
+
+def test_sample_expression_qc_uses_clean_concentration_for_ribod_structural_rna():
+    biological_ids = [f"ENSG{i:011d}" for i in range(30)]
+    raw = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": ["ENSG00000276168", *biological_ids],
+            "Symbol": ["RN7SL1", *[f"BIO{i}" for i in range(30)]],
+            "ribod": [990_000.0, *([1_000.0 / 30] * 30)],
+        }
+    )
+
+    qc = expression.sample_expression_qc_from_matrix(
+        raw,
+        cancer_type="X",
+        source_metadata={
+            "source_type": "treehouse-compendium",
+            "unit": "TPM",
+            "source_scale_class": "linear_rnaseq_tpm",
+            "linear_tpm_comparable": True,
+        },
+        min_detected_genes=1,
+        min_housekeeping_detected=0,
+        max_zero_fraction=1.0,
+    ).iloc[0]
+
+    assert qc["top_gene_symbol"] == "RN7SL1"
+    assert qc["top_gene_fraction"] > 0.99
+    assert qc["top1_fraction_clean"] < 0.20
+    assert qc["top10_fraction_clean"] < 0.50
+    assert qc["sample_qc_status"] == "pass"
 
 
 def test_sample_expression_qc_proxy_scale_warns_without_rnaseq_fail_gates():
@@ -2992,7 +3023,38 @@ def test_cancer_reference_expression_rejects_artifact_qc_for_summary_rows():
         )
 
 
-def test_cancer_reference_expression_summary_rows_selects_richest_source(monkeypatch):
+def test_released_ifs_cmn_physical_sources_are_individually_loadable():
+    expected_samples = {
+        ("SARC_IFS", "TREEHOUSE_POLYA_25_01"): 2,
+        ("SARC_IFS", "TREEHOUSE_RIBOD_25_01"): 3,
+        ("CMN", "GSE11482_GADD_2010_CMN"): 12,
+        ("CMN", "TREEHOUSE_RIBOD_25_01"): 1,
+    }
+
+    for (code, source_cohort), n_samples in expected_samples.items():
+        rows = expression.cancer_reference_expression(
+            code,
+            normalize="tpm_raw",
+            reference_source="summary_rows_all",
+            sample_qc="all",
+            source_cohort=source_cohort,
+        )
+        assert not rows.empty
+        assert set(rows["source_cohort"]) == {source_cohort}
+        assert set(rows["n_reference_samples"]) == {n_samples}
+
+    cmn_array = expression.cancer_reference_expression(
+        "CMN",
+        normalize="tpm_raw",
+        reference_source="summary_rows_all",
+        sample_qc="all",
+        source_cohort="GSE11482_GADD_2010_CMN",
+    )
+    assert set(cmn_array["source_scale_class"]) == {"microarray_tpm_proxy"}
+    assert not cmn_array["linear_tpm_comparable"].any()
+
+
+def test_cancer_reference_expression_summary_rows_uses_declared_source(monkeypatch):
     expression._reference_summary_source_table.cache_clear()
     summary = pd.DataFrame(
         {
@@ -3021,7 +3083,7 @@ def test_cancer_reference_expression_summary_rows_selects_richest_source(monkeyp
             "source_version": ["v1", "v2"],
             "n_reference_genes": [2, 3],
             "n_reference_samples": [20, 5],
-            "selected": [False, True],
+            "selected": [True, False],
         }
     )
     _mock_reference_summary_shards(monkeypatch, summary)
@@ -3044,16 +3106,16 @@ def test_cancer_reference_expression_summary_rows_selects_richest_source(monkeyp
     )
 
     assert out.attrs["reference_source"] == "summary_rows"
-    assert out["source_cohort"].unique().tolist() == ["RICH"]
-    assert out["source_project"].unique().tolist() == ["GEO_RICH"]
-    assert out["source_version"].unique().tolist() == ["v2"]
+    assert out["source_cohort"].unique().tolist() == ["SMALL"]
+    assert out["source_project"].unique().tolist() == ["GEO_SMALL"]
+    assert out["source_version"].unique().tolist() == ["v1"]
     assert out["reference_method"].unique().tolist() == ["source_summary_rows"]
-    assert out["n_reference_genes"].unique().tolist() == [3]
-    assert out["n_reference_samples"].unique().tolist() == [5]
+    assert out["n_reference_genes"].unique().tolist() == [2]
+    assert out["n_reference_samples"].unique().tolist() == [20]
     keyed = out.set_index("Ensembl_Gene_ID")
-    assert keyed.loc["E1", "expression"] == pytest.approx(1.0)
-    assert keyed.loc["E1", "q1"] == pytest.approx(0.5)
-    assert keyed.loc["E1", "q3"] == pytest.approx(1.5)
+    assert keyed.loc["E1", "expression"] == pytest.approx(50.0)
+    assert keyed.loc["E1", "q1"] == pytest.approx(45.0)
+    assert keyed.loc["E1", "q3"] == pytest.approx(55.0)
 
     raw_log = expression.cancer_reference_expression(
         "x",
@@ -3062,8 +3124,8 @@ def test_cancer_reference_expression_summary_rows_selects_richest_source(monkeyp
         reference_source="summary_rows",
         sample_qc="all",
     ).set_index("normalization")
-    assert raw_log.loc["tpm_raw", "expression"] == pytest.approx(10.0)
-    assert raw_log.loc["tpm_clean_log1p", "expression"] == pytest.approx(np.log1p(1.0))
+    assert raw_log.loc["tpm_raw", "expression"] == pytest.approx(100.0)
+    assert raw_log.loc["tpm_clean_log1p", "expression"] == pytest.approx(np.log1p(50.0))
     expression._reference_summary_source_table.cache_clear()
 
 
@@ -3685,9 +3747,9 @@ def test_artifact_build_metadata_uses_loader_source_cohort_identity():
 
     by_code = comparison.set_index("cancer_code")
     assert by_code.loc["LUAD", "source_cohort_metadata"] == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
-    assert by_code.loc["LUAD", "build_source_cohort"] == "TREEHOUSE_POLYA_25_01"
+    assert by_code.loc["LUAD", "build_source_cohort"] == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
     assert by_code.loc["CML", "source_cohort_metadata"] == "GSE100026_DING_2017"
-    assert by_code.loc["CML", "build_source_cohort"] == "GEO_HEME_2022"
+    assert by_code.loc["CML", "build_source_cohort"] == "GSE100026_DING_2017"
 
 
 def test_artifact_reference_uses_selected_build_sample_count(monkeypatch):

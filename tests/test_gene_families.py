@@ -31,7 +31,9 @@ def test_technical_rna_is_union_of_its_families():
     union = set()
     for fam in ("mitochondrial", "numt_pseudogene", "rrna", "nuclear_retained_lncrna"):
         union |= gf.gene_family_ids(fam)
-    assert gf.technical_rna_gene_ids() == union
+    assert union <= gf.technical_rna_gene_ids()
+    assert gf.technical_rna_gene_ids() == gf.clean_tpm_other_technical_gene_ids()
+    assert gf.clean_tpm_protocol_sensitive_gene_ids() <= gf.technical_rna_gene_ids()
     assert gf.technical_rna_gene_ids()  # non-empty
 
 
@@ -41,7 +43,7 @@ def test_clean_tpm_compartment_ids_follow_censored_table_categories():
     other_technical = gf.clean_tpm_other_technical_gene_ids()
 
     assert len(ribosomal) == 1767
-    assert len(other_technical) == 1022
+    assert len(other_technical) >= 6000
     assert ribosomal | other_technical == censored
     assert ribosomal.isdisjoint(other_technical)
 
@@ -49,6 +51,21 @@ def test_clean_tpm_compartment_ids_follow_censored_table_categories():
     # is ribosomal_protein, so it belongs to the 16% budget, not the 9% remainder.
     assert "ENSG00000244691" in ribosomal
     assert "ENSG00000244691" not in other_technical
+
+
+def test_clean_tpm_censors_protocol_sensitive_structural_rnas_but_not_mirna():
+    structural = gf.clean_tpm_protocol_sensitive_gene_ids()
+    other_technical = gf.clean_tpm_other_technical_gene_ids()
+
+    assert structural <= other_technical
+    assert {
+        "ENSG00000276168",  # RN7SL1, misc_RNA
+        "ENSG00000283293",  # RN7SK, snRNA
+        "ENSG00000263934",  # SNORD3A, snoRNA
+        "ENSG00000277027",  # RMRP, ribozyme
+        "ENSG00000277209",  # RPPH1, ribozyme
+    } <= structural
+    assert "ENSG00000199017" not in structural  # MIR1-1 remains outside this class.
 
 
 def test_clean_tpm_ribosomal_pseudogene_audit_ids_in_both_references():
@@ -162,6 +179,21 @@ def test_legacy_qpcr_housekeeping_aliases_preserve_historical_panel():
 
 def test_censored_references():
     assert gf.clean_tpm_censored_gene_ids()  # the clean_tpm_v4 censored set
+    table = gf.clean_tpm_censored_genes()
+    assert {
+        "Ensembl_Gene_ID",
+        "Symbol",
+        "category",
+        "reference_tpm",
+        "reference_source",
+        "reference_profile_version",
+    } == set(table.columns)
+    assert set(table["reference_source"]) == {gf.CLEAN_TPM_CENSORED_REFERENCE_PROFILE_SOURCE}
+    assert set(table["reference_profile_version"]) == {
+        gf.CLEAN_TPM_CENSORED_REFERENCE_PROFILE_VERSION
+    }
+    assert table["reference_tpm"].ge(0).all()
+    assert set(gf.clean_tpm_censored_reference_tpm()) == set(table["Ensembl_Gene_ID"])
     ref = gf.censored_gene_reference_tpm()
     assert ref and all(isinstance(v, float) and v >= 0 for v in ref.values())
 

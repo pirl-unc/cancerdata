@@ -47,10 +47,15 @@ def test_housekeeping_reference_profile_contract():
 
 
 def _matrix():
-    tech = list(gf.gene_family_ids("mitochondrial"))[:2]
+    reference = gf.clean_tpm_censored_reference_tpm()
+    tech = [
+        gene_id
+        for gene_id in sorted(gf.gene_family_ids("mitochondrial"))
+        if reference.get(gene_id, 0) > 0
+    ][:2]
     gt = pd.DataFrame(
         {
-            "Ensembl_Gene_ID": [*tech, "ENSG00000111111", "ENSG00000222222", "ENSG00000333333"],
+            "Ensembl_Gene_ID": [*tech, "TEST_BIO1", "TEST_BIO2", "TEST_BIO3"],
             "Symbol": ["MT1", "MT2", "BIO1", "BIO2", "BIO3"],
         }
     )
@@ -69,6 +74,9 @@ def test_clean_tpm_technical_compartment_budget():
     rem = norm._censored_mask(gt, exclude_ribosomal_proteins=True).to_numpy()
     assert np.allclose(clean.loc[rem].sum(), norm.OTHER_TECHNICAL_FRACTION * 1e6)  # 90k
     assert np.allclose(clean.loc[~rem].sum(), norm.BIOLOGICAL_FRACTION * 1e6)  # 750k
+    # Technical composition is fixed to the clean-PolyA reference and therefore
+    # identical across samples despite their different raw technical values.
+    assert np.allclose(clean.loc[rem, "s1"], clean.loc[rem, "s2"])
     # within-biology ratios preserved (300:400:500)
     bio = clean.loc[~rem, "s1"].to_numpy()
     assert np.allclose(bio / bio.min(), [1.0, 4 / 3, 5 / 3])
@@ -78,11 +86,18 @@ def test_clean_tpm_three_compartments():
     # A canonical ribosomal protein gets its OWN 16% budget, distinct from the 9% technical.
     # Pick directly from the category-specific clean-TPM compartment helpers so this
     # tests the public censored-table contract, not broad family membership.
-    rpl = sorted(gf.clean_tpm_ribosomal_gene_ids())[0]
-    mito = sorted(gf.clean_tpm_other_technical_gene_ids())[0]
+    reference = gf.clean_tpm_censored_reference_tpm()
+    rpl = next(
+        gene_id for gene_id in sorted(gf.clean_tpm_ribosomal_gene_ids()) if reference[gene_id] > 0
+    )
+    mito = next(
+        gene_id
+        for gene_id in sorted(gf.clean_tpm_other_technical_gene_ids())
+        if reference[gene_id] > 0
+    )
     gt = pd.DataFrame(
         {
-            "Ensembl_Gene_ID": [rpl, mito, "ENSG00000111111", "ENSG00000222222"],
+            "Ensembl_Gene_ID": [rpl, mito, "TEST_BIO1", "TEST_BIO2"],
             "Symbol": ["RP", "MT", "BIO1", "BIO2"],
         }
     )
@@ -98,7 +113,7 @@ def test_clean_tpm_preserves_missing_source_values():
     mito = sorted(gf.clean_tpm_other_technical_gene_ids())[0]
     gt = pd.DataFrame(
         {
-            "Ensembl_Gene_ID": [rpl, mito, "ENSG00000111111"],
+            "Ensembl_Gene_ID": [rpl, mito, "TEST_BIO1"],
             "Symbol": ["RP", "MT", "BIO"],
         }
     )
@@ -121,7 +136,7 @@ def test_clean_tpm_uses_censored_table_categories_for_ribosomal_budget():
     rpl10l = "ENSG00000165496"
     gt = pd.DataFrame(
         {
-            "Ensembl_Gene_ID": [rpl10ap1, rpl10l, "ENSG00000111111"],
+            "Ensembl_Gene_ID": [rpl10ap1, rpl10l, "TEST_BIO1"],
             "Symbol": ["RPL10AP1", "RPL10L", "BIO"],
         }
     )
@@ -187,18 +202,45 @@ def test_clean_tpm_noncensored_ribosomal_paralog_stays_biology():
     rpl10l = "ENSG00000165496"
     assert rpl10l in gf.gene_family_ids("ribosomal_protein")
     assert rpl10l not in gf.clean_tpm_censored_gene_ids(include_ribosomal_proteins=True)
-    gt = pd.DataFrame({"Ensembl_Gene_ID": [rpl10l, "ENSG00000111111"], "Symbol": ["RPL10L", "BIO"]})
+    gt = pd.DataFrame({"Ensembl_Gene_ID": [rpl10l, "TEST_BIO1"], "Symbol": ["RPL10L", "BIO"]})
     ribo, tech = norm._compartment_masks(gt, exclude_ribosomal_proteins=True)
     assert not ribo.iloc[0] and not tech.iloc[0]  # neither compartment -> biology
 
 
-def test_clean_tpm_no_technical_mass():
+def test_clean_tpm_zero_observed_technical_mass_gets_polya_reference_composition():
     gt, vals = _matrix()
     rem = norm._censored_mask(gt, exclude_ribosomal_proteins=True)
     vals.loc[rem] = 0.0  # a sample/library with no technical reads
     clean = norm.clean_tpm(vals, gt)
-    assert np.allclose(clean.loc[rem.to_numpy()].sum(), 0.0)  # technical stays 0
+    assert np.allclose(clean.loc[rem.to_numpy()].sum(), 90_000.0)
     assert np.allclose(clean.loc[~rem.to_numpy()].sum(), 750_000.0)  # biology still 75%
+
+
+def test_clean_tpm_replaces_ribod_dominant_ncrna_composition_with_polya_profile():
+    rn7sl1 = "ENSG00000276168"
+    rn7sk = "ENSG00000283293"
+    gt = pd.DataFrame(
+        {
+            "Ensembl_Gene_ID": [rn7sl1, rn7sk, "TEST_BIO"],
+            "Symbol": ["RN7SL1", "RN7SK", "BIO"],
+        }
+    )
+    values = pd.DataFrame(
+        {
+            "ribod_like": [900_000.0, 1.0, 99_999.0],
+            "polya_like": [1.0, 900_000.0, 99_999.0],
+        }
+    )
+
+    clean = norm.clean_tpm(values, gt)
+    reference = gf.clean_tpm_censored_reference_tpm()
+    expected_ratio = reference[rn7sl1] / reference[rn7sk]
+
+    assert rn7sl1 in gf.technical_rna_gene_ids()
+    assert rn7sk in gf.technical_rna_gene_ids()
+    assert clean.loc[0, "ribod_like"] / clean.loc[1, "ribod_like"] == pytest.approx(expected_ratio)
+    assert np.allclose(clean.loc[[0, 1], "ribod_like"], clean.loc[[0, 1], "polya_like"])
+    assert np.allclose(clean.loc[[0, 1]].sum(), norm.OTHER_TECHNICAL_FRACTION * 1e6)
 
 
 def test_clean_tpm_validates():

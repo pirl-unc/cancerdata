@@ -81,6 +81,8 @@ CANCER_TYPE_ALIASES = {
     "testicular": "TGCT",
     "testis": "TGCT",
     "sarcoma": "SARC",
+    "cmn": "CMN",
+    "congenital_mesoblastic_nephroma": "CMN",
     "mplps": "SARC_MPLPS",
     "myxoid_pleomorphic_liposarcoma": "SARC_MPLPS",
     "pleomorphic_myxoid_liposarcoma": "SARC_MPLPS",
@@ -536,9 +538,12 @@ def viral_status(cancer_type):
 def fusion_status(cancer_type):
     """``{'status': ..., 'driver': ...}`` for a cancer type.
 
-    ``status`` ∈ {``'defining'``, ``'subtype'``, ``'rare'``, ``'none'``}.
-    ``driver`` lists the canonical fusion(s). Synonym-resolved; raises
-    ``ValueError`` on unknown input.
+    ``status`` ∈ {``'defining'``, ``'heterogeneous'``, ``'subtype'``,
+    ``'rare'``, ``'none'``}. ``heterogeneous`` means that multiple molecular
+    events are observed and no single event should be inferred from diagnosis;
+    use :func:`oncoref.cancer_driver_spectrum` for the structured event set.
+    ``driver`` lists canonical fusion(s) only when the registry declares them.
+    Synonym-resolved; raises ``ValueError`` on unknown input.
     """
     info = cancer_type_info(cancer_type)
     if info is None:
@@ -583,6 +588,7 @@ _FAMILY_DISPLAY_NAMES = {
     "heme-tcell": "T-cell neoplasm",
     "melanoma": "Melanoma",
     "neuroendocrine": "Neuroendocrine neoplasm",
+    "renal-mesenchymal": "Renal mesenchymal tumor",
     "salivary": "Salivary gland carcinoma",
     "sarcoma": "Sarcoma",
     "thymic": "Thymic epithelial tumor",

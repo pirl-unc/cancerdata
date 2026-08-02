@@ -1,0 +1,12 @@
+cancer_code,biologic_spectrum,driver_event,driver_class,gene_5prime,gene_3prime,relationship,observed_cases,assessed_cases,frequency,evidence_source,notes
+SARC_IFS,INFANTILE_MAPK_SPINDLE,ETV6-NTRK3,fusion,ETV6,NTRK3,common_observed,18,27,18/27 (67%),PMID:29915264 Supplementary Data 1,Includes two cases with a co-occurring BRAF internal deletion; diagnosis-only references must not inherit this event.
+SARC_IFS,INFANTILE_MAPK_SPINDLE,EML4-NTRK3,fusion,EML4,NTRK3,observed,1,27,1/27 (4%),PMID:29915264 Supplementary Data 1 and 3,Observed in molecularly profiled IFS26 / PD37273a.
+SARC_IFS,INFANTILE_MAPK_SPINDLE,BRAF internal deletion,intragenic_rearrangement,BRAF,BRAF,observed,3,27,3/27 (11%),PMID:29915264 Supplementary Data 1,Two of three cases also carried ETV6-NTRK3 so event counts are not mutually exclusive.
+SARC_IFS,INFANTILE_MAPK_SPINDLE,molecularly unresolved,unresolved,,,unresolved_after_targeted_screen,7,27,7/27 (26%),PMID:29915264 Supplementary Data 1,No driver was found by the stated EGFR-ITD/BRAF-ID/ETV6-NTRK3 targeted screen; this is not proof of driver absence.
+CMN,INFANTILE_MAPK_SPINDLE,EGFR kinase-domain ITD,intragenic_rearrangement,EGFR,EGFR,common_observed,43,80,43/80 (54%),PMID:29915264 Supplementary Data 1,Observed across classical mixed and cellular CMN; an EGFR event alone does not define tumor site.
+CMN,INFANTILE_MAPK_SPINDLE,ETV6-NTRK3,fusion,ETV6,NTRK3,common_observed,13,80,13/80 (16%),PMID:29915264 Supplementary Data 1,Observed in cellular CMN.
+CMN,INFANTILE_MAPK_SPINDLE,BRAF internal deletion,intragenic_rearrangement,BRAF,BRAF,observed,2,80,2/80 (3%),PMID:29915264 Supplementary Data 1 and 3,Observed in two cellular CMNs.
+CMN,INFANTILE_MAPK_SPINDLE,LMNA-NTRK1,fusion,LMNA,NTRK1,observed,1,80,1/80 (1%),PMID:29915264 Supplementary Data 1 and 3,Observed in one cellular CMN.
+CMN,INFANTILE_MAPK_SPINDLE,TPR-NTRK1,fusion,TPR,NTRK1,observed,1,80,1/80 (1%),PMID:29915264 Supplementary Data 1 and 3,Observed in one mixed CMN; normalized from the supplement's TRP-NTRK1 label using its TPR transcript annotation.
+CMN,INFANTILE_MAPK_SPINDLE,KIAA1549-BRAF,fusion,KIAA1549,BRAF,observed,1,80,1/80 (1%),PMID:29915264 Supplementary Data 1 and 3,Observed in one mixed CMN.
+CMN,INFANTILE_MAPK_SPINDLE,molecularly unresolved,unresolved,,,unresolved_after_targeted_screen,19,80,19/80 (24%),PMID:29915264 Supplementary Data 1,No driver was found by the stated targeted screen; this is not proof of driver absence.

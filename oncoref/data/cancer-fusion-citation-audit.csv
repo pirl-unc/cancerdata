@@ -13,6 +13,11 @@ SARC_ASPS,ASPSCR1-TFE3,ASPSCR1,TFE3,PMID:17543078,Detection of the ASPSCR1-TFE3 
 SARC_CCS,EWSR1-ATF1,EWSR1,ATF1,PMID:19561568,Detection and characterization of EWSR1/ATF1 and EWSR1/CREB1 chimeric transcripts in clear cell sarcoma (melanoma of soft parts).,2009,true,true,2026-07-17
 SARC_CCS,EWSR1-CREB1,EWSR1,CREB1,PMID:19561568,Detection and characterization of EWSR1/ATF1 and EWSR1/CREB1 chimeric transcripts in clear cell sarcoma (melanoma of soft parts).,2009,true,true,2026-07-17
 SARC_IFS,ETV6-NTRK3,ETV6,NTRK3,PMID:9462753,A novel ETV6-NTRK3 gene fusion in congenital fibrosarcoma.,1998,true,true,2026-07-17
+SARC_IFS,EML4-NTRK3,EML4,NTRK3,PMID:29915264,Recurrent intragenic rearrangements of EGFR and BRAF in soft tissue tumors of infants.,2018,true,true,2026-08-02
+CMN,ETV6-NTRK3,ETV6,NTRK3,PMID:29915264,Recurrent intragenic rearrangements of EGFR and BRAF in soft tissue tumors of infants.,2018,true,true,2026-08-02
+CMN,LMNA-NTRK1,LMNA,NTRK1,PMID:29915264,Recurrent intragenic rearrangements of EGFR and BRAF in soft tissue tumors of infants.,2018,true,true,2026-08-02
+CMN,TPR-NTRK1,TPR,NTRK1,PMID:29915264,Recurrent intragenic rearrangements of EGFR and BRAF in soft tissue tumors of infants.,2018,true,true,2026-08-02
+CMN,KIAA1549-BRAF,KIAA1549,BRAF,PMID:29915264,Recurrent intragenic rearrangements of EGFR and BRAF in soft tissue tumors of infants.,2018,true,true,2026-08-02
 SARC_EHE,WWTR1-CAMTA1,WWTR1,CAMTA1,PMID:21885404,Identification of a disease-defining gene fusion in epithelioid hemangioendothelioma.,2011,true,true,2026-07-17
 SARC_EHE,YAP1-TFE3,YAP1,TFE3,PMID:23737213,Novel YAP1-TFE3 fusion defines a distinct subset of epithelioid hemangioendothelioma.,2013,true,true,2026-07-17
 SARC_LGFMS,FUS-CREB3L2,FUS,CREB3L2,PMID:15139001,The chimeric FUS/CREB3l2 gene is specific for low-grade fibromyxoid sarcoma.,2004,true,true,2026-07-17

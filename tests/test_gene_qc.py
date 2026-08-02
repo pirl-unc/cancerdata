@@ -17,7 +17,7 @@ def test_symbol_regex_classification():
         "RPL13AP5": "ribosomal_protein_pseudogene",
         "MALAT1": "polyadenylation_bias_lncrna",
         "NEAT1": "polyadenylation_bias_lncrna",
-        "SNORD3A": "small_ncrna",
+        "SNORD3A": "protocol_sensitive_structural_rna",
         "H2BC1": "histone",
         "HBA1": "hemoglobin",
         "IGHV1-2": "immune_receptor",
@@ -52,11 +52,9 @@ def test_ensembl_id_first_lookup():
 
 
 def test_symbol_path_returns_coarse_labels():
-    # The bare symbol-regex path returns the coarse family label for mt/snoRNA
-    # (refinement of those applies only via the family/ENSG path) — faithful to
-    # pirlygenes. (rRNA refinement IS inline in the symbol regex.)
+    # Global technical symbols use the same refined label with or without an ENSG.
     assert qc.classify_gene_qc("MT-TA").label == "mitochondrial transcript"
-    assert qc.classify_gene_qc("SNORD3A").label == "small noncoding RNA"
+    assert qc.classify_gene_qc("SNORD3A").label == "small nucleolar RNA (C/D box)"
     assert qc.classify_gene_qc("RNA18S5").label == "18S rRNA-like"
 
 

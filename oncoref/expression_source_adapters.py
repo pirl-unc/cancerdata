@@ -114,6 +114,14 @@ class GeoMicroarrayGroup:
 
 
 MICROARRAY_GROUPS = {
+    "cmn": GeoMicroarrayGroup(
+        source_id="gse11482-cmn",
+        accession="GSE11482",
+        platform_id="GPL96",
+        platform_name="Affymetrix HG-U133A",
+        sample_patterns={"CMN": r"(?i)cellular mesoblastic nephroma"},
+        expected_samples={"CMN": 12},
+    ),
     "mtc": GeoMicroarrayGroup(
         source_id="gse32662-mtc",
         accession="GSE32662",

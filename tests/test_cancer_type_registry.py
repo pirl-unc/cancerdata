@@ -22,6 +22,7 @@ from oncoref import (
     cancer_types,
     cohort_aggregate_members,
     cohort_registry_df,
+    resolve_cancer_type,
 )
 
 _CSV = Path(__file__).resolve().parents[1] / "oncoref" / "data" / "cancer-type-registry.csv"
@@ -73,6 +74,17 @@ def test_parent_code_referential_integrity():
 
 def test_crc_hierarchy():
     assert set(cancer_type_subtypes_of("CRC")) >= {"COAD", "READ"}
+
+
+def test_cmn_is_canonical_and_ifs_remains_a_classification_target():
+    raw = pd.read_csv(_CSV, dtype=str, keep_default_na=False).set_index("code")
+
+    assert resolve_cancer_type("cmn") == "CMN"
+    assert resolve_cancer_type("congenital_mesoblastic_nephroma") == "CMN"
+    assert resolve_cancer_type("CMN") not in {"SARC_IFS", "WILMS", "SARC"}
+    assert raw.loc["CMN", "parent_code"] == ""
+    assert raw.loc["CMN", "is_classification_target"] == "False"
+    assert raw.loc["SARC_IFS", "is_classification_target"] == "True"
 
 
 def test_computed_expression_sources_have_members():

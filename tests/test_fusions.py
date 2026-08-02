@@ -10,15 +10,43 @@ import pandas as pd
 import pytest
 
 from oncoref import (
+    cancer_driver_spectrum,
     cancer_fusion_citation_audit,
     cancer_fusions,
     cancer_fusions_df,
     cancer_type_registry,
     cancer_types_with_fusion,
     fusion_partners,
+    fusion_status,
     fusions,
     protein_family,
 )
+
+
+def test_ifs_driver_model_is_heterogeneous_and_diagnosis_independent():
+    assert fusion_status("SARC_IFS") == {"status": "heterogeneous", "driver": ""}
+    spectrum = cancer_driver_spectrum("SARC_IFS")
+    assert {
+        "ETV6-NTRK3",
+        "EML4-NTRK3",
+        "BRAF internal deletion",
+        "molecularly unresolved",
+    } == set(spectrum["driver_event"])
+
+    ifs = cancer_fusions("SARC_IFS")
+    assert set(zip(ifs["gene_5prime"], ifs["gene_3prime"])) == {
+        ("ETV6", "NTRK3"),
+        ("EML4", "NTRK3"),
+    }
+    assert not ifs["is_defining"].astype(str).str.lower().eq("true").any()
+    assert "SARC_IFS" not in cancer_types_with_fusion("ETV6-NTRK3", defining_only=True)
+
+
+def test_cmn_and_ntrk_spindle_are_distinct_entities_with_nondefining_overlap():
+    cmn_events = set(cancer_driver_spectrum("CMN")["driver_event"])
+    assert {"EGFR kinase-domain ITD", "ETV6-NTRK3", "LMNA-NTRK1"} <= cmn_events
+    assert "SARC_NTRK_SPINDLE" not in set(cancer_driver_spectrum("CMN")["cancer_code"])
+    assert "CMN" not in cancer_types_with_fusion("ETV6-NTRK3", defining_only=True)
 
 
 def test_fusions_for_subtype():

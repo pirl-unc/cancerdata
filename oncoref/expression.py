@@ -1655,7 +1655,7 @@ def _attach_gene_universe_delta_attrs(
 _PER_SAMPLE_NORMALIZE = ("tpm_raw", "tpm_clean", "tpm_clean_log1p", "tpm_clean_hk")
 _SAMPLE_QC_MODES = ("all", "pass", "pass_or_warn")
 _ARTIFACT_SAMPLE_QC_MODES = ("artifact", *_SAMPLE_QC_MODES)
-SAMPLE_EXPRESSION_QC_POLICY_VERSION = "sample_expression_qc_v2"
+SAMPLE_EXPRESSION_QC_POLICY_VERSION = "sample_expression_qc_v3"
 EXPRESSION_ARTIFACT_BUILD_METADATA_SCHEMA_VERSION = "expression_artifact_build_metadata_v3"
 SOURCE_MATRIX_SAMPLE_QC_MANIFEST_PATH = "source-matrix-sample-qc.csv"
 EXPRESSION_ARTIFACT_BUILD_METADATA_PATH = "expression-artifact-build-metadata.csv"
@@ -1890,6 +1890,11 @@ def sample_expression_qc_from_matrix(
     This is the shared policy core behind the public read-path QC and the offline
     artifact rebuild. It canonicalizes gene rows before measuring sparsity so the QC
     contract is evaluated in the same gene-ID space used by expression accessors.
+
+    Raw top-gene fractions remain in the output as assay diagnostics. Concentration
+    pass/fail gates use ``top1_fraction_clean`` and ``top10_fraction_clean`` because
+    clean TPM first confines protocol-sensitive RNA to its fixed compartment; raw
+    fractions would systematically reject valid ribo-depleted libraries.
     """
     code = (
         resolve_cancer_type(cancer_type, strict=False) or cancer_type
@@ -1989,12 +1994,12 @@ def sample_expression_qc_from_matrix(
                 flags.append("low_housekeeping_floor_fraction")
             if pd.notna(zero_fraction) and zero_fraction > max_zero_fraction:
                 flags.append("high_zero_fraction")
-            if pd.notna(top_fraction) and top_fraction > max_top_gene_fraction:
+            if pd.notna(clean_top_fraction) and clean_top_fraction > max_top_gene_fraction:
                 flags.append("high_top_gene_fraction")
             if (
                 n_measured > 10
-                and pd.notna(top10_fraction)
-                and top10_fraction > max_top10_gene_fraction
+                and pd.notna(clean_top10_fraction)
+                and clean_top10_fraction > max_top10_gene_fraction
             ):
                 flags.append("high_top10_gene_fraction")
         else:
@@ -2684,7 +2689,7 @@ def source_matrix_sample_qc_manifest(
             missing_reason="source-matrix sample QC manifest not present in bundle",
         )
 
-    out = pd.read_csv(path)
+    out = pd.read_csv(path, low_memory=False)
     for col in _SOURCE_MATRIX_SAMPLE_QC_MANIFEST_COLUMNS:
         if col not in out.columns:
             out[col] = pd.NA
@@ -3149,9 +3154,9 @@ def cancer_reference_expression(
     percentile artifacts supply clean/log clean TPM and raw TPM is recomputed from
     source matrices. ``reference_source="summary_rows"`` reads the shipped
     per-source ``cancer-reference-expression`` sidecars for ``sample_qc="all"`` and
-    chooses one source per cancer code by a deterministic richest-source-wins policy
-    (most genes, then most samples, then primary before mixed/metastatic, then source
-    name). For ``sample_qc="pass"`` or ``"pass_or_warn"``, it recomputes the same
+    uses the one source explicitly selected in the availability manifest. Gene and
+    sample counts never promote an alternative physical source. For
+    ``sample_qc="pass"`` or ``"pass_or_warn"``, it recomputes the same
     reference summaries from source matrices at read time so QC-filtered views are not
     silently backed by all-sample build artifacts.
     ``reference_source="summary_rows_all"`` is the source-union view over those
@@ -3160,7 +3165,7 @@ def cancer_reference_expression(
     long-form ``pool=True``. Source/code/gene filters are applied while reading the
     selected per-source shards, before any concatenation. Because the shipped
     sidecars are all-sample summaries, this mode requires ``sample_qc="all"``. Use
-    ``summary_rows`` for the current QC-filtered richest-source recompute path. For
+    ``summary_rows`` for the current QC-filtered selected-source recompute path. For
     both source filters, ``None`` means unfiltered; an empty iterable or blank scalar
     explicitly matches no sources.
 
@@ -4442,7 +4447,7 @@ def _reference_summary_available_codes(
 
 @lru_cache(maxsize=1)
 def _reference_summary_source_table() -> pd.DataFrame:
-    """Rank sources from the compact manifest without loading expression rows."""
+    """Validated source choices from the compact manifest, without expression rows."""
 
     columns = [
         "cancer_code",
@@ -4462,9 +4467,32 @@ def _reference_summary_source_table() -> pd.DataFrame:
     ).copy()
     if table.empty:
         return pd.DataFrame(columns=columns)
+    has_selected_column = "selected" in table.columns
     for column in columns:
         if column not in table.columns:
             table[column] = pd.NA
+    if not has_selected_column:
+        source_counts = table.groupby("cancer_code", observed=True)["source_cohort"].size()
+        ambiguous = source_counts[source_counts.ne(1)]
+        if not ambiguous.empty:
+            raise ValueError(
+                "reference availability without a selected column must contain exactly "
+                f"one source per cancer code: {ambiguous.astype(int).to_dict()}"
+            )
+        selected = pd.Series(True, index=table.index, dtype=bool)
+    else:
+        selected = table["selected"].map(_optional_bool)
+    if selected.isna().any():
+        invalid = sorted(table.loc[selected.isna(), "selected"].astype(str).unique())
+        raise ValueError(f"reference availability has invalid selected values: {invalid}")
+    table["selected"] = selected.astype(bool)
+    selected_counts = table.groupby("cancer_code", observed=True)["selected"].sum()
+    invalid_codes = selected_counts[selected_counts.ne(1)]
+    if not invalid_codes.empty:
+        raise ValueError(
+            "reference availability must select exactly one source per cancer code: "
+            f"{invalid_codes.astype(int).to_dict()}"
+        )
     table["_origin_rank"] = (
         table["tumor_origin"]
         .fillna("")
@@ -4476,11 +4504,17 @@ def _reference_summary_source_table() -> pd.DataFrame:
     )
     table["_source_sort"] = table["source_cohort"].astype("string").fillna("")
     table = table.sort_values(
-        ["cancer_code", "n_reference_genes", "n_reference_samples", "_origin_rank", "_source_sort"],
-        ascending=[True, False, False, True, True],
+        [
+            "cancer_code",
+            "selected",
+            "n_reference_genes",
+            "n_reference_samples",
+            "_origin_rank",
+            "_source_sort",
+        ],
+        ascending=[True, False, False, False, True, True],
         kind="stable",
     )
-    table["selected"] = ~table["cancer_code"].astype(str).duplicated()
     return table.drop(columns=["_origin_rank", "_source_sort"])[columns].reset_index(drop=True)
 
 

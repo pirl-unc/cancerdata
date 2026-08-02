@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "1.8.170"
+__version__ = "1.8.171"
 
 # Version of the downloadable data bundle (the heavy per-cohort percentile +
 # representative shards). Bump when the DERIVED reference artifacts change — it pins
@@ -43,14 +43,17 @@ __version__ = "1.8.170"
 # repaired BeatAML passthrough summaries from QC-pass samples in the existing
 # source matrices. 5.23.16 corrects those BeatAML summaries by applying the
 # declared canonical 16/9/75 clean-TPM transform to the raw source matrices.
-DATA_VERSION = "5.23.16"
+# 5.23.17 adds public IFS/CMN physical sources and rebuilds all cohorts after
+# classifying protocol-sensitive structural ncRNAs in clean TPM's technical
+# compartment; concentration QC now evaluates the clean rather than raw space.
+DATA_VERSION = "5.23.17"
 
 # Version of the per-cohort RAW source matrices (source_matrices.py). Independent of
 # DATA_VERSION: the source matrices are the unchanging raw-TPM inputs, while DATA_VERSION
 # tracks the derived bundle that's rebuilt from them. Canonicalization happens downstream
 # (read/build time), so a canonical-space bundle bump must NOT repoint — or orphan the
 # local caches of — these raw matrices. Bump only when a cohort's raw matrix changes.
-SOURCE_MATRIX_VERSION = "5.22.9"
+SOURCE_MATRIX_VERSION = "5.22.10"
 
 version_string = f"v{__version__}"
 
