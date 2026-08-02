@@ -75,6 +75,7 @@ jobs:
       # Keep real-data test fixtures under the workspace so actions/cache can archive them.
       CANCERDATA_SOURCE_MATRICES: ${{ github.workspace }}/.ci-cache/source-matrices
       CANCERDATA_DATA_DIR: ${{ github.workspace }}/.ci-cache/reference-data
+      CANCERDATA_BUNDLED_DATA: ${{ github.workspace }}/.ci-cache/bundled-data
       # Pin the fixture by content, independently of an unreleased source-version bump.
       CI_LUAD_SOURCE_URL: https://github.com/pirl-unc/oncoref/releases/download/source-v5.22.8/LUAD_per_sample_tpm.parquet
       CI_LUAD_SHA256: 001ebb9ad18aea86599ff5d808851007523f6d8f0927dfdf2a2f39372f83ffc5
@@ -158,7 +159,7 @@ jobs:
           import urllib.request
           from pathlib import Path
 
-          from oncoref import reference_data
+          from oncoref import data_bundle, reference_data
 
           def sha256(path):
               digest = hashlib.sha256()
@@ -183,7 +184,7 @@ jobs:
               temporary_path.replace(acc_reference)
 
           bundle_acc_reference = (
-              Path(os.environ["CANCERDATA_DATA_DIR"])
+              data_bundle.cache_dir()
               / "cancer-reference-expression-percentiles"
               / "ACC.parquet"
           )

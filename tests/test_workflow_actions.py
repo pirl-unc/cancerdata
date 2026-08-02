@@ -63,6 +63,7 @@ def test_test_workflow_stages_required_real_data():
         "/ci-fixtures-v1/ACC_reference_percentiles_v5.23.2.parquet"
     )
     assert "CANCERDATA_DATA_DIR" in test_job["env"]
+    assert "CANCERDATA_BUNDLED_DATA" in test_job["env"]
     assert test_job["env"]["CI_HPA_RNA_SHA256"] == (
         "c49b5b33a076e3b9c1eb4f7d15d063ee936e07045e192ceccfeb9edcf1d90ddb"
     )
@@ -89,6 +90,8 @@ def test_test_workflow_stages_required_real_data():
     )
     assert 'os.environ["ONCOREF_CI_ACC_PERCENTILE_REFERENCE"]' in reference_step["run"]
     assert "import shutil" in reference_step["run"]
+    assert "from oncoref import data_bundle, reference_data" in reference_step["run"]
+    assert "data_bundle.cache_dir()" in reference_step["run"]
     assert '"cancer-reference-expression-percentiles"' in reference_step["run"]
     assert "shutil.copy2(acc_reference, bundle_acc_reference)" in reference_step["run"]
     assert '"hpa_rna_consensus": os.environ["CI_HPA_RNA_SHA256"]' in reference_step["run"]
