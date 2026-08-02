@@ -97,9 +97,13 @@ separable cohort, as with the current STAD/UCEC molecular subtype rows.
 Computed expression pools are also explicit. Use `computed_union_codes()` for
 registry rows whose `expression_source="computed"` and
 `reference_source_codes("member_union")` for all member-union
-references, including source-scope unions such as `CRC_MSI`, `NSCLC`, `BTC`, and
-`SGC`. The latter remains a reference-only union because its reviewed
+references, including source-scope unions such as `CRC_MSI`, `NSCLC`, and
+`SGC`. SGC remains a reference-only union because its reviewed
 `is_classification_target` policy is false.
+
+Source-scope union membership is all-or-nothing. BTC declares `CHOL ∪ GBC`, but
+GBC has no selected expression matrix, so BTC reports `reference_source="none"`,
+is not a classification target, and does not return CHOL alone as pan-BTC data.
 
 ### Category queries
 
@@ -193,7 +197,7 @@ histologies and are deliberately excluded from those two references.
 `expression_reference_coverage()` is the ontology-wide readiness table for
 classifier consumers. It reports direct observed-bulk source-matrix coverage,
 computed member-union references for curated grouping/source-scope codes such as
-`NET`, `CRC`, `CRC_MSI`, `NSCLC`, `BTC`, and `SGC`, parent fallback via
+`NET`, `CRC`, `CRC_MSI`, `NSCLC`, and `SGC`, parent fallback via
 `classification_reference_code`, explicit `is_classification_target` eligibility,
 matched normal tissue availability,
 molecular/fusion-only definitions, canonical gene/proteoform space, data/source
@@ -697,8 +701,10 @@ columns are `<CODE>_FPKM_raw`, deterministic TCGA TPM companions are
 `column_style="pirlygenes"`; the legacy `to_tpm=True` keyword is accepted as a
 compatibility alias for that view and maps the default call to `normalize="tpm"`.
 The pan-cancer view also emits raw-TPM companion columns for member-backed
-grouping/source-scope references (`NET`, `CRC`, `NSCLC`, `BTC`, `SGC`) by pooling
+grouping/source-scope references (`NET`, `CRC`, `NSCLC`, `SGC`) by pooling
 the selected `cancer-reference-expression` summary rows with n-sample weights.
+Incomplete closed unions are omitted, so BTC is not emitted until both CHOL and
+GBC are reference-backed.
 Existing directly sourced columns, including `SARC` and `OV`, keep their current
 source-table behavior.
 

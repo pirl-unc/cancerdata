@@ -1603,7 +1603,12 @@ def _definition_kind(record, raw_record) -> tuple[str, ...]:
 
 
 def _computed_expression_reference_members(code: str) -> tuple[str, ...]:
-    """Direct-expression members that define a computed reference for a grouping code."""
+    """Direct-expression members that define a computed reference for a grouping code.
+
+    Source-scope unions are diagnostic umbrellas with closed membership, so
+    every declared member must be reference-backed. Broader computed rollups
+    intentionally pool their available expression-bearing atoms.
+    """
     code = str(code)
     members = cohort_aggregate_members(code)
     if members is None:
@@ -1611,7 +1616,10 @@ def _computed_expression_reference_members(code: str) -> tuple[str, ...]:
     if not members:
         return ()
     source_codes = set(_source_matrix_frame()["cancer_code"].dropna().astype(str))
-    return tuple(member for member in members if member in source_codes)
+    available_members = tuple(member for member in members if member in source_codes)
+    if code in _SOURCE_SCOPE_MEMBER_UNION_CODES and set(available_members) != set(members):
+        return ()
+    return available_members
 
 
 def _computed_expression_reference_sample_count(member_codes: tuple[str, ...]) -> int | None:

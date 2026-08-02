@@ -52,7 +52,6 @@ class ExpressionSource:
     unit: str | None = None
     expected_size_gb: float | None = None
     citation: str | None = None
-    source_pmid: str | None = None
     special_handling: str | None = None
     recount3_srp: str | None = None
     source_cohort: str | None = None
@@ -67,6 +66,7 @@ class ExpressionSource:
     acquisition_status: str | None = None
     data_access_url: str | None = None
     molecular_annotation_status: str | None = None
+    source_pmid: str | None = None
 
 
 def _coerce_tuple(value) -> tuple[str, ...]:

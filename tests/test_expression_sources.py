@@ -43,6 +43,46 @@ def test_lookup_by_id_and_code():
     assert any(s.id == "mmrf-commpass" for s in es.sources_for_cancer_code("MM"))
 
 
+def test_expression_source_preserves_legacy_positional_constructor_order():
+    source = es.ExpressionSource(
+        "source-id",
+        "expression",
+        ("CODE",),
+        "geo-matrix",
+        "builder.py",
+        ("--flag",),
+        "external exemption",
+        True,
+        "project-id",
+        ("project-a",),
+        "GSE000001",
+        "https://example.org/data",
+        "TPM",
+        1.5,
+        "citation",
+        "special handling",
+        "SRP000001",
+        "SOURCE_COHORT",
+        "PolyA",
+        "GEO",
+        "v1",
+        "primary",
+        "liver",
+        "pipeline",
+        "notes",
+        "controlled",
+        "access_required",
+        "https://example.org/access",
+        "sample_level_annotations",
+    )
+
+    assert source.special_handling == "special handling"
+    assert source.recount3_srp == "SRP000001"
+    assert source.source_cohort == "SOURCE_COHORT"
+    assert source.molecular_annotation_status == "sample_level_annotations"
+    assert source.source_pmid is None
+
+
 def test_ess_artifact_source_has_typed_provenance():
     source = es.expression_source("gse85383-ess")
 

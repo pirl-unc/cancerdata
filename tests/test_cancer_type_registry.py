@@ -122,6 +122,8 @@ def test_source_scoped_clinical_aggregates_are_not_expression_computed():
     assert bool(records.loc["NSCLC", "has_expression_matrix"]) is False
     assert records.loc["NSCLC", "reference_source"] == "member_union"
     assert cohort_aggregate_members("BTC") == ["CHOL", "GBC"]
+    assert records.loc["BTC", "reference_source"] == "none"
+    assert bool(records.loc["BTC", "is_classification_target"]) is False
     assert cohort_aggregate_members("SGC") == ["ACINIC", "ADCC"]
     assert cohort_aggregate_members("NSCLC") == ["LUAD", "LUSC"]
 
@@ -130,9 +132,10 @@ def test_source_scope_mixture_targets_follow_reviewed_registry_policy():
     raw = pd.read_csv(_CSV, dtype=str, keep_default_na=False).set_index("code")
     records = cancer_type_records().set_index("code")
     source_scope_mixtures = raw[
-        (raw["ontology_kind"].str.lower() == "source_scope")
+        (raw["ontology_level"].str.lower() == "grouping")
+        & (raw["ontology_kind"].str.lower() == "source_scope")
+        & raw["parent_code"].eq("")
         & raw["mixture_cohort"].str.lower().isin({"true", "1", "yes"})
-        & (records["reference_source"] == "member_union")
     ]
 
     declared_targets = set(
@@ -148,8 +151,13 @@ def test_source_scope_mixture_targets_follow_reviewed_registry_policy():
         ]
     )
     assert declared_targets == {"BTC", "NSCLC"}
-    assert effective_targets == declared_targets
+    assert effective_targets == {"NSCLC"}
     assert set(source_scope_mixtures.index) == {"BTC", "NSCLC", "SGC"}
+    assert records.loc[source_scope_mixtures.index, "reference_source"].to_dict() == {
+        "BTC": "none",
+        "NSCLC": "member_union",
+        "SGC": "member_union",
+    }
 
 
 def test_nec_merkel_registry_points_to_built_expression_source():
