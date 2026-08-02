@@ -4,7 +4,9 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 
+import sys
 from pathlib import Path
+from types import ModuleType
 
 import pandas as pd
 import pytest
@@ -12,6 +14,8 @@ import pytest
 pytest.importorskip("matplotlib")
 
 from oncoref import cli, data_bundle, plots
+
+pytestmark = pytest.mark.xdist_group("plots")
 
 
 @pytest.fixture(autouse=True)
@@ -24,9 +28,29 @@ def _close_figures_after_test():
 
 def test_apd1_vs_tmb_renders(tmp_path):
     out = tmp_path / "apd1_vs_tmb.png"
-    fig = plots.apd1_vs_tmb(save=str(out))
+    fig = plots.apd1_vs_tmb(annotate=False, save=str(out))
     assert out.exists() and out.stat().st_size > 0
     assert fig is not None
+
+
+def test_scatter_label_adjustment_has_a_runtime_bound(monkeypatch):
+    observed = {}
+    fake_adjust_text = ModuleType("adjustText")
+
+    def adjust_text(texts, **kwargs):
+        observed["texts"] = texts
+        observed.update(kwargs)
+
+    fake_adjust_text.adjust_text = adjust_text
+    monkeypatch.setitem(sys.modules, "adjustText", fake_adjust_text)
+
+    texts = [object()]
+    axis = object()
+    plots._repel_labels(axis, texts)
+
+    assert observed["texts"] == texts
+    assert observed["ax"] is axis
+    assert observed["time_lim"] == 1.0
 
 
 def test_apd1_vs_tmb_strict_pd1_filters_proxy_targets(tmp_path):
@@ -238,8 +262,9 @@ def test_cli_plot_threshold_tpm_is_opt_in(monkeypatch, tmp_path):
 
 
 def test_cta_expression_heatmap_renders(tmp_path):
-    if not data_bundle.item_is_local("cancer-reference-expression-percentiles"):
-        pytest.skip("percentile artifacts not present locally")
+    assert data_bundle.item_is_local("cancer-reference-expression-percentiles"), (
+        "tests require a staged percentile artifact"
+    )
 
     out = tmp_path / "cta.png"
     cohorts = __import__("oncoref").available_percentile_cohorts()[:6]

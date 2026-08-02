@@ -3031,6 +3031,7 @@ def test_released_ifs_cmn_physical_sources_are_individually_loadable():
         ("CMN", "TREEHOUSE_RIBOD_25_01"): 1,
     }
 
+    loaded = {}
     for (code, source_cohort), n_samples in expected_samples.items():
         rows = expression.cancer_reference_expression(
             code,
@@ -3042,14 +3043,9 @@ def test_released_ifs_cmn_physical_sources_are_individually_loadable():
         assert not rows.empty
         assert set(rows["source_cohort"]) == {source_cohort}
         assert set(rows["n_reference_samples"]) == {n_samples}
+        loaded[(code, source_cohort)] = rows
 
-    cmn_array = expression.cancer_reference_expression(
-        "CMN",
-        normalize="tpm_raw",
-        reference_source="summary_rows_all",
-        sample_qc="all",
-        source_cohort="GSE11482_GADD_2010_CMN",
-    )
+    cmn_array = loaded[("CMN", "GSE11482_GADD_2010_CMN")]
     assert set(cmn_array["source_scale_class"]) == {"microarray_tpm_proxy"}
     assert not cmn_array["linear_tpm_comparable"].any()
 

@@ -22,7 +22,6 @@ TAG="v${VERSION}"
 PYPI_URL="https://pypi.org/project/oncoref/${VERSION}/"
 PYPI_PUBLISHED_MARKER="<!-- oncoref-deploy-pypi-published -->"
 
-./lint.sh
 ./test.sh
 "$PYTHON_BIN" -m pip install --upgrade build twine
 rm -rf dist

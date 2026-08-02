@@ -63,6 +63,7 @@ def test_test_workflow_stages_required_real_data():
         "/ci-fixtures-v1/ACC_reference_percentiles_v5.23.2.parquet"
     )
     assert "CANCERDATA_DATA_DIR" in test_job["env"]
+    assert "CANCERDATA_BUNDLED_DATA" in test_job["env"]
     assert test_job["env"]["CI_HPA_RNA_SHA256"] == (
         "c49b5b33a076e3b9c1eb4f7d15d063ee936e07045e192ceccfeb9edcf1d90ddb"
     )
@@ -88,6 +89,11 @@ def test_test_workflow_stages_required_real_data():
         step for step in test_job["steps"] if step["name"] == "Stage required reference data"
     )
     assert 'os.environ["ONCOREF_CI_ACC_PERCENTILE_REFERENCE"]' in reference_step["run"]
+    assert "import shutil" in reference_step["run"]
+    assert "from oncoref import data_bundle, reference_data" in reference_step["run"]
+    assert "data_bundle.cache_dir()" in reference_step["run"]
+    assert '"cancer-reference-expression-percentiles"' in reference_step["run"]
+    assert "shutil.copy2(acc_reference, bundle_acc_reference)" in reference_step["run"]
     assert '"hpa_rna_consensus": os.environ["CI_HPA_RNA_SHA256"]' in reference_step["run"]
     assert '"hpa_normal_tissue": os.environ["CI_HPA_NORMAL_TISSUE_SHA256"]' in reference_step["run"]
 
@@ -103,7 +109,9 @@ def test_test_commands_use_bounded_parallelism_with_coverage():
     for command in (workflow_command, local_command):
         arguments = shlex.split(command)
         assert arguments[arguments.index("-n") + 1] == "2"
-        assert arguments[arguments.index("--dist") + 1] == "load"
+        assert arguments[arguments.index("--dist") + 1] == "loadgroup"
+        assert arguments[arguments.index("--durations") + 1] == "20"
+        assert arguments[arguments.index("--durations-min") + 1] == "0.5"
         assert "--cov=oncoref" in arguments
     assert "--cov-report=xml" in shlex.split(workflow_command)
     assert "--cov-report=term-missing" in shlex.split(local_command)
