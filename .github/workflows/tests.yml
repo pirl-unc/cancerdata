@@ -218,4 +218,7 @@ jobs:
           PY
 
       - name: Run unit tests
-        run: pytest tests/ -v -n 2 --dist load --cov=oncoref --cov-report=xml
+        run: >-
+          pytest tests/ -v -n 2 --dist loadgroup
+          --durations 20 --durations-min 0.5
+          --cov=oncoref --cov-report=xml

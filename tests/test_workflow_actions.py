@@ -103,7 +103,9 @@ def test_test_commands_use_bounded_parallelism_with_coverage():
     for command in (workflow_command, local_command):
         arguments = shlex.split(command)
         assert arguments[arguments.index("-n") + 1] == "2"
-        assert arguments[arguments.index("--dist") + 1] == "load"
+        assert arguments[arguments.index("--dist") + 1] == "loadgroup"
+        assert arguments[arguments.index("--durations") + 1] == "20"
+        assert arguments[arguments.index("--durations-min") + 1] == "0.5"
         assert "--cov=oncoref" in arguments
     assert "--cov-report=xml" in shlex.split(workflow_command)
     assert "--cov-report=term-missing" in shlex.split(local_command)

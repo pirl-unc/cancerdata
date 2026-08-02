@@ -6,6 +6,8 @@
 
 """Unit tests for the pure gene-ranking helpers (no Ensembl release needed)."""
 
+from types import SimpleNamespace
+
 import pytest
 
 from oncoref import genome as gx
@@ -24,6 +26,57 @@ class _Gene:
         self.name = name
         self.transcripts = transcripts
         self.biotype = biotype
+
+
+@pytest.fixture(autouse=True)
+def _clear_id_resolver_caches():
+    resolvers = (
+        gx.find_gene_name_from_ensembl_gene_id,
+        gx.find_gene_name_from_ensembl_transcript_id,
+    )
+    for resolver in resolvers:
+        resolver.cache_clear()
+    yield
+    for resolver in resolvers:
+        resolver.cache_clear()
+
+
+def test_id_resolvers_reject_malformed_ids_without_opening_a_genome(monkeypatch):
+    monkeypatch.setattr(
+        gx, "genomes", lambda: pytest.fail("malformed IDs must not query pyensembl")
+    )
+
+    assert gx.find_gene_name_from_ensembl_gene_id("ENSG_FAKE") is None
+    assert gx.find_gene_name_from_ensembl_transcript_id("ENST_FAKE") is None
+
+
+def test_transcript_resolver_queries_releases_directly_and_caches(monkeypatch):
+    calls = []
+
+    class Genome:
+        def __init__(self, gene_name=None):
+            self.gene_name = gene_name
+
+        def transcript_by_id(self, transcript_id):
+            calls.append((self.gene_name, transcript_id))
+            if self.gene_name is None:
+                raise ValueError(transcript_id)
+            return SimpleNamespace(gene_name=self.gene_name)
+
+    monkeypatch.setattr(gx, "genomes", lambda: [Genome(), Genome("TP53")])
+
+    assert gx.find_gene_name_from_ensembl_transcript_id("ENST00000269305.9") == "TP53"
+    assert gx.find_gene_name_from_ensembl_transcript_id("ENST00000269305.9") == "TP53"
+    assert calls == [(None, "ENST00000269305"), ("TP53", "ENST00000269305")]
+
+
+def test_gene_resolver_queries_exact_ids_without_materializing_release(monkeypatch):
+    genome = SimpleNamespace(
+        gene_by_id=lambda gene_id: SimpleNamespace(gene_name=None, name="TP53")
+    )
+    monkeypatch.setattr(gx, "genomes", lambda: [genome])
+
+    assert gx.find_gene_name_from_ensembl_gene_id("ENSG00000141510") == "TP53"
 
 
 def test_best_transcript_support_prefers_lower_tsl():

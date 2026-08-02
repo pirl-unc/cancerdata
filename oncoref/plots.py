@@ -265,8 +265,8 @@ def _family_legend_handles(plt, fam_color):
 def _repel_labels(ax, texts):
     """Nudge point labels apart so they don't overlap, drawing thin leader lines back to
     the points (uses ``adjustText`` when installed; a no-op fallback otherwise). Best-effort
-    and cosmetic — it must never break figure generation, so any failure degrades to
-    un-repelled labels rather than raising."""
+    and cosmetic: work is capped at one second, and any failure degrades to un-repelled
+    labels rather than breaking figure generation."""
     if not texts:
         return
     try:
@@ -276,6 +276,7 @@ def _repel_labels(ax, texts):
             texts,
             ax=ax,
             expand=(1.05, 1.2),
+            time_lim=1.0,
             arrowprops={"arrowstyle": "-", "color": "0.6", "lw": 0.4},
         )
     except Exception:  # cosmetic label placement — never fatal to figure generation
