@@ -16,10 +16,9 @@ These need only oncoref-owned data (TMB, anti-PD-1 ORR, incidence/mortality,
 the cancer-type registry for lineage colors) — no CTA or peptide data — so they
 have no dependency on the target-selection libraries.
 
-matplotlib is an optional extra (``pip install oncoref[plots]``); it is
-imported lazily so the data layer stays importable without it. Every function
-returns the matplotlib ``Figure`` and optionally writes a PNG when ``save`` is
-given.
+The standard oncoref installation includes matplotlib. It is imported lazily to
+keep ordinary data access lightweight. Every function returns the matplotlib
+``Figure`` and optionally writes a PNG when ``save`` is given.
 """
 
 from __future__ import annotations
@@ -57,15 +56,11 @@ def _plt():
     global _PLT
     if _PLT is not None:
         return _PLT
-    try:
-        import matplotlib
+    import matplotlib
 
-        matplotlib.use("Agg", force=False)
-        import matplotlib.pyplot as plt
-    except ModuleNotFoundError as e:  # pragma: no cover - exercised via extras
-        raise ModuleNotFoundError(
-            "oncoref plotting requires matplotlib — install with `pip install oncoref[plots]`"
-        ) from e
+    matplotlib.use("Agg", force=False)
+    import matplotlib.pyplot as plt
+
     _PLT = plt
     return _PLT
 

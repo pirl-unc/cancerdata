@@ -59,11 +59,12 @@ stay downstream.
 pip install oncoref
 ```
 
-Optional integrations are explicit extras:
+Reference plotting is included in the standard installation. The pyensembl-backed
+genome integration remains optional because it also requires a separately installed
+Ensembl release:
 
 ```bash
 pip install 'oncoref[genome]'  # pyensembl-backed transcript and gene lookup
-pip install 'oncoref[plots]'   # reference plotting
 ```
 
 ## Quick start

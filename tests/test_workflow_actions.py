@@ -98,6 +98,19 @@ def test_test_workflow_stages_required_real_data():
     assert '"hpa_normal_tissue": os.environ["CI_HPA_NORMAL_TISSUE_SHA256"]' in reference_step["run"]
 
 
+def test_minimal_install_includes_plotting_but_not_genome_dependencies():
+    workflow = yaml.safe_load(Path(".github/workflows/tests.yml").read_text())
+    minimal_steps = workflow["jobs"]["minimal"]["steps"]
+    verification = next(
+        step["run"]
+        for step in minimal_steps
+        if step["name"] == "Verify minimal base-layer contract"
+    )
+
+    assert 'find_spec("pyensembl") is None' in verification
+    assert '("matplotlib", "adjustText", "matplotlib_venn")' in verification
+
+
 def test_test_commands_use_bounded_parallelism_with_coverage():
     workflow = yaml.safe_load(Path(".github/workflows/tests.yml").read_text())
     test_steps = workflow["jobs"]["test"]["steps"]

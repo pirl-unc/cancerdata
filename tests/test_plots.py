@@ -8,10 +8,9 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
-
-pytest.importorskip("matplotlib")
 
 from oncoref import cli, data_bundle, plots
 
@@ -21,8 +20,6 @@ pytestmark = pytest.mark.xdist_group("plots")
 @pytest.fixture(autouse=True)
 def _close_figures_after_test():
     yield
-    import matplotlib.pyplot as plt
-
     plt.close("all")
 
 
@@ -931,8 +928,6 @@ def test_regenerate_plots_runner_writes_all_figures_pdf(tmp_path):
     import importlib.util
     from pathlib import Path
 
-    import matplotlib.pyplot as plt
-
     runner = Path(__file__).resolve().parent.parent / "scripts" / "regenerate_plots.py"
     spec = importlib.util.spec_from_file_location("_regen_plots", runner)
     mod = importlib.util.module_from_spec(spec)
@@ -954,8 +949,6 @@ def test_regenerate_plots_runner_writes_all_figures_pdf(tmp_path):
 def test_regenerate_plots_runner_closes_each_returned_figure(tmp_path, monkeypatch):
     import importlib.util
     import sys
-
-    import matplotlib.pyplot as plt
 
     runner = Path(__file__).resolve().parent.parent / "scripts" / "regenerate_plots.py"
     spec = importlib.util.spec_from_file_location("_regen_plots_memory", runner)

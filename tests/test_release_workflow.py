@@ -22,6 +22,18 @@ def test_build_backend_supports_declared_pep_639_license_metadata():
     assert 'license-files = ["LICENSE"]' in pyproject
 
 
+def test_plotting_dependencies_are_part_of_the_base_install():
+    pyproject = Path("pyproject.toml").read_text()
+    project_metadata, optional_dependencies = pyproject.split(
+        "[project.optional-dependencies]", maxsplit=1
+    )
+
+    for requirement in ('"matplotlib"', '"adjustText"', '"matplotlib_venn>=1.0"'):
+        assert requirement in project_metadata
+    assert "\nplots = [" not in optional_dependencies
+    assert "oncoref[plots]" not in Path("README.md").read_text()
+
+
 def test_source_distribution_includes_regeneration_scripts():
     manifest = Path("MANIFEST.in").read_text()
 
