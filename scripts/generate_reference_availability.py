@@ -134,7 +134,7 @@ def build_reference_availability(
     missing = sorted(
         (code, source)
         for code, source in selected_sources.items()
-        if code in set(table["cancer_code"].astype(str)) and (code, source) not in available_keys
+        if (code, source) not in available_keys
     )
     if missing:
         raise ValueError(f"selected source rows are absent from summary shards: {missing}")

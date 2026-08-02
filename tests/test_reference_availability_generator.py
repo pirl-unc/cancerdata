@@ -62,6 +62,17 @@ def test_build_reference_availability_rejects_missing_declared_source(tmp_path):
         )
 
 
+def test_build_reference_availability_rejects_missing_declared_code(tmp_path):
+    _write_shard(tmp_path / "present.csv", "X", "PRESENT", ["E1"], 1)
+
+    with pytest.raises(ValueError, match=r"\('Y', 'MISSING'\)"):
+        build_reference_availability(
+            tmp_path,
+            chunksize=1,
+            selected_sources={"X": "PRESENT", "Y": "MISSING"},
+        )
+
+
 def test_build_reference_availability_routes_all_sarc_histology_overlays(tmp_path):
     legacy = "TREEHOUSE_POLYA_25_01_TCGA_SUBSET"
     generic = "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
