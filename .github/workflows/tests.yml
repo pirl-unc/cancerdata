@@ -116,6 +116,7 @@ jobs:
           python - <<'PY'
           import hashlib
           import os
+          import shutil
           import urllib.request
 
           from oncoref import source_matrices
@@ -180,6 +181,18 @@ jobs:
                   expected_acc_sha256,
               )
               temporary_path.replace(acc_reference)
+
+          bundle_acc_reference = (
+              Path(os.environ["CANCERDATA_DATA_DIR"])
+              / "cancer-reference-expression-percentiles"
+              / "ACC.parquet"
+          )
+          if (
+              not bundle_acc_reference.is_file()
+              or sha256(bundle_acc_reference) != expected_acc_sha256
+          ):
+              bundle_acc_reference.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(acc_reference, bundle_acc_reference)
 
           hpa_sources = {
               "hpa_rna_consensus": os.environ["CI_HPA_RNA_SHA256"],

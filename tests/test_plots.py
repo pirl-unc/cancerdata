@@ -262,8 +262,9 @@ def test_cli_plot_threshold_tpm_is_opt_in(monkeypatch, tmp_path):
 
 
 def test_cta_expression_heatmap_renders(tmp_path):
-    if not data_bundle.item_is_local("cancer-reference-expression-percentiles"):
-        pytest.skip("percentile artifacts not present locally")
+    assert data_bundle.item_is_local("cancer-reference-expression-percentiles"), (
+        "tests require a staged percentile artifact"
+    )
 
     out = tmp_path / "cta.png"
     cohorts = __import__("oncoref").available_percentile_cohorts()[:6]
