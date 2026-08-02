@@ -27,6 +27,10 @@ def test_all_pole_subtypes():
     assert cancer_subtype_group("POLE") == ["UCEC_POLE"]
 
 
+def test_infantile_mapk_spindle_is_a_biologic_relationship_not_a_synonym():
+    assert cancer_subtype_group("INFANTILE_MAPK_SPINDLE") == ["SARC_IFS", "CMN"]
+
+
 def test_under_scopes_to_descendants():
     # MSI across all cancers vs colorectal-only (descendants of CRC).
     assert cancer_subtype_group("MSI", under="CRC") == ["CRC_MSI", "COAD_MSI", "READ_MSI"]

@@ -16,7 +16,7 @@ The headline transform is **clean TPM** (:func:`clean_tpm`): a **multi-compartme
 renormalization. Each non-biological compartment is pinned, per sample, to a fixed
 fraction of the 1e6 budget — **ribosomal proteins → 16%** (:data:`RIBOSOMAL_PROTEIN_FRACTION`),
 **other-technical → 9%** (:data:`OTHER_TECHNICAL_FRACTION`; mtDNA, NUMT, rRNA + pseudogenes,
-polyA-bias lncRNA), **biology → 75%**
+polyA-bias lncRNA, and protocol-sensitive structural ncRNA), **biology → 75%**
 (:data:`BIOLOGICAL_FRACTION`). The variable, pipeline-driven other-technical/ribosomal
 fractions no longer inflate real genes, so biological clean TPM is directly comparable
 across samples and sources.
@@ -32,14 +32,17 @@ biological comparability; it keeps the censored compartments themselves comparab
 budget empirically interpretable. (Verified: LUAD clean TPM lands at exactly 16/9/75 per
 sample.)
 
-**Curated membership.** Which genes are technical/ribosomal is a *curated, biology-defined*
-list, with compartment assignment taken from ``clean-tpm-censored-genes.csv``:
+**Curated membership and reference composition.** Which genes are
+technical/ribosomal is a *curated, biology-defined* global list, with compartment
+assignment and clean-PolyA reference TPM taken from ``clean-tpm-censored-genes.csv``:
 ``category == "ribosomal_protein"`` gets the 16% budget and ``category == "technical"``
-gets the 9% budget (see :mod:`oncoref.gene_families`). Never define censoring from
-expression variance or abundance: cancer-testis antigens are high-variance *by definition*
-(that's what makes them targets), so a variance-based rule would censor the very antigens
-this library exists to find. Use data only to *calibrate* the fractions and *validate
-completeness* of the curated list.
+gets the 9% budget (see :mod:`oncoref.gene_families`). Within each censored
+compartment, every assay is replaced by the same Treehouse 25.01 PolyA median gene
+composition. Never define censoring from expression variance or abundance:
+cancer-testis antigens are high-variance *by definition* (that's what makes them
+targets), so a variance-based rule would censor the very antigens this library exists
+to find. Use data only to calibrate budgets/reference composition and validate
+completeness of the curated list.
 
 **Single definition.** :func:`clean_tpm` is the one and only clean-TPM implementation; every
 consumer routes through it (the per-sample matrix loader, :func:`normalize_expression`'s
@@ -133,6 +136,32 @@ def _compartment_masks(
     return ribosomal, technical
 
 
+def _poly_a_reference_compartment(
+    values: pd.DataFrame,
+    gene_ids: pd.Series,
+    mask: np.ndarray,
+    fraction: float,
+) -> pd.DataFrame:
+    """Fixed PolyA composition for one censored compartment.
+
+    Missing input measurements stay missing. Measured rows receive their reference
+    weight even when the assay reported zero, because the censored output represents
+    clean-PolyA technical composition rather than the assay's technical signal.
+    """
+    selected = values.loc[mask]
+    reference = gene_ids.loc[mask].map(gene_families.clean_tpm_censored_reference_tpm()).fillna(0.0)
+    weights = pd.DataFrame(
+        np.broadcast_to(reference.to_numpy()[:, None], selected.shape),
+        index=selected.index,
+        columns=selected.columns,
+    ).where(selected.notna())
+    totals = weights.sum(axis=0, skipna=True)
+    scale = pd.Series(0.0, index=selected.columns, dtype=float)
+    positive = totals > 0
+    scale.loc[positive] = fraction * 1_000_000.0 / totals.loc[positive]
+    return weights.mul(scale, axis=1).where(selected.notna())
+
+
 def clean_tpm(
     values: pd.DataFrame,
     gene_table: pd.DataFrame | None = None,
@@ -145,7 +174,8 @@ def clean_tpm(
 
     ``values`` is genes (rows) × samples (cols); ``gene_table`` (``Ensembl_Gene_ID``
     row-aligned to ``values``) assigns each gene to a compartment. Each non-biological
-    compartment is rescaled, **per sample**, to a fixed fraction of the 1e6 budget:
+    compartment is assigned, **per sample**, a fixed fraction of the 1e6 budget and
+    the fixed gene composition measured in clean Treehouse PolyA libraries:
 
       - **ribosomal proteins** (``category == "ribosomal_protein"`` in the censored list)
         → ``ribosomal_protein_fraction`` (16%);
@@ -153,18 +183,21 @@ def clean_tpm(
         → ``other_technical_fraction`` (9%);
       - **biology** (everything else) → the remainder (75%).
 
-    **Why two censored compartments, not one.** The fractions are calibrated to the
+    **Why two censored compartments, not one.** The fractions and per-gene reference
+    weights are calibrated to the
     *fresh-frozen polyA* median (TCGA LUAD/SKCM: ribosomal ~16%, technical ~9%). Pinning
-    each compartment to its clean-prep typical nudges a degraded / different-prep /
-    different-depletion sample — whose rRNA or ribosomal fraction is inflated — *back
-    toward that reference*, so biological clean TPM is comparable across preps. Giving
+    each compartment to its clean-prep fraction and composition replaces a degraded /
+    different-prep / different-depletion sample's technical signal with that reference,
+    so biological clean TPM is comparable across preps. Giving
     ribosomal proteins their **own** budget (rather than lumping them with contamination)
     means high rRNA in one sample can't squeeze them, and vice-versa — each is pinned
     independently. (The split is biology-neutral up to a constant — biology excludes both
     compartments and is pinned to a fixed fraction regardless — but it keeps the censored
     compartments themselves comparable and the budget empirically interpretable.)
 
-    An empty/zero compartment simply contributes 0 (the others still fill their share).
+    A censored compartment with measured rows receives its reference composition even
+    when the assay reported zero; it contributes 0 only when none of its measured genes
+    has a positive reference weight.
     Missing source values remain ``NaN``: an unmeasured gene is not evidence of
     measured zero expression.
     The public clean-TPM contract is deliberately singular: 16% ribosomal proteins,
@@ -209,17 +242,23 @@ def clean_tpm(
     bio_fraction = 1.0 - ribosomal_protein_fraction - other_technical_fraction
 
     clean = values.astype(float).copy()
+    gene_ids = _unversioned(gene_table["Ensembl_Gene_ID"])
     for mask, fraction in (
         (rm, ribosomal_protein_fraction),
         (tm, other_technical_fraction),
-        (bm, bio_fraction),
     ):
-        if not mask.any():
-            continue
-        comp_sum = values.loc[mask].sum(axis=0)
+        if mask.any():
+            clean.loc[mask] = _poly_a_reference_compartment(
+                values,
+                gene_ids,
+                mask,
+                fraction,
+            )
+    if bm.any():
+        comp_sum = values.loc[bm].sum(axis=0)
         scale = pd.Series(0.0, index=values.columns, dtype=float)
-        scale.loc[comp_sum > 0] = fraction * 1_000_000.0 / comp_sum.loc[comp_sum > 0]
-        clean.loc[mask] = values.loc[mask].mul(scale, axis=1)
+        scale.loc[comp_sum > 0] = bio_fraction * 1_000_000.0 / comp_sum.loc[comp_sum > 0]
+        clean.loc[bm] = values.loc[bm].mul(scale, axis=1)
     return clean
 
 
@@ -233,9 +272,13 @@ def drop_technical_rna(
 
 
 def filter_technical_rna(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop the strict technical-RNA loci (mtDNA / NUMT / rRNA / nuclear-retained
-    lncRNA) — a lighter filter than :func:`drop_technical_rna` (keeps ribosomal
-    proteins). Row order preserved."""
+    """Drop the one global technical-RNA set used for every assay.
+
+    This includes mtDNA, NUMT, rRNA, nuclear-retained lncRNA, and the structural
+    ncRNAs susceptible to large library-preparation effects. It is a lighter view
+    than :func:`drop_technical_rna` because it keeps ribosomal proteins. Row order
+    is preserved.
+    """
     mask = _unversioned(df["Ensembl_Gene_ID"]).isin(gene_families.technical_rna_gene_ids())
     return df.loc[~mask].reset_index(drop=True)
 

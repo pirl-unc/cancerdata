@@ -13,10 +13,10 @@
 """Gene QC classification for expression matrices.
 
 Answers *which gene-level features are usable* for downstream rescaling: which
-rows are technical RNA (mitochondrial / rRNA-like / NUMT-like / the polyA-bias
-nuclear-retained lncRNAs) that consume a large, pipeline-variable fraction of TPM
-and distort absolute expression. The companion :func:`oncoref.normalization`
-helpers consume the classification to censor those rows.
+rows belong to the one global technical-RNA set: loci whose measured abundance can
+be dominated by library preparation (including mitochondrial, rRNA-like, NUMT-like,
+nuclear-retained, and structural ncRNA loci). The companion
+:func:`oncoref.normalization` helpers consume the same set for every assay.
 
 The classifier is ENSG-first (against oncoref's curated gene-family panels,
 stable across symbol renames) then symbol-regex (the self-contained source of
@@ -48,12 +48,19 @@ _GENE_NA = {"", "NAN", "NONE", "NULL", "-"}
 _POLYA_BIAS_LNCRNA_SYMBOLS = frozenset({"MALAT1", "NEAT1"})
 
 #: The QC groups that constitute "technical RNA" — the drop-by-default / clean-TPM
-#: technical compartment (mtDNA, NUMT-like pseudogenes, rRNA-like, polyA-bias lncRNA).
+#: technical compartment (mtDNA, NUMT-like pseudogenes, rRNA-like, polyA-bias lncRNA,
+#: and protocol-sensitive structural ncRNA). Membership is global, not selected per assay.
 #: Public so a consumer conforming a sample to the clean-TPM space can classify each
 #: gene via :func:`classify_gene_qc` and act on ``.group ∈ TECHNICAL_RNA_GROUPS`` —
 #: without importing a ``_``-prefixed global.
 TECHNICAL_RNA_GROUPS = frozenset(
-    {"mt_dna", "mt_like_pseudogene", "rrna_like", "polyadenylation_bias_lncrna"}
+    {
+        "mt_dna",
+        "mt_like_pseudogene",
+        "rrna_like",
+        "polyadenylation_bias_lncrna",
+        "protocol_sensitive_structural_rna",
+    }
 )
 #: Back-compat private alias (prefer :data:`TECHNICAL_RNA_GROUPS`).
 _TECHNICAL_RNA_GROUPS = TECHNICAL_RNA_GROUPS
@@ -92,6 +99,16 @@ def _ensembl_id_to_family() -> dict[str, str]:
             for gid in gene_families.gene_family_ids(family):
                 out.setdefault(gid, family)
     return out
+
+
+@lru_cache(maxsize=1)
+def _technical_rna_symbols() -> frozenset[str]:
+    """Symbols in the single global technical-RNA membership table."""
+    from .gene_families import clean_tpm_censored_genes
+
+    rows = clean_tpm_censored_genes()
+    rows = rows[rows["category"].astype(str).eq("technical")]
+    return frozenset(rows["Symbol"].dropna().astype(str).str.upper())
 
 
 def _family_to_qc_class(family: str, symbol: str | None = None) -> GeneQcClass:
@@ -154,20 +171,29 @@ def classify_gene_qc(symbol: str | None = None, *, ensembl_id: str | None = None
     (stable across symbol renames), (2) the symbol regex below (the source of
     truth for the family CSVs). Returns a :class:`GeneQcClass` whose ``group`` is
     one of ``mt_dna``, ``mt_like_pseudogene``, ``rrna_like``, ``ribosomal_protein``,
-    ``ribosomal_protein_pseudogene``, ``small_ncrna``, ``histone``,
+    ``ribosomal_protein_pseudogene``, ``small_ncrna``,
+    ``protocol_sensitive_structural_rna``, ``histone``,
     ``immune_receptor``, ``hemoglobin``, ``polyadenylation_bias_lncrna``, ``other``.
     """
     family = None
+    is_global_technical = False
     if ensembl_id:
+        from .gene_families import technical_rna_gene_ids
         from .gene_ids import unversioned
 
-        family = _ensembl_id_to_family().get(unversioned(ensembl_id))
+        gene_id = unversioned(ensembl_id)
+        family = _ensembl_id_to_family().get(gene_id)
+        is_global_technical = gene_id in technical_rna_gene_ids()
 
     raw = str(symbol or "").strip()
     upper = raw.upper()
 
-    if family is not None:
+    if family is not None and not (is_global_technical and family == "small_noncoding_rna"):
         return _family_to_qc_class(family, symbol=upper or None)
+
+    if is_global_technical:
+        label = _refine_family_label("small_noncoding_rna", upper) or "structural noncoding RNA"
+        return GeneQcClass(label, "protocol_sensitive_structural_rna")
 
     if upper in _GENE_NA:
         return GeneQcClass("unlabeled feature", "other")
@@ -197,6 +223,10 @@ def classify_gene_qc(symbol: str | None = None, *, ensembl_id: str | None = None
         return GeneQcClass(label[prefix], "rrna_like")
     if upper.startswith(("RNR", "MTRNR")):
         return GeneQcClass("rRNA-like", "rrna_like")
+
+    if upper in _technical_rna_symbols():
+        label = _refine_family_label("small_noncoding_rna", upper) or "structural noncoding RNA"
+        return GeneQcClass(label, "protocol_sensitive_structural_rna")
 
     if re.fullmatch(r"RP[SL]\d+[A-Z]?(P\d+|P)$", upper):
         return GeneQcClass("ribosomal protein pseudogene", "ribosomal_protein_pseudogene")

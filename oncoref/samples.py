@@ -68,3 +68,63 @@ def sample_counts_by_cancer_code(*, included_only: bool = True) -> pd.Series:
     if included_only and "included" in df.columns:
         df = df[df["included"].astype(str).str.lower().isin(("true", "1"))]
     return df["cancer_code"].astype(str).value_counts()
+
+
+@lru_cache(maxsize=1)
+def _molecular_provenance() -> pd.DataFrame:
+    return get_data("cancer-reference-sample-molecular-provenance", copy=False)
+
+
+def sample_molecular_provenance() -> pd.DataFrame:
+    """Public diagnosis and molecular evidence for reference/acquisition samples.
+
+    Rows are libraries. ``donor_id`` makes technical or longitudinal libraries
+    auditable without treating them as independent donors. A diagnosis-only row
+    has ``molecular_status="unknown"`` and ``orthogonal_confirmed=False``;
+    diagnosis never supplies a fusion call.
+    """
+    return _molecular_provenance().copy()
+
+
+def molecular_provenance_for_cancer_code(code: str) -> pd.DataFrame:
+    """Sample-level molecular provenance for one alias-resolved cancer code."""
+    resolved = resolve_cancer_type(code, strict=False) or code
+    rows = _molecular_provenance()
+    return rows.loc[rows["cancer_code"].astype(str).eq(resolved)].reset_index(drop=True).copy()
+
+
+def molecular_provenance_for_sample(sample_id: str) -> pd.DataFrame:
+    """All provenance rows matching a sample, library, or donor identifier."""
+    query = str(sample_id)
+    rows = _molecular_provenance()
+    mask = (
+        rows["sample_id"].astype(str).eq(query)
+        | rows["library_id"].astype(str).eq(query)
+        | rows["donor_id"].astype(str).eq(query)
+    )
+    return rows.loc[mask].reset_index(drop=True).copy()
+
+
+def molecular_sample_counts(code: str | None = None) -> pd.DataFrame:
+    """Library and distinct-donor counts by physical source cohort.
+
+    The optional cancer code is alias-resolved. Counts include public expression
+    and controlled acquisition rows; ``n_expression_libraries`` states how many
+    of the listed libraries currently have loadable expression.
+    """
+    rows = _molecular_provenance() if code is None else molecular_provenance_for_cancer_code(code)
+    group_cols = ["cancer_code", "source_id", "source_cohort", "access_level"]
+    if rows.empty:
+        return pd.DataFrame(
+            columns=[*group_cols, "n_libraries", "n_donors", "n_expression_libraries"]
+        )
+    counts = (
+        rows.groupby(group_cols, dropna=False, sort=True)
+        .agg(
+            n_libraries=("library_id", "nunique"),
+            n_donors=("donor_id", "nunique"),
+            n_expression_libraries=("expression_available", "sum"),
+        )
+        .reset_index()
+    )
+    return counts

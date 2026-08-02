@@ -12,12 +12,11 @@
 
 """Gene-family reference lists for expression normalization.
 
-The curated families behind oncoref's normalization: the technical-RNA loci
-whose RNA-seq abundance is library-prep artifact rather than biology (mtDNA, NUMT
-pseudogenes, rRNA, nuclear-retained lncRNAs), the ribosomal-protein / histone /
-hemoglobin / small-ncRNA families, the housekeeping panel, and the censored-gene
-surrogate TPMs. This is the read surface; the clean-TPM engine that consumes them
-lives in :mod:`oncoref.normalization`.
+The curated families behind oncoref's normalization, plus the single global
+clean-TPM censored-gene table. That table includes mtDNA, NUMT pseudogenes, rRNA,
+nuclear-retained lncRNAs, and protocol-sensitive structural ncRNAs with their
+clean-PolyA reference TPMs. This is the read surface; the clean-TPM engine that
+consumes it lives in :mod:`oncoref.normalization`.
 """
 
 from __future__ import annotations
@@ -41,13 +40,26 @@ _FAMILIES = {
     "hemoglobin": "hemoglobin-genes",
 }
 
-#: The gene families that make up "technical RNA" — polyA-protocol artifacts whose
-#: abundance reflects library prep, not biology (dropped by ``filter_technical_rna``,
-#: and the bulk of the clean-TPM technical compartment). Public so a consumer can build
-#: the technical-RNA id set itself without importing a ``_``-prefixed global.
+#: Historical curated families contained in the global technical-RNA list. The complete
+#: assay-independent membership is :func:`technical_rna_gene_ids`; structural ncRNAs are
+#: derived from canonical biotypes rather than pretending they are all one gene family.
 TECHNICAL_RNA_FAMILIES = ("mitochondrial", "numt_pseudogene", "rrna", "nuclear_retained_lncrna")
 #: Back-compat private alias (prefer :data:`TECHNICAL_RNA_FAMILIES`).
 _TECHNICAL_RNA_FAMILIES = TECHNICAL_RNA_FAMILIES
+
+#: Canonical Ensembl biotypes for structural, generally non-polyadenylated RNAs whose
+#: measured abundance can be artifactually over-represented by 10x or more under a
+#: different library preparation. These genes belong in
+#: clean TPM's other-technical compartment so ribo-depleted and polyA-selected libraries
+#: can share the biological 75% scale. miRNA and lncRNA are deliberately absent: this is
+#: a structural-RNA protocol correction, not blanket small-noncoding-RNA censorship.
+CLEAN_TPM_PROTOCOL_SENSITIVE_BIOTYPES = frozenset(
+    {"misc_RNA", "ribozyme", "scaRNA", "snoRNA", "snRNA", "sRNA", "vault_RNA"}
+)
+
+#: Provenance for the fixed censored-gene composition used by clean TPM.
+CLEAN_TPM_CENSORED_REFERENCE_PROFILE_VERSION = "treehouse_polya_25_01_median_v1"
+CLEAN_TPM_CENSORED_REFERENCE_PROFILE_SOURCE = "Treehouse Tumor Compendium 25.01 PolyA median TPM"
 
 #: Default HPA RNA floor for empirical housekeeping-panel candidates.
 #: The panel is meant to provide a robust denominator, so low-abundance
@@ -97,12 +109,26 @@ def gene_family_ids(name: str) -> frozenset[str]:
 
 @lru_cache(maxsize=1)
 def technical_rna_gene_ids() -> frozenset[str]:
-    """Union of the technical-RNA family IDs (mtDNA / NUMT / rRNA / nuclear-retained
-    lncRNA) — the set ``filter_technical_rna`` drops."""
-    out: set[str] = set()
-    for fam in _TECHNICAL_RNA_FAMILIES:
-        out |= gene_family_ids(fam)
-    return frozenset(out)
+    """The one global technical-RNA gene set used for every assay.
+
+    This is exactly clean TPM's ``technical`` category: the historical mtDNA / NUMT /
+    rRNA / nuclear-retained families plus protocol-sensitive structural ncRNAs.
+    """
+    return clean_tpm_other_technical_gene_ids()
+
+
+@lru_cache(maxsize=1)
+def clean_tpm_protocol_sensitive_gene_ids() -> frozenset[str]:
+    """Canonical IDs of protocol-sensitive structural noncoding RNAs.
+
+    Membership is derived from the bundled canonical gene-space biotypes listed in
+    :data:`CLEAN_TPM_PROTOCOL_SENSITIVE_BIOTYPES`. The same IDs are materialized in
+    ``clean-tpm-censored-genes.csv`` so the runtime compartment contract remains one
+    explicit, inspectable table.
+    """
+    genes = get_data("canonical-gene-space", copy=False)
+    selected = genes["biotype"].astype(str).isin(CLEAN_TPM_PROTOCOL_SENSITIVE_BIOTYPES)
+    return frozenset(genes.loc[selected, "ensembl_gene_id"].astype(str).str.split(".").str[0])
 
 
 def housekeeping_genes() -> pd.DataFrame:
@@ -175,7 +201,7 @@ def clean_tpm_censored_gene_ids(*, include_ribosomal_proteins: bool = True) -> f
     very antigens oncoref exists to find. Data (TCGA LUAD/SKCM) is used only to *calibrate*
     the clean-TPM compartment fractions and to *validate completeness* of this list (how the
     missing rRNA genes, incl. 28S, were found)."""
-    df = get_data("clean-tpm-censored-genes", copy=False)
+    df = _clean_tpm_censored_genes()
     if not include_ribosomal_proteins:
         df = df[df["category"].astype(str) == "technical"]
     return _unversioned_ids(df)
@@ -190,7 +216,7 @@ def clean_tpm_ribosomal_gene_ids() -> frozenset[str]:
     table. That distinction is CTA-safe: broad ribosomal-family members that are absent
     from the censored table, such as ``RPL10L`` / ``ENSG00000165496``, remain biological.
     """
-    df = get_data("clean-tpm-censored-genes", copy=False)
+    df = _clean_tpm_censored_genes()
     df = df[df["category"].astype(str) == "ribosomal_protein"]
     return _unversioned_ids(df)
 
@@ -202,16 +228,45 @@ def clean_tpm_other_technical_gene_ids() -> frozenset[str]:
     This is defined by ``clean-tpm-censored-genes.csv`` where
     ``category == "technical"``.
     """
-    df = get_data("clean-tpm-censored-genes", copy=False)
+    df = _clean_tpm_censored_genes()
     df = df[df["category"].astype(str) == "technical"]
     return _unversioned_ids(df)
 
 
 @lru_cache(maxsize=1)
+def _clean_tpm_censored_genes() -> pd.DataFrame:
+    columns = {"Ensembl_Gene_ID", "Symbol", "category", "reference_tpm"}
+    df = get_data("clean-tpm-censored-genes", copy=False)
+    missing = sorted(columns - set(df.columns))
+    if missing:
+        raise ValueError(f"clean-tpm-censored-genes is missing columns: {missing}")
+    return df
+
+
+def clean_tpm_censored_genes() -> pd.DataFrame:
+    """The single global censored-gene membership and PolyA reference profile.
+
+    ``category`` assigns the 16% ribosomal or 9% other-technical compartment;
+    ``reference_tpm`` fixes composition within that compartment to the Treehouse
+    25.01 PolyA median. The table is assay-independent and returned as a copy.
+    """
+    return _clean_tpm_censored_genes().copy()
+
+
+@lru_cache(maxsize=1)
+def clean_tpm_censored_reference_tpm() -> dict[str, float]:
+    """``{unversioned Ensembl ID: PolyA reference TPM}`` for all censored genes."""
+    df = _clean_tpm_censored_genes()
+    return {
+        str(gene_id).split(".")[0]: float(value)
+        for gene_id, value in zip(df["Ensembl_Gene_ID"], df["reference_tpm"])
+    }
+
+
+@lru_cache(maxsize=1)
 def censored_gene_reference_tpm() -> dict[str, float]:
-    """``{Symbol: reference_tpm}`` — the fixed surrogate TPM each censored gene holds
-    in every cohort (median across the Treehouse PolyA compendium)."""
-    df = get_data("censored-gene-reference-tpm", copy=False)
+    """Legacy ``{Symbol: reference_tpm}`` view of the global censored profile."""
+    df = _clean_tpm_censored_genes().drop_duplicates("Symbol")
     return {str(s): float(v) for s, v in zip(df["Symbol"], df["reference_tpm"])}
 
 

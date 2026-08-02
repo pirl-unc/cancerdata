@@ -16,3 +16,5 @@ HPV_NEG,viral_hpv,HNSC_HPVneg,HPV-negative head and neck
 MYCN_AMP,copy_number_mycn,NBL_MYCNamp,MYCN-amplified neuroblastoma
 MYCN_NONAMP,copy_number_mycn,NBL_MYCNnonamp,MYCN-non-amplified neuroblastoma
 HPV_NEG,viral_hpv,CESC_HPVneg,HPV-negative cervical (gastric-type/clear-cell)
+INFANTILE_MAPK_SPINDLE,biologic_spectrum,SARC_IFS,Infantile soft-tissue spindle-cell tumor with heterogeneous MAPK-pathway rearrangements
+INFANTILE_MAPK_SPINDLE,biologic_spectrum,CMN,Infantile renal spindle-cell tumor with heterogeneous MAPK-pathway rearrangements

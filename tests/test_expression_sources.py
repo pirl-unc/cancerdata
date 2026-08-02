@@ -170,8 +170,24 @@ def test_expression_sources_df_shape():
         "source_project",
         "processing_pipeline",
         "citation",
+        "access_level",
+        "acquisition_status",
+        "data_access_url",
+        "molecular_annotation_status",
     } <= set(df.columns)
     assert len(df) == len(es.expression_sources())
+
+
+def test_ifs_cmn_sources_keep_public_and_controlled_acquisition_explicit():
+    cmn = {source.id: source for source in es.sources_for_cancer_code("CMN")}
+
+    assert {"treehouse-ribod-25-01", "gse11482-cmn", "ega-ifs-cmn-wegert-2018"} <= set(cmn)
+    assert cmn["gse11482-cmn"].unit == "TPM proxy"
+    assert cmn["ega-ifs-cmn-wegert-2018"].access_level == "controlled"
+    assert cmn["ega-ifs-cmn-wegert-2018"].acquisition_status == "access_required"
+    assert cmn["ega-ifs-cmn-wegert-2018"].molecular_annotation_status == (
+        "public_sample_level_annotations"
+    )
 
 
 def test_selected_physical_sources_preserve_known_availability_projects():
@@ -307,6 +323,7 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
         "ADCC",
         "CHOL",
         "NEC_MERKEL",
+        "SARC_IFS",
         "SARC_MMNST",
         "SARC_WDLPS",
         "SCLC_ASCL1",

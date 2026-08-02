@@ -53,7 +53,7 @@ sources:
     notes: >
       Open GDC CGCI-BLGSP STAR-counts TPMs; one deterministic primary
       Burkitt/Burkitt-like tumor sample per case; source matrix n=184 and
-      released reference artifacts use 175 sample_expression_qc_v2 pass samples.
+      released reference artifacts use 182 sample_expression_qc_v3 pass samples.
     special_handling: >
       Open GDC STAR-counts; one deterministic primary-tumor sample per
       case. GENCODE v36 → Ensembl 112.
@@ -66,6 +66,7 @@ sources:
     source_cohort: MMRF_COMMPASS
     source_project: MMRF CoMMpass
     builder: scripts/build_gdc_source.py
+    processing_pipeline: gdc_star_counts_tpm_ensembl112_clean_tpm_16_9_75
     expected_samples_by_code: {MM: 764}
     gdc_sample_types: [Primary Blood Derived Cancer - Bone Marrow]
     gdc_primary_diagnosis_contains: [Multiple myeloma]
@@ -88,6 +89,7 @@ sources:
     source_cohort: TARGET_ALL_2018
     source_project: TARGET ALL
     builder: scripts/build_target_all_reference_expression.py
+    processing_pipeline: gdc_star_counts_tpm_ensembl112_clean_tpm_16_9_75
     expected_samples_by_code: {B_ALL: 154, T_ALL: 264}
     gdc_sample_types:
       [Primary Blood Derived Cancer - Bone Marrow,
@@ -114,6 +116,7 @@ sources:
     file_url: https://data.broadinstitute.org/cllmap/data/downloads/cllmap_rnaseq_tpms_full.tsv.gz
     file_name: cllmap_rnaseq_tpms_full.tsv.gz
     builder: scripts/build_geo_matrix.py
+    processing_pipeline: cllmap_raw_tpm_gencode19_ensembl112_clean_tpm_16_9_75
     unit: TPM
     gene_id_col: Name
     symbol_col: Description
@@ -135,6 +138,7 @@ sources:
     source_cohort: GSE100026_DING_2017
     source_project: GEO
     builder: scripts/build_geo_matrix.py
+    processing_pipeline: geo_heme_expression_ensembl112_clean_tpm_16_9_75
     file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE100nnn/GSE100026/suppl/GSE100026_expressed_gene_RPKM.txt.gz
     file_name: GSE100026_expressed_gene_RPKM.txt.gz
     gene_id_col: Gene
@@ -162,6 +166,7 @@ sources:
     source_cohort: GSE114922_SHIOZAWA_2018
     source_project: GEO
     builder: scripts/build_recount3_source.py
+    processing_pipeline: recount3_srp149374_gencode_v26_gene_sums_to_clean_tpm_16_9_75
     unit: recount3 Gencode-v26 coverage gene-sums
     expected_size_gb: 0.1
     citation: GSE114922 (Shiozawa 2018)
@@ -180,6 +185,7 @@ sources:
     source_cohort: GSE271664_BODOR_2025
     source_project: GEO
     builder: scripts/build_geo_matrix.py
+    processing_pipeline: geo_heme_expression_ensembl112_clean_tpm_16_9_75
     file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE271nnn/GSE271664/suppl/GSE271664_HTSeq_counts.csv.gz
     file_name: GSE271664_HTSeq_counts.csv.gz
     unit: raw_counts
@@ -201,6 +207,7 @@ sources:
     source_cohort: GSE283710_WASHU_2024
     source_project: GEO
     builder: scripts/build_geo_matrix.py
+    processing_pipeline: geo_heme_expression_ensembl112_clean_tpm_16_9_75
     file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE283nnn/GSE283710/suppl/GSE283710_CD34_rawcounts.csv.gz
     file_name: GSE283710_CD34_rawcounts.csv.gz
     gene_id_col: external_gene_name
@@ -224,6 +231,7 @@ sources:
     source_cohort: GSE171811_ECCITE_CTCL
     source_project: GEO
     builder: scripts/build_ctcl_scrna_reference_expression.py
+    processing_pipeline: gse171811_ctcl_scrna_tcrb_pseudobulk_ntpm_ensembl112_clean_tpm_16_9_75
     unit: nTPM (pseudobulk)
     expected_samples_by_code: {CTCL: 7}
     source_scale_class: scrna_tcr_pseudobulk_ntpm
@@ -304,8 +312,9 @@ sources:
       by HUGO symbol. Builder inverse-transforms to TPM, subsets by
       `clinical.disease == <label>`, harmonizes HUGO to Ensembl
       release 112, sums TPM across symbols that collapse to the same
-      ENSG, then runs the standard tech-RNA zero + per-sample
-      renormalize before stat summarization. Same builder is
+      ENSG, then applies the canonical 16/9/75 clean-TPM transform.
+      Every measured censored gene receives the same Treehouse PolyA
+      reference composition before stat summarization. Same builder is
       parameterized for every Treehouse cancer code listed above.
       Samples with TCGA provenance (~9,500 samples) are extracted from
       this same file
@@ -693,7 +702,7 @@ sources:
 
   - id: treehouse-ribod-25-01
     category: expression
-    cancer_codes: [SARC_CHOR, RB]
+    cancer_codes: [SARC_CHOR, RB, SARC_IFS, CMN]
     source_type: treehouse-compendium
     accession: GSE294353
     source_cohort: TREEHOUSE_RIBOD_25_01
@@ -718,14 +727,84 @@ sources:
     treehouse_cohorts:
       - {cancer_code: SARC_CHOR, disease_label: chordoma, group: ribod}
       - {cancer_code: RB, disease_label: retinoblastoma, group: ribod}
+      - {cancer_code: SARC_IFS, disease_label: infantile fibrosarcoma, group: infantile_spindle, extra_notes: "Three libraries from two donors; molecular status is unknown in public Treehouse metadata."}
+      - {cancer_code: CMN, disease_label: congenital mesoblastic nephroma, group: infantile_spindle, extra_notes: "One diagnosis-labelled library; molecular status is unknown in public Treehouse metadata."}
     special_handling: >
       RiboD (ribo-depleted) sibling of treehouse-polya-25-01; 2,079
       samples. Same builder works after pointing `--cache-dir` /
       `--tpm-file` / `--clinical-file` at the RiboD files. For
-      genes in the technical-RNA panel (rRNA / mtRNA), values from
-      the ribo-depleted library are not directly comparable to PolyA
-      cohorts — keep these cohorts in separate source_cohort tags so
-      consumers can hold the assay difference.
+      raw values for genes in the single global technical-RNA panel can
+      differ from PolyA by more than 10x. Clean TPM replaces that 9%
+      compartment with the Treehouse PolyA reference composition for
+      every assay. The physical cohorts remain separate source_cohort
+      tags because clean TPM does not make the assays physically
+      equivalent.
+
+  - id: ega-ifs-cmn-wegert-2018
+    category: expression
+    cancer_codes: [SARC_IFS, CMN]
+    source_type: controlled-rnaseq
+    source_cohort: EGA_WEGERT_2018_IFS_CMN
+    source_project: EGA
+    accession: EGAD00001003885
+    project_id: EGAS00001002534
+    url: https://ega-archive.org/datasets/EGAD00001003885
+    data_access_url: https://ega-archive.org/access/data-access
+    access_level: controlled
+    acquisition_status: access_required
+    molecular_annotation_status: public_sample_level_annotations
+    unit: gene feature counts
+    library_prep: PolyA RNA-seq
+    citation: PMID 29915264 (Wegert 2018 CMN/IFS genomes and transcriptomes)
+    expected_samples_by_code: {SARC_IFS: 1, CMN: 18}
+    external_build_exemption: >
+      The 19 transcriptomes are controlled-access EGA data. Public
+      Supplementary Data 1 and 3 provide sample-level diagnosis and driver
+      annotations, but oncoref cannot publish expression until access is granted.
+    special_handling: >
+      Keep the public molecular annotations loadable while expression_available
+      remains false. Never infer a driver for a diagnosis-only sample.
+
+  - id: stjude-ifs-cmn-controlled
+    category: expression
+    cancer_codes: [SARC_IFS, CMN]
+    source_type: controlled-rnaseq
+    source_cohort: STJUDE_IFS_CMN_CONTROLLED
+    source_project: St. Jude Cloud / RTCG
+    url: https://docs.stjude.cloud/genomics-platform/about-our-data/data-sets-and-data-access-units
+    data_access_url: https://platform.stjude.cloud/data/cohorts
+    access_level: controlled
+    acquisition_status: case_ids_identified_access_required
+    molecular_annotation_status: controlled_pairing_required
+    unit: gene feature counts
+    external_build_exemption: >
+      Treehouse identifies the relevant St. Jude donor and library IDs, but
+      paired genomic annotations and source RNA-seq files require authorized
+      St. Jude access.
+    special_handling: >
+      Candidate donor IDs SJ030375, SJ031085, and SJ030433 are recorded in the
+      public molecular-provenance manifest. Public Treehouse expression remains
+      a separate physical source and does not prove a fusion call.
+
+  - id: ccdi-mci-ifs-cmn-screen
+    category: expression
+    cancer_codes: [SARC_IFS, CMN, SARC_NTRK_SPINDLE]
+    source_type: controlled-rnaseq
+    source_cohort: CCDI_MCI_PHS002790_IFS_CMN_SCREEN
+    source_project: CCDI Molecular Characterization Initiative
+    accession: phs002790
+    url: https://datacatalog.ccdi.cancer.gov/dataset/IDC-CCDI-MCI
+    data_access_url: https://dbgap.ncbi.nlm.nih.gov/aa/wga.cgi?page=login
+    access_level: controlled
+    acquisition_status: cohort_screen_required
+    molecular_annotation_status: controlled_pairing_required
+    unit: gene feature counts
+    external_build_exemption: >
+      CCDI MCI is a controlled candidate source. Eligible IFS, CMN, and related
+      spindle-cell cases must be identified after authorized metadata access.
+    special_handling: >
+      Do not promote broad spindle-cell candidates by diagnosis alone; require
+      compatible age, site, pathology, and sample-level molecular evidence.
 
   - id: beataml-ohsu-2022
     category: expression
@@ -736,6 +815,7 @@ sources:
     project_id: BEATAML1.0-COHORT
     url: https://biodev.github.io/BeatAML2/
     builder: scripts/build_gdc_source.py
+    processing_pipeline: gdc_beataml_star_counts_tpm_ensembl112_clean_tpm_16_9_75
     expected_samples_by_code:
       {LAML_APL: 20, LAML_ELNadv: 189, LAML_ELNfav: 238, LAML_ELNint: 154}
     gdc_primary_diagnosis_routes:
@@ -879,6 +959,7 @@ sources:
     source_cohort: TARGET_NBL_2018
     source_project: TARGET Neuroblastoma
     builder: scripts/build_target_subprojects.py
+    processing_pipeline: gdc_star_counts_tpm_ensembl112_clean_tpm_16_9_75
     expected_samples_by_code: {NBL: 155, NBL_MYCNamp: 33, NBL_MYCNnonamp: 122}
     expected_source_samples: 155
     routed_samples_may_overlap: true
@@ -903,6 +984,7 @@ sources:
     source_cohort: TARGET_RT_2017
     source_project: TARGET Rhabdoid Tumor
     builder: scripts/build_gdc_source.py
+    processing_pipeline: gdc_star_counts_tpm_ensembl112_clean_tpm_16_9_75
     expected_samples_by_code: {RT: 63}
     gdc_sample_types: [Primary Tumor]
     gdc_primary_diagnosis_contains: [rhabdoid]
@@ -920,6 +1002,7 @@ sources:
     source_cohort: TARGET_WT_2015
     source_project: TARGET Wilms Tumor
     builder: scripts/build_gdc_source.py
+    processing_pipeline: gdc_star_counts_tpm_ensembl112_clean_tpm_16_9_75
     expected_samples_by_code: {WILMS: 125}
     gdc_sample_types: [Primary Tumor]
     gdc_primary_diagnosis_contains: [nephroblastoma, wilms]
@@ -1443,8 +1526,8 @@ sources:
     processing_pipeline: gse328026_pecoma_2026_tpm_to_tpm_ensembl112_clean_tpm_16_9_75
     expected_size_gb: 0.01
     notes: >
-      PEComa TPM source matrix n=69; released reference artifacts use 60
-      sample_expression_qc_v2 pass samples; harmonized to Ensembl 112.
+      PEComa TPM source matrix n=69; released reference artifacts use 66
+      sample_expression_qc_v3 pass samples; harmonized to Ensembl 112.
 
   - id: gse241095-sarc-ks-skin
     category: expression
@@ -1629,6 +1712,27 @@ sources:
       preserved; absolute TPM-proxy NOT comparable to RNA-seq cohorts.
       Biology sanity check: CALCA (calcitonin, defining MTC marker)
       p95 ~3400 TPM-proxy; CHGA ~948; CEACAM5 ~481.
+
+  - id: gse11482-cmn
+    category: expression
+    cancer_codes: [CMN]
+    source_type: geo-microarray
+    builder: scripts/build_v5_5_microarray_cohorts.py
+    builder_args: ["--only", "cmn"]
+    accession: GSE11482
+    platform: GPL96
+    citation: PMID 20212451 (Gadd 2010 pediatric renal tumors)
+    expected_size_gb: 0.05
+    source_cohort: GSE11482_GADD_2010_CMN
+    source_project: GEO
+    tumor_origin: primary
+    unit: TPM proxy
+    processing_pipeline: GPL96 series-matrix log2 intensity to TPM proxy; Ensembl 112
+    special_handling: >
+      Twelve pretreatment cellular CMNs with at least 80% viable tumor.
+      Affymetrix HG-U133A intensity is converted to a within-sample TPM proxy
+      for cross-platform marker and rank validation. It is not absolute RNA-seq
+      TPM and must not be pooled into RNA-seq centroids.
 
   - id: gse85383-ess
     category: expression

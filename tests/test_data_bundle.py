@@ -179,7 +179,7 @@ def _release_manifest(tar_path):
         "package_version": __version__,
         "source_matrix_version": SOURCE_MATRIX_VERSION,
         "sample_qc_policy": "pass",
-        "sample_qc_policy_version": "sample_expression_qc_v2",
+        "sample_qc_policy_version": "sample_expression_qc_v3",
         "source_matrix_sample_qc": "source-matrix-sample-qc.csv",
         "artifact_build_metadata": {
             "cohort_metadata": "expression-artifact-build-metadata.csv",
@@ -246,7 +246,7 @@ def test_bundle_release_manifest_preserves_inventory_and_build_metadata(monkeypa
     assert manifest["package_version"] == __version__
     assert manifest["source_matrix_version"] == SOURCE_MATRIX_VERSION
     assert manifest["sample_qc_policy"] == "pass"
-    assert manifest["sample_qc_policy_version"] == "sample_expression_qc_v2"
+    assert manifest["sample_qc_policy_version"] == "sample_expression_qc_v3"
     assert manifest["source_matrix_sample_qc"] == "source-matrix-sample-qc.csv"
     assert manifest["artifact_build_metadata"]["n_cohorts"] == 118
     assert set(manifest["inventory"]) == set(data_bundle.DOWNLOADABLE_PATHS)

@@ -12,7 +12,12 @@ SARC_DSRCT,EWSR1-WT1,EWSR1,FET,WT1,zinc-finger TF,~95%,true,true,yes,fusion_tran
 SARC_ASPS,ASPSCR1-TFE3,ASPSCR1,,TFE3,MiT/TFE,~95%,true,false,surrogate,fusion_transcript,high,PMID:17543078,alveolar soft part sarcoma; der(17)t(X;17); ASPL=ASPSCR1; TFE3 IHC surrogate
 SARC_CCS,EWSR1-ATF1,EWSR1,FET,ATF1,bZIP(CREB/ATF),~90%,true,true,yes,fusion_transcript,high,PMID:19561568,clear cell sarcoma (melanoma of soft parts); t(12;22)(q13;q12)
 SARC_CCS,EWSR1-CREB1,EWSR1,FET,CREB1,bZIP(CREB/ATF),minority,true,false,yes,fusion_transcript,medium,PMID:19561568,variant; also seen in GI clear cell sarcoma-like / angiomatoid FH
-SARC_IFS,ETV6-NTRK3,ETV6,ETS,NTRK3,RTK,~90%,true,false,yes,fusion_transcript,high,PMID:9462753,infantile fibrosarcoma; t(12;15)(p13;q25); TRK-inhibitor responsive
+SARC_IFS,ETV6-NTRK3,ETV6,ETS,NTRK3,RTK,common,false,false,yes,fusion_transcript,high,PMID:9462753,common IFS driver but not universal and not inferred from diagnosis; t(12;15)(p13;q25); TRK-inhibitor responsive
+SARC_IFS,EML4-NTRK3,EML4,,NTRK3,RTK,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed molecularly confirmed IFS driver; entity assignment still requires compatible age site and pathology
+CMN,ETV6-NTRK3,ETV6,ETS,NTRK3,RTK,cellular subset,false,false,yes,fusion_transcript,high,PMID:29915264,observed in cellular congenital mesoblastic nephroma; CMN remains distinct from soft-tissue IFS
+CMN,LMNA-NTRK1,LMNA,,NTRK1,RTK,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed in one cellular CMN
+CMN,TPR-NTRK1,TPR,,NTRK1,RTK,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed in one mixed CMN
+CMN,KIAA1549-BRAF,KIAA1549,,BRAF,RAF kinase,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed in one mixed CMN
 SARC_EHE,WWTR1-CAMTA1,WWTR1,Hippo coactivator,CAMTA1,,~90%,true,true,yes,fusion_transcript,high,PMID:21885404,epithelioid hemangioendothelioma; t(1;3); WWTR1=TAZ; CAMTA1 IHC surrogate
 SARC_EHE,YAP1-TFE3,YAP1,Hippo coactivator,TFE3,MiT/TFE,minority,true,false,surrogate,fusion_transcript,high,PMID:23737213,distinct EHE subset; TFE3 IHC surrogate; YAP1-TFE3 variant
 SARC_LGFMS,FUS-CREB3L2,FUS,FET,CREB3L2,bZIP(CREB/ATF),~90%,true,true,yes,fusion_transcript,high,PMID:15139001,low-grade fibromyxoid sarcoma; t(7;16)(q33;p11)

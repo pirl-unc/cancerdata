@@ -11,6 +11,7 @@ salivary,Epithelial
 thymic,Epithelial
 endocrine-epithelial,Epithelial
 sarcoma,Sarcoma
+renal-mesenchymal,Sarcoma
 heme-bcell,Heme
 heme-tcell,Heme
 heme-myeloid,Heme

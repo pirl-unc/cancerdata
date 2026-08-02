@@ -63,10 +63,13 @@ WHEEL: dict[str, tuple[str, str]] = {
     "expression_sources": ("expression", "cohort expression-source registry"),
     # normalization references (R-norm; consumed by the clean TPM engine)
     "housekeeping-genes": ("normalization", "housekeeping panel for normalization"),
-    "censored-gene-reference-tpm": ("normalization", "fixed surrogate TPM for censored genes"),
+    "censored-gene-reference-tpm": (
+        "normalization",
+        "legacy symbol projection of the global clean-TPM censored profile",
+    ),
     "clean-tpm-censored-genes": (
         "normalization",
-        "technical+ribosomal genes censored by clean TPM",
+        "global censored-gene membership and clean-PolyA reference composition",
     ),
     "histone-genes": ("normalization", "histone-cluster genes"),
     "ribosomal-protein-genes": ("normalization", "ribosomal-protein genes"),
@@ -230,6 +233,14 @@ SUPERSEDED: dict[str, str] = {
 #: regenerated here rather than copied from pirlygenes, so they aren't in the
 #: pirlygenes snapshot but DO ship in the wheel and belong in the inventory.
 CANCERDATA_ORIGINATED: dict[str, tuple[str, str]] = {
+    "cancer-entity-driver-spectrum": (
+        "genomics",
+        "structured observed driver distributions for heterogeneous cancer entities",
+    ),
+    "cancer-reference-sample-molecular-provenance": (
+        "genomics",
+        "sample-level diagnosis and orthogonal molecular evidence provenance",
+    ),
     "cancer-reference-expression-availability": (
         "expression",
         "one-row-per-source reference-expression availability manifest",

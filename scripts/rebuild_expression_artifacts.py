@@ -41,6 +41,11 @@ are large and ship via the release tarball, so they're never committed):
     <out>/expression-artifact-build-metadata.csv               (per-cohort provenance)
     <out>/expression-artifact-build-metadata.json              (QC/build policy metadata)
 
+Additional physical sources can be summarized without promoting or pooling them by
+passing ``--summary-source CODE=SOURCE_COHORT=PATH``. They use the same canonicalize,
+clean-TPM, and summary helpers as the selected source. ``--summary-only`` updates only
+those source-summary shards in an existing staging directory.
+
 ``--validate`` additionally correlates each rebuilt percentile vector against the
 reference artifact in ``--ref`` and prints the per-code agreement.
 
@@ -132,6 +137,15 @@ class _RepresentativeAdjudication:
     benchmark_eligible: bool
     review_source: str
     review_note: str
+
+
+@dataclass(frozen=True)
+class SummarySourceSpec:
+    """One explicitly named, non-selected physical source to summarize."""
+
+    cancer_code: str
+    source_cohort: str
+    matrix_path: Path
 
 
 _REPRESENTATIVE_ADJUDICATION_COLUMNS = (
@@ -412,6 +426,90 @@ def build_clean(raw: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([gene_table.reset_index(drop=True), clean.reset_index(drop=True)], axis=1)
 
 
+def build_source_summary(
+    raw: pd.DataFrame,
+    *,
+    cancer_code: str,
+    source_cohort: str,
+) -> tuple[pd.DataFrame, int]:
+    """Canonical source summary using the same clean-TPM contract as selected shards."""
+    samples = sample_columns(raw)
+    raw, n_negative_values_clipped = _clip_negative_expression(raw, samples)
+    source = _summary_source_metadata(cancer_code, source_cohort)
+    return (
+        summarize_source_matrix(
+            raw,
+            cancer_code=cancer_code,
+            source=source,
+            clean_matrix=build_clean(raw),
+        ),
+        n_negative_values_clipped,
+    )
+
+
+def rebuild_additional_source_summaries(
+    specs: list[SummarySourceSpec],
+    out: Path,
+) -> None:
+    """Add or replace explicitly requested source/code rows in summary shards.
+
+    This never changes selected-source matrices, percentiles, or representatives.
+    Explicit ``(cancer_code, source_cohort, path)`` triples prevent an additional
+    physical source from being mistaken for a selected cohort or silently pooled.
+    """
+    if not specs:
+        return
+    summary_dir = out / _SUMMARY_DIR
+    summary_dir.mkdir(parents=True, exist_ok=True)
+    frames_by_source: dict[str, list[pd.DataFrame]] = defaultdict(list)
+    for spec in specs:
+        if not spec.matrix_path.is_file():
+            raise FileNotFoundError(spec.matrix_path)
+        raw = read_raw(spec.matrix_path)
+        summary, n_clipped = build_source_summary(
+            raw,
+            cancer_code=spec.cancer_code,
+            source_cohort=spec.source_cohort,
+        )
+        frames_by_source[spec.source_cohort].append(summary)
+        message = (
+            f"  summary source {spec.cancer_code}: {spec.source_cohort} "
+            f"({len(sample_columns(raw))} samples)"
+        )
+        if n_clipped:
+            message += f" clipped_negative_values={n_clipped}"
+        print(message, flush=True)
+
+    for source_cohort, new_frames in frames_by_source.items():
+        path = summary_dir / _summary_shard_name(source_cohort)
+        new_rows = pd.concat(new_frames, ignore_index=True)
+        keys = set(
+            zip(
+                new_rows["cancer_code"].astype(str),
+                new_rows["source_cohort"].astype(str),
+            )
+        )
+        if path.is_file():
+            existing = pd.read_csv(path)
+            existing_keys = list(
+                zip(
+                    existing["cancer_code"].astype(str),
+                    existing["source_cohort"].astype(str),
+                )
+            )
+            existing = existing.loc[[key not in keys for key in existing_keys]]
+            new_rows = pd.concat([existing, new_rows], ignore_index=True)
+        new_rows.to_csv(path, index=False, compression="gzip")
+
+
+def _parse_summary_source(value: str) -> SummarySourceSpec:
+    """Parse ``CODE=SOURCE_COHORT=PATH`` for ``--summary-source``."""
+    parts = value.split("=", 2)
+    if len(parts) != 3 or not all(part.strip() for part in parts):
+        raise argparse.ArgumentTypeError("summary source must be CODE=SOURCE_COHORT=PATH")
+    return SummarySourceSpec(parts[0].strip(), parts[1].strip(), Path(parts[2]))
+
+
 def _drop_technical(df: pd.DataFrame) -> pd.DataFrame:
     """Drop the clean-TPM censored (technical + ribosomal) genes, so the percentile /
     within-sample artifacts describe the biological view pirlygenes ships. clean_tpm
@@ -439,10 +537,9 @@ def _sample_selection_for_qc(
     if selected or mode != "pass":
         return selected, mode, ""
 
-    # Source-aware escape hatch: microarray/TPM-proxy sources are flagged warn
-    # because their absolute scale is not linear RNA-seq TPM, but dropping the
-    # entire cohort would erase a curated reference. Keep warn samples only when
-    # every source sample is warn for the explicit proxy-scale reason.
+    # A declared TPM proxy is usable for ranks and marker patterns even though its
+    # absolute values are not comparable with RNA-seq TPM. Retain its warn samples
+    # only when the proxy-scale caveat is the reason the cohort has no pass samples.
     reasons = set()
     if "sample_qc_reasons" in qc.columns:
         for value in qc["sample_qc_reasons"].fillna("").astype(str):
@@ -453,7 +550,7 @@ def _sample_selection_for_qc(
         "nonlinear_or_proxy_expression_scale" in reasons or "microarray_tpm_proxy" in scale_classes
     ):
         warn_samples = [s for s in samples if status.get(str(s)) == "warn"]
-        return warn_samples, "pass_or_warn", "no_pass_samples_tpm_proxy_source"
+        return warn_samples, "pass_or_warn", "proxy_rank_only_retention"
     concentration_only = {"high_top_gene_fraction", "high_top10_gene_fraction"}
     if statuses <= {"fail"} and reasons and reasons <= concentration_only:
         fail_samples = [s for s in samples if status.get(str(s)) == "fail"]
@@ -758,10 +855,8 @@ def _validate_one(pct: pd.DataFrame, ref_path: Path) -> float | None:
 
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--cache", required=True, type=Path, help="Per-sample matrix cache root")
-    p.add_argument(
-        "--ref", required=True, type=Path, help="Reference percentile dir (validation only)"
-    )
+    p.add_argument("--cache", type=Path, help="Per-sample matrix cache root")
+    p.add_argument("--ref", type=Path, help="Reference percentile dir (validation only)")
     p.add_argument("--out", required=True, type=Path, help="Staging output dir (not oncoref/data)")
     p.add_argument("--limit", type=int, default=None, help="Only the first N codes (a test run)")
     p.add_argument("--validate", action="store_true", help="Correlate vs the reference artifacts")
@@ -771,15 +866,40 @@ def main(argv=None) -> None:
         default="pass",
         help="Which source-matrix samples feed rebuilt artifacts (default: pass)",
     )
-    args = p.parse_args(argv)
-    rebuild(
-        args.cache.expanduser(),
-        args.ref.expanduser(),
-        args.out.expanduser(),
-        limit=args.limit,
-        validate=args.validate,
-        sample_qc=args.sample_qc,
+    p.add_argument(
+        "--summary-source",
+        action="append",
+        default=[],
+        type=_parse_summary_source,
+        metavar="CODE=SOURCE_COHORT=PATH",
+        help="Build an additional physical-source summary without selecting or pooling it",
     )
+    p.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="Update only --summary-source rows in an existing staging directory",
+    )
+    args = p.parse_args(argv)
+    out = args.out.expanduser()
+    summary_sources = [
+        SummarySourceSpec(spec.cancer_code, spec.source_cohort, spec.matrix_path.expanduser())
+        for spec in args.summary_source
+    ]
+    if args.summary_only:
+        if not summary_sources:
+            p.error("--summary-only requires at least one --summary-source")
+    else:
+        if args.cache is None or args.ref is None:
+            p.error("--cache and --ref are required unless --summary-only is used")
+        rebuild(
+            args.cache.expanduser(),
+            args.ref.expanduser(),
+            out,
+            limit=args.limit,
+            validate=args.validate,
+            sample_qc=args.sample_qc,
+        )
+    rebuild_additional_source_summaries(summary_sources, out)
 
 
 if __name__ == "__main__":

@@ -66,6 +66,7 @@ from .expression_engine import (
     id_columns,
     sample_columns,
 )
+from .gene_families import CLEAN_TPM_CENSORED_REFERENCE_PROFILE_VERSION
 from .gene_ids import entrez_gene_mappings, unversioned
 from .normalization import clean_tpm
 
@@ -545,18 +546,17 @@ def _summary_source_version(
     native_unit: str,
 ) -> str:
     explicit = getattr(source, "source_version", None)
-    if explicit:
-        return str(explicit)
-    pieces = []
-    if source.citation:
+    pieces = [str(explicit)] if explicit else []
+    if not explicit and source.citation:
         pieces.append(str(source.citation))
-    pieces.extend(
-        [
-            f"unit={native_unit}",
-            "canonicalized with oncoref expression_engine",
-            "clean_tpm=16/9/75",
-        ]
+    required = (
+        f"unit={native_unit}",
+        "canonicalized with oncoref expression_engine",
+        "clean_tpm=16/9/75",
+        f"clean_tpm_profile={CLEAN_TPM_CENSORED_REFERENCE_PROFILE_VERSION}",
     )
+    joined = "; ".join(pieces)
+    pieces.extend(fragment for fragment in required if fragment not in joined)
     return "; ".join(pieces)
 
 
@@ -2115,6 +2115,88 @@ def treehouse_sample_ids(
             f"(disease_label={cohort.disease_label!r}, selection={cohort.selection!r})"
         )
     return ids
+
+
+TREEHOUSE_SAMPLE_MANIFEST_COLUMNS = (
+    "cancer_code",
+    "source_cohort",
+    "sample_id",
+    "donor_id",
+    "source_sample_id",
+    "diagnosis_label",
+    "age_at_diagnosis_years",
+    "source_name",
+    "study_accession",
+    "study_id",
+)
+
+
+def _treehouse_metadata_value(row: Mapping, column: str) -> str:
+    """Return one optional Treehouse metadata field without serializing NaN."""
+    value = row.get(column)
+    if value is None or pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+def _treehouse_donor_id(row: Mapping) -> str:
+    """Return the published donor ID, or a stable Treehouse sample-family ID."""
+    donor_id = _treehouse_metadata_value(row, "study_donor_id")
+    if donor_id:
+        return donor_id
+    sample_id = _treehouse_metadata_value(row, "th_dataset_id")
+    return re.sub(r"_S\d+$", "", sample_id)
+
+
+def treehouse_sample_manifest(
+    source: TreehouseSource,
+    clinical: pd.DataFrame,
+    routed_samples: Mapping[str, Iterable[str]],
+) -> pd.DataFrame:
+    """Library and donor identities for samples routed from one Treehouse source.
+
+    Treehouse publishes one expression column per library. ``study_donor_id`` is
+    retained when available so replicate libraries never inflate donor counts.
+    Older rows without a source donor use the stable Treehouse sample-family
+    prefix (``TH27_1160`` from ``TH27_1160_S01``), rather than pretending that
+    donor identity is unavailable or molecularly annotated.
+    """
+    required = {"th_dataset_id", "disease"}
+    missing = sorted(required - set(clinical.columns))
+    if missing:
+        raise ValueError(f"Treehouse clinical table lacks required columns: {missing}")
+    if clinical["th_dataset_id"].astype(str).duplicated().any():
+        raise ValueError("Treehouse clinical table contains duplicate th_dataset_id values")
+
+    by_sample = clinical.assign(th_dataset_id=clinical["th_dataset_id"].astype(str)).set_index(
+        "th_dataset_id", drop=False
+    )
+    cohort_by_code = {cohort.cancer_code: cohort for cohort in source.cohorts}
+    rows: list[dict[str, str | float]] = []
+    for cancer_code, sample_ids in routed_samples.items():
+        cohort = cohort_by_code[cancer_code]
+        source_cohort = cohort.source_cohort or source.source_cohort
+        for sample_id in sample_ids:
+            if sample_id not in by_sample.index:
+                raise ValueError(f"Treehouse sample {sample_id!r} lacks a clinical row")
+            row = by_sample.loc[sample_id].to_dict()
+            age = pd.to_numeric(_treehouse_metadata_value(row, "age_at_dx"), errors="coerce")
+            source_sample_id = _treehouse_metadata_value(row, "study_dataset_id") or sample_id
+            rows.append(
+                {
+                    "cancer_code": cancer_code,
+                    "source_cohort": source_cohort,
+                    "sample_id": sample_id,
+                    "donor_id": _treehouse_donor_id(row),
+                    "source_sample_id": source_sample_id,
+                    "diagnosis_label": _treehouse_metadata_value(row, "disease"),
+                    "age_at_diagnosis_years": age,
+                    "source_name": _treehouse_metadata_value(row, "source_name"),
+                    "study_accession": _treehouse_metadata_value(row, "study_accession"),
+                    "study_id": _treehouse_metadata_value(row, "study_id"),
+                }
+            )
+    return pd.DataFrame(rows, columns=TREEHOUSE_SAMPLE_MANIFEST_COLUMNS)
 
 
 def treehouse_gdc_case_project_map(
@@ -5145,6 +5227,7 @@ def build_treehouse_source_matrices(
         )
         for cohort in source.cohorts
     }
+    sample_manifest = treehouse_sample_manifest(source, clinical, buckets)
     all_samples = sorted({sample for samples in buckets.values() for sample in samples})
     if not all_samples:
         raise ValueError(f"no Treehouse samples routed for source {source.source_id!r}")
@@ -5185,6 +5268,9 @@ def build_treehouse_source_matrices(
     _write_csv_atomic(parse_diagnostics, parse_path)
     sidecar_paths["mapping_audit"] = audit_path
     sidecar_paths["parse_diagnostics"] = parse_path
+    sample_manifest_path = out_dir / f"{stem}_sample_manifest.csv"
+    _write_csv_atomic(sample_manifest, sample_manifest_path)
+    sidecar_paths["sample_manifest"] = sample_manifest_path
 
     from .expression import sample_expression_qc_from_matrix
 

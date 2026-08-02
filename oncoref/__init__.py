@@ -165,6 +165,11 @@ from .cta import (
     cta_unfiltered_gene_ids,
     cta_unfiltered_gene_names,
 )
+from .drivers import (
+    cancer_driver_spectrum,
+    cancer_driver_spectrum_df,
+    observed_driver_events,
+)
 from .expression import (
     EXPRESSION_ARTIFACT_BUILD_METADATA_SCHEMA_VERSION,
     REFERENCE_EXPRESSION_SCHEMA_VERSION,
@@ -233,10 +238,16 @@ from .fusions import (
     protein_family,
 )
 from .gene_families import (
+    CLEAN_TPM_CENSORED_REFERENCE_PROFILE_SOURCE,
+    CLEAN_TPM_CENSORED_REFERENCE_PROFILE_VERSION,
+    CLEAN_TPM_PROTOCOL_SENSITIVE_BIOTYPES,
     TECHNICAL_RNA_FAMILIES,
     clean_tpm_biological_housekeeping_gene_ids,
     clean_tpm_biological_housekeeping_genes,
+    clean_tpm_censored_genes,
+    clean_tpm_censored_reference_tpm,
     clean_tpm_other_technical_gene_ids,
+    clean_tpm_protocol_sensitive_gene_ids,
     clean_tpm_ribosomal_gene_ids,
     hpa_housekeeping_candidates,
     recommended_hpa_housekeeping_panel,
@@ -354,8 +365,12 @@ from .response_signatures import (
     signature_score,
 )
 from .samples import (
+    molecular_provenance_for_cancer_code,
+    molecular_provenance_for_sample,
+    molecular_sample_counts,
     sample_counts_by_cancer_code,
     sample_manifest,
+    sample_molecular_provenance,
     samples_for_cancer_code,
     samples_for_cohort,
 )
@@ -382,6 +397,9 @@ __all__ = [
     # ontology / registry
     "CANCER_TYPE_ALIASES",
     "CANCER_TYPE_NAMES",
+    "CLEAN_TPM_CENSORED_REFERENCE_PROFILE_SOURCE",
+    "CLEAN_TPM_CENSORED_REFERENCE_PROFILE_VERSION",
+    "CLEAN_TPM_PROTOCOL_SENSITIVE_BIOTYPES",
     "EXPRESSION_ARTIFACT_BUILD_METADATA_SCHEMA_VERSION",
     "HOUSEKEEPING_NORMALIZATION_METHOD",
     "HOUSEKEEPING_REFERENCE_PROFILE_SOURCE",
@@ -448,6 +466,8 @@ __all__ = [
     "cancer_burden",
     "cancer_burden_df",
     "cancer_code_burden_map",
+    "cancer_driver_spectrum",
+    "cancer_driver_spectrum_df",
     "cancer_evidence_source_code",
     "cancer_fusions",
     "cancer_fusions_df",
@@ -511,7 +531,10 @@ __all__ = [
     "clean_tpm",
     "clean_tpm_biological_housekeeping_gene_ids",
     "clean_tpm_biological_housekeeping_genes",
+    "clean_tpm_censored_genes",
+    "clean_tpm_censored_reference_tpm",
     "clean_tpm_other_technical_gene_ids",
+    "clean_tpm_protocol_sensitive_gene_ids",
     "clean_tpm_ribosomal_gene_ids",
     "cohort_aggregate_members",
     # cohort vocabulary
@@ -644,10 +667,14 @@ __all__ = [
     "mmr_confounder_cancer_codes",
     "mmr_hypermutated_confounder_codes",
     "mmrd_cancer_codes",
+    "molecular_provenance_for_cancer_code",
+    "molecular_provenance_for_sample",
+    "molecular_sample_counts",
     "normalize_expression",
     "normalize_technical_rna_columns",
     "normalize_technical_rna_long_table",
     "normalize_to_housekeeping",
+    "observed_driver_events",
     "pan_cancer_expression",
     "per_sample_expression",
     "percentile_rank",
@@ -692,6 +719,7 @@ __all__ = [
     "sample_counts_by_cancer_code",
     "sample_expression_qc",
     "sample_manifest",
+    "sample_molecular_provenance",
     "samples_for_cancer_code",
     "samples_for_cohort",
     "sarcoma_lineage_codes",

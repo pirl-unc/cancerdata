@@ -62,6 +62,10 @@ class ExpressionSource:
     metastasis_site: str | None = None
     processing_pipeline: str | None = None
     notes: str | None = None
+    access_level: str | None = None
+    acquisition_status: str | None = None
+    data_access_url: str | None = None
+    molecular_annotation_status: str | None = None
 
 
 def _coerce_tuple(value) -> tuple[str, ...]:
@@ -167,6 +171,10 @@ def load_registry() -> tuple[ExpressionSource, ...]:
                 metastasis_site=_clean(entry.get("metastasis_site")),
                 processing_pipeline=_clean(entry.get("processing_pipeline")),
                 notes=_clean(entry.get("notes")),
+                access_level=_clean(entry.get("access_level")),
+                acquisition_status=_clean(entry.get("acquisition_status")),
+                data_access_url=_clean(entry.get("data_access_url")),
+                molecular_annotation_status=_clean(entry.get("molecular_annotation_status")),
             )
         )
     return tuple(out)
@@ -208,6 +216,10 @@ def expression_sources_df() -> pd.DataFrame:
             "metastasis_site": s.metastasis_site,
             "processing_pipeline": s.processing_pipeline,
             "notes": s.notes,
+            "access_level": s.access_level,
+            "acquisition_status": s.acquisition_status,
+            "data_access_url": s.data_access_url,
+            "molecular_annotation_status": s.molecular_annotation_status,
             "expected_size_gb": s.expected_size_gb,
             "citation": s.citation,
             "builder": s.builder,
