@@ -28,6 +28,8 @@ jobs:
           import importlib.util
 
           assert importlib.util.find_spec("pyensembl") is None
+          for dependency in ("matplotlib", "adjustText", "matplotlib_venn"):
+              assert importlib.util.find_spec(dependency) is not None, dependency
 
           import oncoref
 

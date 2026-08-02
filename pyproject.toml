@@ -31,25 +31,20 @@ dependencies = [
     "numpy",
     "pyarrow",
     "PyYAML",
+    "matplotlib",
+    "adjustText",
+    "matplotlib_venn>=1.0",
 ]
 
 [project.optional-dependencies]
 genome = [
     "pyensembl",
 ]
-plots = [
-    "matplotlib",
-    "adjustText",
-    "matplotlib_venn>=1.0",
-]
 dev = [
     "pytest",
     "pytest-cov",
     "pytest-xdist",
     "ruff",
-    "matplotlib",
-    "adjustText",
-    "matplotlib_venn>=1.0",
     "pyensembl",
 ]
 

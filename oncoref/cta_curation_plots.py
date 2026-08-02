@@ -17,8 +17,8 @@ only oncoref-owned data. The figures summarize the CTA source overlap, filter
 funnel/outcome, deflated reproductive-fraction distribution, and
 protein-reliability-vs-RNA thresholds from ``cancer-testis-antigens.csv``.
 
-``matplotlib_venn`` is optional. If it is not installed, the source-overlap
-figure degrades to a source-size bar, matching pirlygenes' behavior.
+The standard oncoref installation includes ``matplotlib_venn`` for the
+source-overlap figure.
 """
 
 from __future__ import annotations
@@ -109,29 +109,20 @@ def _save(fig, path, plt):
 
 
 def _fig_source_venn(df, path, plt):
+    from matplotlib_venn import venn3
+
     sets = _tag_sets(df)
     fig, ax = plt.subplots(figsize=(7, 6))
     keys = ("CTpedia", "CTexploreR", "daSilva2017_protein")
     placental = len(sets["placental_antigen"])
-    try:
-        from matplotlib_venn import venn3
-    except ImportError:
-        ax.barh(list(keys), [len(sets[k]) for k in keys], color=KEPT)
-        ax.set_xlabel("genes")
-        ax.set_title(
-            "CTA source sizes - install matplotlib_venn (or oncoref[plots])\n"
-            f"for the overlap venn; +{placental} placental-antigen genes folded in"
-        )
-    else:
-        venn3(
-            [sets[k] for k in keys],
-            set_labels=("CTpedia", "CTexploreR", "da Silva 2017\n(protein)"),
-            ax=ax,
-        )
-        ax.set_title(
-            "CTA source overlap (primary databases)\n"
-            f"+{placental} placental-antigen genes folded in"
-        )
+    venn3(
+        [sets[k] for k in keys],
+        set_labels=("CTpedia", "CTexploreR", "da Silva 2017\n(protein)"),
+        ax=ax,
+    )
+    ax.set_title(
+        f"CTA source overlap (primary databases)\n+{placental} placental-antigen genes folded in"
+    )
     _save(fig, path, plt)
 
 
