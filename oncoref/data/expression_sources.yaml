@@ -1521,8 +1521,9 @@ sources:
     gene_id_type: auto
     source_cohort: GSE328026_PECOMA_2026
     source_project: GEO
-    citation: GSE328026 (PEComa TPMs, public Apr 2026)
-    source_version: GSE328026 (PEComa TPMs, public Apr 2026); gene-id-type=hugo; unit=TPM; harmonized to Ensembl release 112
+    citation: GSE328026 (PEComa TPMs, PMID 42331846, public Apr 2026)
+    source_pmid: PMID:42331846
+    source_version: GSE328026 (PEComa TPMs, PMID 42331846, public Apr 2026); gene-id-type=hugo; unit=TPM; harmonized to Ensembl release 112
     processing_pipeline: gse328026_pecoma_2026_tpm_to_tpm_ensembl112_clean_tpm_16_9_75
     expected_size_gb: 0.01
     notes: >

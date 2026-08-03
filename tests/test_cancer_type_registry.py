@@ -78,13 +78,16 @@ def test_crc_hierarchy():
 
 def test_cmn_is_canonical_and_ifs_remains_a_classification_target():
     raw = pd.read_csv(_CSV, dtype=str, keep_default_na=False).set_index("code")
+    public = cancer_types.cancer_type_registry().set_index("code")
 
     assert resolve_cancer_type("cmn") == "CMN"
     assert resolve_cancer_type("congenital_mesoblastic_nephroma") == "CMN"
     assert resolve_cancer_type("CMN") not in {"SARC_IFS", "WILMS", "SARC"}
     assert raw.loc["CMN", "parent_code"] == ""
     assert raw.loc["CMN", "is_classification_target"] == "False"
+    assert bool(public.loc["CMN", "is_classification_target"]) is False
     assert raw.loc["SARC_IFS", "is_classification_target"] == "True"
+    assert bool(public.loc["SARC_IFS", "is_classification_target"]) is True
 
 
 def test_computed_expression_sources_have_members():
@@ -106,7 +109,7 @@ def test_computed_expression_sources_have_members():
 
 
 def test_source_scoped_clinical_aggregates_are_not_expression_computed():
-    records = cancer_type_records(["CRC_MSI", "NSCLC"]).set_index("code")
+    records = cancer_type_records(["CRC_MSI", "BTC", "NSCLC", "SGC"]).set_index("code")
     assert records.loc["CRC_MSI", "expression_source"] == "curated"
     assert records.loc["CRC_MSI", "source_cohort"] == "LITERATURE_CURATED"
     assert bool(records.loc["CRC_MSI", "has_expression_matrix"]) is False
@@ -118,15 +121,21 @@ def test_source_scoped_clinical_aggregates_are_not_expression_computed():
     assert records.loc["NSCLC", "source_cohort"] == "LITERATURE_CURATED"
     assert bool(records.loc["NSCLC", "has_expression_matrix"]) is False
     assert records.loc["NSCLC", "reference_source"] == "member_union"
+    assert cohort_aggregate_members("BTC") == ["CHOL", "GBC"]
+    assert records.loc["BTC", "reference_source"] == "none"
+    assert bool(records.loc["BTC", "is_classification_target"]) is False
+    assert cohort_aggregate_members("SGC") == ["ACINIC", "ADCC"]
+    assert cohort_aggregate_members("NSCLC") == ["LUAD", "LUSC"]
 
 
-def test_source_scope_mixture_targets_require_reviewed_exceptions():
+def test_source_scope_mixture_targets_follow_reviewed_registry_policy():
     raw = pd.read_csv(_CSV, dtype=str, keep_default_na=False).set_index("code")
     records = cancer_type_records().set_index("code")
     source_scope_mixtures = raw[
-        (raw["ontology_kind"].str.lower() == "source_scope")
+        (raw["ontology_level"].str.lower() == "grouping")
+        & (raw["ontology_kind"].str.lower() == "source_scope")
+        & raw["parent_code"].eq("")
         & raw["mixture_cohort"].str.lower().isin({"true", "1", "yes"})
-        & (records["reference_source"] == "member_union")
     ]
 
     declared_targets = set(
@@ -141,11 +150,14 @@ def test_source_scope_mixture_targets_require_reviewed_exceptions():
             )
         ]
     )
-    reviewed_targets = set(cancer_types._REVIEWED_SOURCE_SCOPE_CLASSIFICATION_TARGETS)
-
-    assert declared_targets == reviewed_targets
-    assert effective_targets == reviewed_targets
+    assert declared_targets == {"BTC", "NSCLC"}
+    assert effective_targets == {"NSCLC"}
     assert set(source_scope_mixtures.index) == {"BTC", "NSCLC", "SGC"}
+    assert records.loc[source_scope_mixtures.index, "reference_source"].to_dict() == {
+        "BTC": "none",
+        "NSCLC": "member_union",
+        "SGC": "member_union",
+    }
 
 
 def test_nec_merkel_registry_points_to_built_expression_source():

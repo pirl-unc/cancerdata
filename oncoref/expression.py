@@ -78,6 +78,7 @@ from ._reference_sources import (
 )
 from .cancer_types import (
     _computed_expression_reference_members,
+    cancer_type_reference_source,
     cohort_aggregates,
     cohort_registry_df,
     resolve_cancer_type,
@@ -3661,7 +3662,7 @@ def _reference_expression_requests(
     for raw in raw_values:
         resolved = resolve_cancer_type(raw)
         members = aggregates.get(str(raw)) or aggregates.get(resolved)
-        if members:
+        if members and cancer_type_reference_source(resolved) == "member_union":
             expanded = [(member, "aggregate_member") for member in members]
         else:
             expanded = [(resolved, "direct")]

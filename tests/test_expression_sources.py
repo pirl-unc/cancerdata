@@ -43,6 +43,46 @@ def test_lookup_by_id_and_code():
     assert any(s.id == "mmrf-commpass" for s in es.sources_for_cancer_code("MM"))
 
 
+def test_expression_source_preserves_legacy_positional_constructor_order():
+    source = es.ExpressionSource(
+        "source-id",
+        "expression",
+        ("CODE",),
+        "geo-matrix",
+        "builder.py",
+        ("--flag",),
+        "external exemption",
+        True,
+        "project-id",
+        ("project-a",),
+        "GSE000001",
+        "https://example.org/data",
+        "TPM",
+        1.5,
+        "citation",
+        "special handling",
+        "SRP000001",
+        "SOURCE_COHORT",
+        "PolyA",
+        "GEO",
+        "v1",
+        "primary",
+        "liver",
+        "pipeline",
+        "notes",
+        "controlled",
+        "access_required",
+        "https://example.org/access",
+        "sample_level_annotations",
+    )
+
+    assert source.special_handling == "special handling"
+    assert source.recount3_srp == "SRP000001"
+    assert source.source_cohort == "SOURCE_COHORT"
+    assert source.molecular_annotation_status == "sample_level_annotations"
+    assert source.source_pmid is None
+
+
 def test_ess_artifact_source_has_typed_provenance():
     source = es.expression_source("gse85383-ess")
 
@@ -170,12 +210,50 @@ def test_expression_sources_df_shape():
         "source_project",
         "processing_pipeline",
         "citation",
+        "source_pmid",
         "access_level",
         "acquisition_status",
         "data_access_url",
         "molecular_annotation_status",
     } <= set(df.columns)
     assert len(df) == len(es.expression_sources())
+
+
+def test_structured_geo_source_pmids_match_selected_registry_provenance():
+    registry = oncoref.cancer_type_registry().set_index("code")
+    checked = []
+    for source in es.expression_sources():
+        if source.source_type != "geo-matrix" or source.source_pmid is None:
+            continue
+        assert re.fullmatch(r"PMID:\d+", source.source_pmid)
+        for code in source.cancer_codes:
+            if code not in registry.index:
+                continue
+            row = registry.loc[code]
+            if row["source_cohort"] != source.source_cohort:
+                continue
+            registry_pmids = {value.strip() for value in str(row["source_pmid"]).split(";")}
+            assert source.source_pmid in registry_pmids
+            checked.append((source.id, code))
+
+    assert ("gse328026-sarc-pec", "SARC_PEC") in checked
+
+
+def test_sclc_subtype_registry_sources_roundtrip_into_reference_filters():
+    codes = ["SCLC_ASCL1", "SCLC_NEUROD1", "SCLC_POU2F3", "SCLC_YAP1"]
+    registry = oncoref.cancer_type_registry().set_index("code")
+
+    assert set(registry.loc[codes, "source_cohort"]) == {"SCLC_UCOLOGNE_2015"}
+    for code in codes:
+        source_cohort = registry.loc[code, "source_cohort"]
+        availability = oncoref.cancer_reference_expression_availability(
+            code,
+            source_cohort=source_cohort,
+            reference_source="summary_rows_all",
+            sample_qc="all",
+        )
+        assert availability["available"].tolist() == [True]
+        assert availability["source_cohort"].tolist() == [source_cohort]
 
 
 def test_ifs_cmn_sources_keep_public_and_controlled_acquisition_explicit():

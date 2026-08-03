@@ -63,6 +63,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from filelock import FileLock
+
 from .version import DATA_VERSION, SOURCE_MATRIX_VERSION, __version__
 
 
@@ -184,6 +186,12 @@ def cache_dir() -> Path:
     if override:
         return Path(override).expanduser()
     return cache_root() / f"v{DATA_VERSION}"
+
+
+def _cache_lock(root: Path) -> FileLock:
+    """Cross-process lock for writes to one version-pinned bundle cache."""
+    root.parent.mkdir(parents=True, exist_ok=True)
+    return FileLock(str(root.parent / f".{root.name}.oncoref.lock"))
 
 
 def _path_complete(path: Path) -> bool:
@@ -647,16 +655,14 @@ def _download_and_extract(
         shutil.rmtree(staging, ignore_errors=True)
 
 
-def fetch(*, verbose: bool = True) -> Path:
-    """Download + extract the bundle for this version into the cache.
+def _fetch_into_cache(root: Path, *, verbose: bool) -> Path:
+    """Download and replace ``root`` while its cache lock is held.
 
     The oncoref-owned source must publish a same-release manifest or sha256 asset
     for the exact ``DATA_VERSION``; missing assets, failed downloads, and checksum
     failures stop the fetch instead of silently relying on a cross-project
-    fallback. Always overwrites — safe to call to repair a corrupt cache. Returns
-    the cache directory.
+    fallback.
     """
-    root = cache_dir()
     root.mkdir(parents=True, exist_ok=True)
     errors: list[str] = []
     for source in RELEASE_SOURCES:
@@ -712,6 +718,17 @@ def fetch(*, verbose: bool = True) -> Path:
     )
 
 
+def fetch(*, verbose: bool = True) -> Path:
+    """Download + extract the bundle for this version into the cache.
+
+    Concurrent writers are serialized. This operation always overwrites the
+    active version so callers can deliberately repair a corrupt cache.
+    """
+    root = cache_dir()
+    with _cache_lock(root):
+        return _fetch_into_cache(root, verbose=verbose)
+
+
 def ensure_local(*, auto_fetch: bool = True, verbose: bool = True) -> Path:
     """Make sure the bundle is present locally; download if not.
 
@@ -719,14 +736,20 @@ def ensure_local(*, auto_fetch: bool = True, verbose: bool = True) -> Path:
     triggering a network call — for read-only inspection paths that shouldn't
     surprise users with a large download.
     """
+    root = cache_dir()
     if bundle_is_local():
-        return cache_dir()
+        return root
     if not auto_fetch:
         raise FileNotFoundError(
-            f"oncoref data bundle not found at {cache_dir()}. "
+            f"oncoref data bundle not found at {root}. "
             "Run `oncoref data fetch bundle` to download it."
         )
-    return fetch(verbose=verbose)
+    with _cache_lock(root):
+        # Another process may have populated the cache while this caller waited.
+        # Reuse it instead of replacing files under that process's readers.
+        if bundle_is_local():
+            return root
+        return _fetch_into_cache(root, verbose=verbose)
 
 
 def status() -> dict:

@@ -2834,6 +2834,7 @@ def test_cancer_reference_expression_request_metadata_for_aggregate(monkeypatch)
     _mock_missing_artifact_build_metadata(monkeypatch)
     monkeypatch.setattr(expression, "cohort_aggregates", lambda: {"AGG": ["X", "Y"]})
     monkeypatch.setattr(expression, "resolve_cancer_type", lambda code: str(code).upper())
+    monkeypatch.setattr(expression, "cancer_type_reference_source", lambda code: "member_union")
     monkeypatch.setattr(expression, "cohort_gene_percentiles", lambda *a, **k: pct.copy())
 
     out = expression.cancer_reference_expression("agg", include_request_metadata=True)
@@ -2843,6 +2844,56 @@ def test_cancer_reference_expression_request_metadata_for_aggregate(monkeypatch)
     assert out["request_kind"].tolist() == ["aggregate_member", "aggregate_member"]
     assert out["available"].tolist() == [True, True]
     assert out["missing_reason"].tolist() == ["", ""]
+
+
+def test_source_scope_member_unions_expand_and_load_supported_members():
+    expected_members = {
+        "SGC": ["ACINIC", "ADCC"],
+        "NSCLC": ["LUAD", "LUSC"],
+    }
+    expected_loaded = {
+        "SGC": {"ACINIC", "ADCC"},
+        "NSCLC": {"LUAD", "LUSC"},
+    }
+
+    for aggregate, members in expected_members.items():
+        availability = expression.cancer_reference_expression_availability(
+            aggregate,
+            sample_qc="artifact",
+        )
+        assert availability["requested_code"].unique().tolist() == [aggregate]
+        assert availability["cancer_code"].tolist() == members
+        assert set(availability["request_kind"]) == {"aggregate_member"}
+
+        result = expression.cancer_reference_expression(
+            aggregate,
+            genes=["TP53"],
+            sample_qc="artifact",
+            include_request_metadata=True,
+            on_missing="empty",
+        )
+        assert set(result["cancer_code"]) == expected_loaded[aggregate]
+        assert set(result["request_kind"]) == {"aggregate_member"}
+
+    btc_availability = expression.cancer_reference_expression_availability(
+        "BTC",
+        sample_qc="artifact",
+    )
+    assert btc_availability[["requested_code", "cancer_code", "request_kind"]].to_dict(
+        "records"
+    ) == [{"requested_code": "BTC", "cancer_code": "BTC", "request_kind": "direct"}]
+    assert btc_availability["available"].tolist() == [False]
+
+    btc = expression.cancer_reference_expression(
+        "BTC",
+        genes=["TP53"],
+        sample_qc="artifact",
+        on_missing="empty",
+    )
+    assert btc.empty
+    assert [
+        (row["cancer_code"], row["missing_reason"]) for row in btc.attrs["missing_requests"]
+    ] == [("BTC", "no_percentile_artifact")]
 
 
 def test_cancer_reference_expression_raw_tpm_uses_source_stats(monkeypatch):
@@ -3620,6 +3671,7 @@ def test_reference_availability_all_sources_preserves_aggregate_requests(monkeyp
     monkeypatch.setattr(expression, "get_data", lambda *args, **kwargs: sidecar)
     monkeypatch.setattr(expression, "resolve_cancer_type", lambda code: str(code).upper())
     monkeypatch.setattr(expression, "cohort_aggregates", lambda: {"AGG": ["X", "Y"]})
+    monkeypatch.setattr(expression, "cancer_type_reference_source", lambda code: "member_union")
     monkeypatch.setattr(
         expression,
         "_selected_expression_source_metadata",
@@ -4374,7 +4426,6 @@ def test_pan_cancer_expression_adds_computed_aggregate_tpm_columns(monkeypatch):
         "NET": ("NET_PANCREAS",),
         "CRC": ("COAD", "READ"),
         "NSCLC": ("LUAD", "LUSC"),
-        "BTC": ("CHOL",),
         "SGC": ("ADCC",),
     }
 
@@ -4387,17 +4438,16 @@ def test_pan_cancer_expression_adds_computed_aggregate_tpm_columns(monkeypatch):
 
     out = expression.pan_cancer_expression(normalize="tpm", column_style="pirlygenes")
 
-    assert {"NET_TPM", "CRC_TPM", "NSCLC_TPM", "BTC_TPM", "SGC_TPM"} <= set(out.columns)
+    assert {"NET_TPM", "CRC_TPM", "NSCLC_TPM", "SGC_TPM"} <= set(out.columns)
+    assert "BTC_TPM" not in out.columns
     assert out["NET_TPM"].tolist() == pytest.approx([7.0, 9.0])
     assert out["CRC_TPM"].tolist() == pytest.approx([25.0, 35.0])
     assert out["NSCLC_TPM"].tolist() == pytest.approx([250.0, 350.0])
-    assert out["BTC_TPM"].tolist() == pytest.approx([11.0, 12.0])
     assert out["SGC_TPM"].tolist() == pytest.approx([21.0, 22.0])
     assert out.attrs["oncoref"]["computed_aggregate_columns"] == (
         "NET_TPM_raw",
         "CRC_TPM_raw",
         "NSCLC_TPM_raw",
-        "BTC_TPM_raw",
         "SGC_TPM_raw",
     )
 
