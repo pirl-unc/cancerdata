@@ -2834,6 +2834,7 @@ def test_cancer_reference_expression_request_metadata_for_aggregate(monkeypatch)
     _mock_missing_artifact_build_metadata(monkeypatch)
     monkeypatch.setattr(expression, "cohort_aggregates", lambda: {"AGG": ["X", "Y"]})
     monkeypatch.setattr(expression, "resolve_cancer_type", lambda code: str(code).upper())
+    monkeypatch.setattr(expression, "cancer_type_reference_source", lambda code: "member_union")
     monkeypatch.setattr(expression, "cohort_gene_percentiles", lambda *a, **k: pct.copy())
 
     out = expression.cancer_reference_expression("agg", include_request_metadata=True)
@@ -3670,6 +3671,7 @@ def test_reference_availability_all_sources_preserves_aggregate_requests(monkeyp
     monkeypatch.setattr(expression, "get_data", lambda *args, **kwargs: sidecar)
     monkeypatch.setattr(expression, "resolve_cancer_type", lambda code: str(code).upper())
     monkeypatch.setattr(expression, "cohort_aggregates", lambda: {"AGG": ["X", "Y"]})
+    monkeypatch.setattr(expression, "cancer_type_reference_source", lambda code: "member_union")
     monkeypatch.setattr(
         expression,
         "_selected_expression_source_metadata",

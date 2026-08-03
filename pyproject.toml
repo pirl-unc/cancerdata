@@ -34,6 +34,7 @@ dependencies = [
     "matplotlib",
     "adjustText",
     "matplotlib_venn>=1.0",
+    "filelock>=3.12",
 ]
 
 [project.optional-dependencies]

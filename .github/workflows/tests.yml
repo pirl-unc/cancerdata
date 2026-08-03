@@ -170,6 +170,10 @@ jobs:
                       digest.update(chunk)
               return digest.hexdigest()
 
+          # Make the complete real-data dependency available before xdist starts.
+          data_bundle.ensure_local(verbose=True)
+          data_bundle.verify_local()
+
           acc_reference = Path(os.environ["ONCOREF_CI_ACC_PERCENTILE_REFERENCE"])
           expected_acc_sha256 = os.environ["CI_ACC_REFERENCE_SHA256"]
           if acc_reference.is_file() and sha256(acc_reference) != expected_acc_sha256:

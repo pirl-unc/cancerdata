@@ -77,7 +77,6 @@ from ._reference_sources import (
     TREEHOUSE_TCGA_SARC_HISTOLOGY_COHORT,
 )
 from .cancer_types import (
-    _SOURCE_SCOPE_MEMBER_UNION_CODES,
     _computed_expression_reference_members,
     cancer_type_reference_source,
     cohort_aggregates,
@@ -3663,11 +3662,7 @@ def _reference_expression_requests(
     for raw in raw_values:
         resolved = resolve_cancer_type(raw)
         members = aggregates.get(str(raw)) or aggregates.get(resolved)
-        source_scope_is_complete = (
-            resolved not in _SOURCE_SCOPE_MEMBER_UNION_CODES
-            or cancer_type_reference_source(resolved) == "member_union"
-        )
-        if members and source_scope_is_complete:
+        if members and cancer_type_reference_source(resolved) == "member_union":
             expanded = [(member, "aggregate_member") for member in members]
         else:
             expanded = [(resolved, "direct")]

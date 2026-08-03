@@ -8,6 +8,8 @@ import hashlib
 import io
 import tarfile
 import urllib.error
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, local
 
 import pytest
 
@@ -480,6 +482,40 @@ def test_fetch_primary_404_fails_without_fallback(monkeypatch, tmp_path):
     with pytest.raises(RuntimeError, match="checksum-verified primary source"):
         data_bundle.fetch(verbose=False)
     assert attempted == [data_bundle.RELEASE_URL]
+
+
+def test_concurrent_ensure_local_reuses_first_completed_fetch(monkeypatch, tmp_path):
+    root = tmp_path / f"v{DATA_VERSION}"
+    monkeypatch.setenv("CANCERDATA_BUNDLED_DATA", str(root))
+    monkeypatch.setattr(data_bundle, "_fetch_release_manifest", lambda source: None)
+
+    attempts = []
+
+    def fake_download(url, destination, *, verbose, release_manifest=None):
+        attempts.append(url)
+        _write_bundle_fixture(destination)
+
+    monkeypatch.setattr(data_bundle, "_download_and_extract", fake_download)
+
+    real_bundle_is_local = data_bundle.bundle_is_local
+    first_checks = Barrier(2)
+    checks_by_thread = local()
+
+    def synchronized_first_check():
+        present = real_bundle_is_local()
+        if not getattr(checks_by_thread, "completed_first_check", False):
+            checks_by_thread.completed_first_check = True
+            first_checks.wait()
+        return present
+
+    monkeypatch.setattr(data_bundle, "bundle_is_local", synchronized_first_check)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: data_bundle.ensure_local(verbose=False), range(2)))
+
+    assert results == [root, root]
+    assert attempts == [data_bundle.RELEASE_URL]
+    assert real_bundle_is_local()
 
 
 def test_fetch_corrupt_primary_tarball_fails_without_fallback(monkeypatch, tmp_path):
