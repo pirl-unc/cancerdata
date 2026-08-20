@@ -16,6 +16,8 @@ from pathlib import Path
 import pandas as pd
 
 from oncoref import (
+    cancer_reference_expression_availability,
+    cancer_type_lineage,
     cancer_type_records,
     cancer_type_registry,
     cancer_type_subtypes_of,
@@ -23,6 +25,7 @@ from oncoref import (
     cohort_aggregate_members,
     cohort_registry_df,
     resolve_cancer_type,
+    source_matrices,
 )
 
 _CSV = Path(__file__).resolve().parents[1] / "oncoref" / "data" / "cancer-type-registry.csv"
@@ -167,6 +170,48 @@ def test_nec_merkel_registry_points_to_built_expression_source():
     assert records.loc["NEC_MERKEL", "source_matrix_cohort"] == "GSE235092_MERKEL_2024"
     assert records.loc["NEC_MERKEL", "source_matrix_n_samples"] == 91
     assert bool(records.loc["NEC_MERKEL", "has_expression_matrix"]) is True
+
+
+def test_non_testicular_gct_hierarchy_preserves_anatomic_source_boundaries():
+    ovarian = {"GCT_OV", "GCT_OV_YST", "GCT_OV_IMT", "GCT_OV_DYS"}
+    intracranial = {"GCT_CNS", "GCT_CNS_GER", "GCT_CNS_NGGCT"}
+    non_testicular = ovarian | intracranial
+    records = cancer_type_records(["GCT", "TGCT", *sorted(non_testicular)]).set_index("code")
+
+    assert set(cancer_type_subtypes_of("GCT")) == {"TGCT", "GCT_OV", "GCT_CNS"}
+    assert set(cancer_type_subtypes_of("GCT_OV")) == {
+        "GCT_OV_YST",
+        "GCT_OV_IMT",
+        "GCT_OV_DYS",
+    }
+    assert set(cancer_type_subtypes_of("GCT_CNS")) == {
+        "GCT_CNS_GER",
+        "GCT_CNS_NGGCT",
+    }
+    assert cancer_type_lineage("TGCT") == ["GCT", "TGCT"]
+    assert cancer_type_lineage("GCT_OV_YST") == ["GCT", "GCT_OV", "GCT_OV_YST"]
+    assert cancer_type_lineage("GCT_CNS_GER") == ["GCT", "GCT_CNS", "GCT_CNS_GER"]
+
+    assert resolve_cancer_type("Ovarian Yolk Sac Tumor") == "GCT_OV_YST"
+    assert resolve_cancer_type("CNS Germinoma") == "GCT_CNS_GER"
+    assert records.loc["TGCT", "primary_tissue"] == "testis"
+    assert records.loc["TGCT", "source_matrix_cohort"] == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
+    assert records.loc["GCT", "burden_category"] == "other_and_unknown_primary"
+    assert set(records.loc[list(ovarian), "burden_category"]) == {"ovary"}
+    assert set(records.loc[list(intracranial), "burden_category"]) == {"brain_cns"}
+    assert set(records.loc[list(non_testicular), "reference_source"]) == {"none"}
+    assert records.loc[list(non_testicular), "classification_reference_code"].isna().all()
+    assert not records.loc[list(non_testicular), "has_expression_matrix"].any()
+    assert not records.loc[list(non_testicular), "is_classification_target"].any()
+    assert not (non_testicular & set(source_matrices.registry()["cancer_code"].astype(str)))
+
+    availability = cancer_reference_expression_availability(sorted(non_testicular))
+    assert set(availability["requested_code"]) == non_testicular
+    assert not availability["available"].any()
+
+    coverage = cancer_types.expression_reference_coverage(sorted(non_testicular))
+    assert set(coverage["reference_source"]) == {"none"}
+    assert set(coverage["consumer_recommendation"]) == {"unsupported"}
 
 
 def test_registry_has_expected_scale():

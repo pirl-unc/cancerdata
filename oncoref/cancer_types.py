@@ -1438,12 +1438,24 @@ def _reference_source_map() -> dict[str, str]:
     ``own_cohort`` and ``member_union`` provide usable reference data, but
     classification eligibility is decided separately by
     :func:`_classification_target_map`. ``parent`` rows can be annotated at a
-    classifiable ancestor, while ``none`` rows have no reference backing.
+    classifiable reference-bearing ancestor, while ``none`` rows have no
+    reportable reference backing anywhere on their ancestor chain.
     """
 
     df = _registry_frame()
     direct = _direct_expression_codes()
     parent_of = _parent_of_map()
+    computed = {
+        str(code)
+        for code in df["code"].astype(str)
+        if _computed_expression_reference_members(str(code))
+    }
+    reviewed_targets = dict(
+        zip(df["code"].astype(str), _truthy_registry_flag(df["is_classification_target"]))
+    )
+    classifiable_references = {
+        code for code in direct | computed if reviewed_targets.get(code, False)
+    }
     out: dict[str, str] = {}
     for row in df.to_dict("records"):
         code = str(row["code"])
@@ -1456,11 +1468,13 @@ def _reference_source_map() -> dict[str, str]:
             out[code] = "none"
         elif code in direct:
             out[code] = "own_cohort"
-        elif _computed_expression_reference_members(code):
+        elif code in computed:
             out[code] = "member_union"
         elif level == "evidence_scope" or kind == "source_scope":
             out[code] = "none"
-        elif parent_of.get(code):
+        elif any(
+            ancestor in classifiable_references for ancestor in _walk_ancestors(code, parent_of)
+        ):
             out[code] = "parent"
         else:
             out[code] = "none"
