@@ -29,6 +29,8 @@ gallbladder,gallbladder_biliary,solid,
 thyroid,thyroid,solid,
 thyroid_c_cell,thyroid,solid,
 testis,testicular_germ_cell,solid,
+germ_cell,other_and_unknown_primary,solid,Pan-anatomic germ-cell umbrella has no single ACS/GLOBOCAN site category
+intracranial_midline,brain_cns,solid,Intracranial midline tumors are reported within brain/CNS burden
 pleura,mesothelioma,solid,
 peritoneum,mesothelioma,solid,
 oral_cavity,head_and_neck,solid,

@@ -432,6 +432,85 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
     assert (divergent["source_cohort"] != selected.loc[divergent.index, "source_cohort"]).all()
 
 
+def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
+    expected_status = {
+        "BCC": "bulk_candidate_needs_sample_selection",
+        "cSCC": "bulk_candidate_needs_sample_selection",
+        "VSCC": "bulk_candidate_needs_quantification",
+        "VAGC": "deferred_no_dedicated_source",
+        "FTC": "deferred_pooled_source_not_direct",
+        "PPC": "deferred_pooled_source_not_direct",
+        "PENSCC": "microarray_proxy_only",
+        "URETH": "deferred_no_dedicated_source",
+        "ANSC": "bulk_candidate_needs_sample_selection",
+        "GBC": "bulk_candidate_ready",
+        "EPN": "bulk_candidate_needs_sample_selection",
+        "PITNET": "microarray_proxy_only",
+        "CRANIO": "bulk_candidate_needs_sample_selection",
+        "DIPG": "bulk_candidate_needs_sample_selection",
+    }
+    candidates = es.expression_source_candidates()
+    rows = candidates[candidates["cancer_code"].isin(expected_status)].set_index("cancer_code")
+
+    assert len(rows) == len(expected_status)
+    assert rows["source_status"].to_dict() == expected_status
+    for column in (
+        "source_status",
+        "assay",
+        "source_scope",
+        "processing_plan",
+        "gene_id_plan",
+        "normalization_plan",
+        "notes",
+    ):
+        assert rows[column].notna().all()
+        assert rows[column].astype(str).str.strip().ne("").all()
+    assert set(rows.loc[["FTC", "PPC"], "reference_code"]) == {"OV"}
+    assert not rows["source_status"].eq("direct_reference_available").any()
+    assert not (set(rows.index) & set(source_matrices.registry()["cancer_code"].astype(str)))
+
+    availability = oncoref.cancer_reference_expression_availability(list(expected_status))
+    assert set(availability["requested_code"]) == set(expected_status)
+    assert not availability["available"].any()
+
+
+def test_non_testicular_gct_candidates_record_proxy_and_rejection_boundaries():
+    codes = {
+        "GCT_OV_YST",
+        "GCT_OV_IMT",
+        "GCT_OV_DYS",
+        "GCT_CNS_GER",
+        "GCT_CNS_NGGCT",
+    }
+    rows = es.expression_source_candidates()
+    rows = rows[rows["cancer_code"].isin(codes)].set_index("cancer_code")
+
+    assert set(rows.index) == codes
+    assert rows["accession"].to_dict() == {
+        "GCT_OV_YST": "GSE169733",
+        "GCT_OV_IMT": "GSE229343",
+        "GCT_OV_DYS": "DOI:10.1038/s41416-025-03012-6",
+        "GCT_CNS_GER": "GSE19348",
+        "GCT_CNS_NGGCT": "GSE19348",
+    }
+    assert int(rows.loc["GCT_OV_YST", "estimated_samples"]) == 10
+    assert int(rows.loc["GCT_OV_IMT", "estimated_samples"]) == 3
+    assert int(rows.loc["GCT_OV_DYS", "estimated_samples"]) == 1
+    assert "GSE247518" in rows.loc["GCT_OV_YST", "notes"]
+    assert "GSE156170" in rows.loc["GCT_OV_IMT", "notes"]
+    assert (
+        rows.loc[["GCT_CNS_GER", "GCT_CNS_NGGCT"], "source_status"]
+        .eq("microarray_proxy_only")
+        .all()
+    )
+    assert not rows["reference_code"].fillna("").eq("TGCT").any()
+    assert not (codes & set(source_matrices.registry()["cancer_code"].astype(str)))
+
+    availability = oncoref.cancer_reference_expression_availability(sorted(codes))
+    assert set(availability["requested_code"]) == codes
+    assert not availability["available"].any()
+
+
 def test_samples_for_cancer_code_included_only():
     inc = samples.samples_for_cancer_code("BL", included_only=True)
     allrows = samples.samples_for_cancer_code("BL", included_only=False)

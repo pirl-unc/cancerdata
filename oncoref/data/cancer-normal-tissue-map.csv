@@ -23,7 +23,9 @@ esophagus,esophagus,Esophagus,esophagus,exact,HPA tissue match
 eye,retina,Retina,retina,site,Retina is the HPA ocular tissue
 fallopian_tube,fallopian_tube,Fallopian tube,fallopian tube,exact,HPA tissue match
 gallbladder,gallbladder,Gallbladder,gallbladder,exact,HPA tissue match
+germ_cell,germ_cell,Germ cell composite,,unresolved,Pan-anatomic germ-cell umbrella has no single matched normal tissue
 gi_wall,smooth_muscle,Smooth muscle,smooth muscle,proxy,HPA lacks GI wall/interstitial-cell tissue; smooth muscle is a local proxy
+intracranial_midline,cerebral_cortex,Cerebral cortex,cerebral cortex,proxy,HPA lacks an intracranial-midline composite; cerebral cortex is the closest brain proxy
 kidney,kidney,Kidney,kidney,exact,HPA tissue match
 kidney_cns_soft,kidney_cns_soft,Kidney/CNS/soft tissue,kidney;cerebral cortex,composite,"Rhabdoid tumor registry bucket spans kidney, CNS, and soft tissue; HPA v23 RNA has no generic soft-tissue tissue"
 liver,liver,Liver,liver,exact,HPA tissue match
