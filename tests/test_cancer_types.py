@@ -691,6 +691,10 @@ def test_reference_source_and_review_policy_drive_classification_targets():
         "BTC",
     }
 
+    all_records = cancer_types.cancer_type_records()
+    parent_backed = all_records[all_records["reference_source"].eq("parent")]
+    assert parent_backed["classification_reference_code"].notna().all()
+
     non_targets = {
         "RCC_NCC",
         "RCC_NCC_UNCLASSIFIED",

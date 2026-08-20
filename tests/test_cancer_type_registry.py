@@ -199,6 +199,8 @@ def test_non_testicular_gct_hierarchy_preserves_anatomic_source_boundaries():
     assert records.loc["GCT", "burden_category"] == "other_and_unknown_primary"
     assert set(records.loc[list(ovarian), "burden_category"]) == {"ovary"}
     assert set(records.loc[list(intracranial), "burden_category"]) == {"brain_cns"}
+    assert set(records.loc[list(non_testicular), "reference_source"]) == {"none"}
+    assert records.loc[list(non_testicular), "classification_reference_code"].isna().all()
     assert not records.loc[list(non_testicular), "has_expression_matrix"].any()
     assert not records.loc[list(non_testicular), "is_classification_target"].any()
     assert not (non_testicular & set(source_matrices.registry()["cancer_code"].astype(str)))
@@ -206,6 +208,10 @@ def test_non_testicular_gct_hierarchy_preserves_anatomic_source_boundaries():
     availability = cancer_reference_expression_availability(sorted(non_testicular))
     assert set(availability["requested_code"]) == non_testicular
     assert not availability["available"].any()
+
+    coverage = cancer_types.expression_reference_coverage(sorted(non_testicular))
+    assert set(coverage["reference_source"]) == {"none"}
+    assert set(coverage["consumer_recommendation"]) == {"unsupported"}
 
 
 def test_registry_has_expected_scale():

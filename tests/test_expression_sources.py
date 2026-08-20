@@ -468,6 +468,12 @@ def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
     assert set(rows.loc[["FTC", "PPC"], "reference_code"]) == {"OV"}
     assert not rows["source_status"].eq("direct_reference_available").any()
     assert not (set(rows.index) & set(source_matrices.registry()["cancer_code"].astype(str)))
+    assert "H3 K27-altered" in rows.loc["DIPG", "source_scope"]
+    assert (
+        "include only samples with direct H3 K27-altered molecular evidence"
+        in rows.loc["DIPG", "processing_plan"]
+    )
+    assert "exclude unannotated and H3-wild-type cases" in rows.loc["DIPG", "notes"]
 
     availability = oncoref.cancer_reference_expression_availability(list(expected_status))
     assert set(availability["requested_code"]) == set(expected_status)
