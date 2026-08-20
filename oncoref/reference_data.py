@@ -233,16 +233,75 @@ def verify(name: str, version: str | None = None) -> bool:
     Raises if there is no manifest record to check against (nothing to verify).
     Unlike the cheap size check on reuse, this re-hashes the file — call it
     deliberately (a cache audit), not on every access."""
-    version = resolve_version(name, version)
-    dest = local_path(name, version)
-    expected = _manifest_record(name, version).get("sha256")
-    if not expected:
+    record = provenance(name, version, verify_content=True)
+    if not record["sha256"]:
         raise ReferenceDataError(
-            f"no manifest sha256 recorded for {name!r} {version}; nothing to verify"
+            f"no manifest sha256 recorded for {name!r} {record['version']}; nothing to verify"
         )
-    if not dest.exists():
-        return False
-    return hashlib.sha256(dest.read_bytes()).hexdigest() == expected
+    return record["checksum_matches"] is True
+
+
+def provenance(
+    name: str,
+    version: str | None = None,
+    *,
+    verify_content: bool = False,
+) -> dict:
+    """Return source and cache provenance for one concrete reference artifact.
+
+    The returned dictionary is a defensive, scalar-only snapshot; changing it
+    cannot mutate the cache manifest. ``verify_content=False`` avoids hashing
+    large HPA TSVs and reports ``verification_state="not_checked"`` when a
+    checksum is available. Opting into content verification reports one of
+    ``"verified"`` or ``"checksum_mismatch"``. The other explicit states are
+    ``"no_manifest"``, ``"missing_checksum"``, and ``"missing_file"``.
+    """
+    version = resolve_version(name, version)
+    spec = _source(name)
+    dest = local_path(name, version)
+    record = dict(_manifest_record(name, version))
+    exists = dest.exists()
+    try:
+        local_bytes = dest.stat().st_size if exists else None
+    except OSError:
+        exists = False
+        local_bytes = None
+
+    recorded_bytes = record.get("bytes")
+    try:
+        recorded_bytes = int(recorded_bytes) if recorded_bytes is not None else None
+    except (TypeError, ValueError):
+        recorded_bytes = None
+
+    expected = record.get("sha256") or None
+    checksum_matches = None
+    if not record:
+        verification_state = "no_manifest"
+    elif not expected:
+        verification_state = "missing_checksum"
+    elif not exists:
+        verification_state = "missing_file"
+        checksum_matches = False
+    elif verify_content:
+        checksum_matches = hashlib.sha256(dest.read_bytes()).hexdigest() == expected
+        verification_state = "verified" if checksum_matches else "checksum_mismatch"
+    else:
+        verification_state = "not_checked"
+
+    return {
+        "name": name,
+        "version": version,
+        "url": record.get("url") or spec["urls"][version],
+        "path": str(dest),
+        "bytes": local_bytes,
+        "recorded_bytes": recorded_bytes,
+        "sha256": expected,
+        "downloaded_at": record.get("downloaded_at") or None,
+        "exists": exists,
+        "manifest_recorded": bool(record),
+        "checksum_matches": checksum_matches,
+        "verification_state": verification_state,
+    }
 
 
 def _zip_member(zf: zipfile.ZipFile, preferred: str) -> str:
@@ -266,21 +325,25 @@ def ensure(name: str, version: str | None = None) -> Path:
     return download(name, version)
 
 
-def status() -> list[dict]:
-    """One row per source: cached?, version, size, description."""
+def status(*, verify_content: bool = False) -> list[dict]:
+    """One row per source with default-version cache and provenance status.
+
+    Set ``verify_content=True`` to hash each present artifact and populate a
+    definitive checksum verification state. The default is deliberately cheap.
+    """
     rows = []
     for name, spec in REFERENCE_SOURCES.items():
-        path = local_path(name)
-        record = _manifest_record(name, DEFAULT_HPA_VERSION)
+        source_provenance = provenance(name, verify_content=verify_content)
         rows.append(
             {
-                "name": name,
-                "cached": path.exists(),
+                **source_provenance,
+                "cached": source_provenance["exists"],
+                "bytes": source_provenance["bytes"] or 0,
                 "default_version": DEFAULT_HPA_VERSION,
                 "available_versions": sorted(spec["urls"]),
-                "cached_version": record.get("version"),
-                "bytes": path.stat().st_size if path.exists() else 0,
-                "path": str(path),
+                "cached_version": (
+                    source_provenance["version"] if source_provenance["manifest_recorded"] else None
+                ),
                 "description": spec["description"],
             }
         )

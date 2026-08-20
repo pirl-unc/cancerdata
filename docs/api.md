@@ -1127,7 +1127,13 @@ order.
 ### HPA data
 
 - `oncoref.reference_data` / `oncoref.hpa` — HPA reference-data cache and HPA
-  tissue/cell-type accessors.
+  tissue/cell-type accessors. Use
+  `reference_data.provenance(name, version, verify_content=True)` for a
+  defensive provenance snapshot containing the concrete source URL, local
+  path and size, recorded SHA-256 and download time, existence state, and
+  checksum result. `reference_data.status(verify_content=True)` exposes the
+  same fields for every default-version HPA source; omit `verify_content` to
+  avoid hashing large cached files.
 
 ## Compatibility Modules
 
