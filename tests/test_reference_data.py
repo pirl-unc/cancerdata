@@ -64,6 +64,8 @@ def test_status_shape(monkeypatch, tmp_path):
     names = {r["name"] for r in rows}
     assert names == {"hpa_rna_consensus", "hpa_normal_tissue", "hpa_single_cell"}
     assert all(r["cached"] is False for r in rows)  # nothing downloaded
+    assert all(r["verification_state"] == "no_manifest" for r in rows)
+    assert all(r["sha256"] is None for r in rows)
 
 
 def test_single_cell_registered():
@@ -145,3 +147,99 @@ def test_verify_without_manifest_raises(monkeypatch, tmp_path):
     monkeypatch.setenv("CANCERDATA_DATA_DIR", str(tmp_path))
     with pytest.raises(reference_data.ReferenceDataError, match="nothing to verify"):
         reference_data.verify("hpa_rna_consensus")
+
+
+def test_provenance_selects_exact_cached_version(monkeypatch, tmp_path):
+    monkeypatch.setenv("CANCERDATA_DATA_DIR", str(tmp_path))
+    v23 = _seed_cache("hpa_rna_consensus", b"v23-data", version="v23")
+    latest = _seed_cache("hpa_rna_consensus", b"latest-data", version="latest")
+
+    v23_record = reference_data.provenance("hpa_rna_consensus", "v23")
+    latest_record = reference_data.provenance("hpa_rna_consensus", "latest")
+
+    assert v23_record["version"] == "v23"
+    assert v23_record["path"] == str(v23)
+    assert v23_record["sha256"] == hashlib.sha256(b"v23-data").hexdigest()
+    assert latest_record["version"] == "latest"
+    assert latest_record["path"] == str(latest)
+    assert latest_record["sha256"] == hashlib.sha256(b"latest-data").hexdigest()
+
+
+def test_provenance_distinguishes_verification_states(monkeypatch, tmp_path):
+    monkeypatch.setenv("CANCERDATA_DATA_DIR", str(tmp_path))
+    dest = _seed_cache("hpa_rna_consensus", b"good")
+
+    unchecked = reference_data.provenance("hpa_rna_consensus")
+    assert unchecked["verification_state"] == "not_checked"
+    assert unchecked["checksum_matches"] is None
+
+    verified = reference_data.provenance("hpa_rna_consensus", verify_content=True)
+    assert verified["verification_state"] == "verified"
+    assert verified["checksum_matches"] is True
+
+    dest.write_bytes(b"bad")
+    mismatched = reference_data.provenance("hpa_rna_consensus", verify_content=True)
+    assert mismatched["verification_state"] == "checksum_mismatch"
+    assert mismatched["checksum_matches"] is False
+
+    dest.unlink()
+    missing = reference_data.provenance("hpa_rna_consensus", verify_content=True)
+    assert missing["verification_state"] == "missing_file"
+    assert missing["checksum_matches"] is False
+
+
+def test_provenance_distinguishes_no_manifest_and_missing_checksum(monkeypatch, tmp_path):
+    monkeypatch.setenv("CANCERDATA_DATA_DIR", str(tmp_path))
+    dest = reference_data.local_path("hpa_rna_consensus")
+    dest.parent.mkdir(parents=True)
+    dest.write_bytes(b"unrecorded")
+
+    absent = reference_data.provenance("hpa_rna_consensus", verify_content=True)
+    assert absent["manifest_recorded"] is False
+    assert absent["verification_state"] == "no_manifest"
+    assert absent["checksum_matches"] is None
+
+    manifest_path = reference_data.cache_dir() / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                reference_data._manifest_key("hpa_rna_consensus", "v23"): {
+                    "name": "hpa_rna_consensus",
+                    "version": "v23",
+                    "url": "http://example/test",
+                    "path": str(dest),
+                    "bytes": len(b"unrecorded"),
+                }
+            }
+        )
+    )
+    missing_checksum = reference_data.provenance("hpa_rna_consensus", verify_content=True)
+    assert missing_checksum["manifest_recorded"] is True
+    assert missing_checksum["verification_state"] == "missing_checksum"
+    assert missing_checksum["checksum_matches"] is None
+
+
+def test_provenance_is_a_defensive_snapshot(monkeypatch, tmp_path):
+    monkeypatch.setenv("CANCERDATA_DATA_DIR", str(tmp_path))
+    _seed_cache("hpa_rna_consensus", b"stable")
+
+    first = reference_data.provenance("hpa_rna_consensus")
+    expected_sha256 = first["sha256"]
+    first["sha256"] = "mutated"
+    first["url"] = "http://example/mutated"
+
+    second = reference_data.provenance("hpa_rna_consensus")
+    assert second["sha256"] == expected_sha256
+    assert second["url"] == "http://example/test"
+
+
+def test_status_can_verify_default_version_content(monkeypatch, tmp_path):
+    monkeypatch.setenv("CANCERDATA_DATA_DIR", str(tmp_path))
+    _seed_cache("hpa_rna_consensus", b"stable")
+
+    by_name = {row["name"]: row for row in reference_data.status(verify_content=True)}
+    record = by_name["hpa_rna_consensus"]
+    assert record["verification_state"] == "verified"
+    assert record["checksum_matches"] is True
+    assert record["url"] == "http://example/test"
+    assert record["recorded_bytes"] == len(b"stable")
