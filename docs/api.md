@@ -1138,7 +1138,14 @@ order.
   `data_bundle.bundle_release_manifest()` to fetch and validate only the small
   release manifest/checksum for the active `DATA_VERSION`, including tarball
   sha256 plus any artifact inventory, builder commit, source-matrix version, and
-  sample-QC policy metadata published with the release. Use
+  sample-QC policy metadata published with the release. Manifest version 2 can
+  describe a compact overlay: the active archive pins a complete earlier
+  oncoref bundle by version, size, and SHA-256 and contains only added, changed,
+  or deleted files. Fetch reuses an already verified base cache when available,
+  otherwise downloads that base once, verifies the overlay, and materializes a
+  normal complete cache for the active version. Release builders create these
+  assets with `scripts/build_data_overlay.py COMPLETE_DIR BASE_DIR
+  BASE_MANIFEST OUTPUT_DIR`; full bundle releases remain supported. Use
   `data_bundle.bundle_metadata()` when a downstream package needs one
   no-heavy-download JSON object containing the static contract, local cache path
   and completeness state, local artifact inventory, and validated release

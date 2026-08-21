@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import tarfile
 from pathlib import Path
 
 import yaml
@@ -12,6 +13,7 @@ from scripts.pypi_release_gate import (
 )
 
 from oncoref.data_bundle import DOWNLOADABLE_PATHS
+from oncoref.version import SOURCE_MATRIX_VERSION
 
 
 def test_build_backend_supports_declared_pep_639_license_metadata():
@@ -145,3 +147,66 @@ def test_data_tarball_can_target_an_unreleased_version(tmp_path):
     assert manifest["tarball"]["filename"] == "oncoref-data-v9.8.7.tar.gz"
     assert (output / "oncoref-data-v9.8.7.tar.gz").read_bytes() == first_tarball
     assert (output / "oncoref-data-v9.8.7.tar.gz.sha256").exists()
+
+
+def test_data_overlay_contains_only_changed_files_and_pins_complete_base(tmp_path):
+    base = tmp_path / "base"
+    complete = tmp_path / "complete"
+    output = tmp_path / "output"
+    for root in (base, complete):
+        for relative_path in DOWNLOADABLE_PATHS:
+            path = root / relative_path
+            if path.suffix:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("{}" if path.suffix == ".json" else "fixture\n")
+            else:
+                path.mkdir(parents=True, exist_ok=True)
+                (path / "fixture.txt").write_text("fixture\n")
+    changed = "pan-cancer-expression.csv"
+    (complete / changed).write_text("replacement\n")
+    base_manifest = tmp_path / "base-manifest.json"
+    base_manifest.write_text(
+        json.dumps(
+            {
+                "manifest_version": 1,
+                "data_version": "9.8.7",
+                "source_matrix_version": SOURCE_MATRIX_VERSION,
+                "tarball": {
+                    "filename": "oncoref-data-v9.8.7.tar.gz",
+                    "bytes": 1234,
+                    "sha256": "b" * 64,
+                    "downloadable_paths": list(DOWNLOADABLE_PATHS),
+                },
+            }
+        )
+    )
+    env = os.environ.copy()
+    env["ONCOREF_DATA_RELEASE_VERSION"] = "9.8.8"
+
+    subprocess.run(
+        [
+            "python",
+            "scripts/build_data_overlay.py",
+            str(complete),
+            str(base),
+            str(base_manifest),
+            str(output),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    archive = output / "oncoref-data-v9.8.8.tar.gz"
+    manifest = json.loads((output / "oncoref-data-v9.8.8.manifest.json").read_text())
+    with tarfile.open(archive) as bundle:
+        members = [member.name for member in bundle.getmembers() if member.isfile()]
+    assert members == [changed]
+    assert manifest["bundle_layout"] == "overlay"
+    assert manifest["package_version"] == package_version_from_source()
+    assert manifest["base_bundle"]["data_version"] == "9.8.7"
+    assert manifest["base_bundle"]["tarball"]["sha256"] == "b" * 64
+    assert manifest["overlay"]["paths"] == [changed]
+    assert manifest["overlay"]["deleted_paths"] == []
+    assert manifest["inventory"][changed]["size_bytes"] == len("replacement\n")

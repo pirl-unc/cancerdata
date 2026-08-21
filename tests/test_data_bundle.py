@@ -203,6 +203,33 @@ def _release_manifest(tar_path):
     }
 
 
+def _overlay_release_manifest(tar_path, *, paths, base_sha="b" * 64):
+    manifest = _release_manifest(tar_path)
+    manifest.update(
+        {
+            "manifest_version": 2,
+            "bundle_layout": "overlay",
+            "base_bundle": {
+                "data_version": "5.23.18",
+                "repo": data_bundle.GITHUB_REPO,
+                "tarball": {
+                    "filename": "oncoref-data-v5.23.18.tar.gz",
+                    "bytes": 1234,
+                    "sha256": base_sha,
+                    "downloadable_paths": list(data_bundle.DOWNLOADABLE_PATHS),
+                },
+            },
+            "overlay": {
+                "file_count": len(paths),
+                "size_bytes": sum(tar_path.stat().st_size for _ in paths),
+                "paths": list(paths),
+                "deleted_paths": [],
+            },
+        }
+    )
+    return manifest
+
+
 def test_fetch_release_manifest_accepts_sha256_sidecar(monkeypatch):
     sha = "a" * 64
 
@@ -253,6 +280,53 @@ def test_bundle_release_manifest_preserves_inventory_and_build_metadata(monkeypa
     assert manifest["artifact_build_metadata"]["n_cohorts"] == 118
     assert set(manifest["inventory"]) == set(data_bundle.DOWNLOADABLE_PATHS)
     assert manifest["inventory"]["pan-cancer-expression.csv"]["file_count"] == 1
+
+
+def test_release_manifest_normalizes_checksum_pinned_overlay(tmp_path):
+    src = tmp_path / "src"
+    _write_bundle_fixture(src)
+    tar_path = _bundle_tarball(tmp_path, src)
+    raw = _overlay_release_manifest(tar_path, paths=["pan-cancer-expression.csv"])
+
+    manifest = data_bundle._validate_release_manifest(
+        raw,
+        data_bundle.RELEASE_SOURCES[0],
+        manifest_url=data_bundle.RELEASE_MANIFEST_URL,
+    )
+
+    assert manifest["bundle_layout"] == "overlay"
+    assert manifest["base_bundle"]["data_version"] == "5.23.18"
+    assert manifest["base_bundle"]["tarball"]["sha256"] == "b" * 64
+    assert manifest["overlay"]["paths"] == ["pan-cancer-expression.csv"]
+
+
+def test_release_manifest_rejects_unsafe_overlay_path(tmp_path):
+    src = tmp_path / "src"
+    _write_bundle_fixture(src)
+    tar_path = _bundle_tarball(tmp_path, src)
+    raw = _overlay_release_manifest(tar_path, paths=["../escape"])
+
+    with pytest.raises(data_bundle.BundleIntegrityError, match="unsafe bundle path"):
+        data_bundle._validate_release_manifest(
+            raw,
+            data_bundle.RELEASE_SOURCES[0],
+            manifest_url=data_bundle.RELEASE_MANIFEST_URL,
+        )
+
+
+def test_release_manifest_rejects_inconsistent_overlay_metadata(tmp_path):
+    src = tmp_path / "src"
+    _write_bundle_fixture(src)
+    tar_path = _bundle_tarball(tmp_path, src)
+    raw = _overlay_release_manifest(tar_path, paths=["pan-cancer-expression.csv"])
+    raw["overlay"]["file_count"] = 2
+
+    with pytest.raises(data_bundle.BundleIntegrityError, match="file_count"):
+        data_bundle._validate_release_manifest(
+            raw,
+            data_bundle.RELEASE_SOURCES[0],
+            manifest_url=data_bundle.RELEASE_MANIFEST_URL,
+        )
 
 
 def test_bundle_metadata_composes_contract_local_status_and_release_manifest(monkeypatch, tmp_path):
@@ -439,6 +513,111 @@ def test_download_and_extract_rejects_incomplete_tarball(monkeypatch, tmp_path):
 
     assert not (root / missing).exists()
     assert data_bundle.status()["completion_marker"]["present"] is False
+
+
+def test_download_and_apply_overlay_composes_complete_verified_cache(monkeypatch, tmp_path):
+    base = tmp_path / "v5.23.18"
+    root = tmp_path / f"v{DATA_VERSION}"
+    _write_bundle_fixture(base)
+    changed = "pan-cancer-expression.csv"
+    overlay_source = tmp_path / "overlay-source"
+    overlay_file = overlay_source / changed
+    overlay_file.parent.mkdir(parents=True)
+    overlay_file.write_text("replacement\n")
+    overlay_tar = tmp_path / "overlay.tar.gz"
+    with tarfile.open(overlay_tar, "w:gz") as archive:
+        archive.add(overlay_file, arcname=changed)
+    raw = _overlay_release_manifest(overlay_tar, paths=[changed])
+    manifest = data_bundle._validate_release_manifest(
+        raw,
+        data_bundle.RELEASE_SOURCES[0],
+        manifest_url=data_bundle.RELEASE_MANIFEST_URL,
+    )
+    monkeypatch.setenv("CANCERDATA_BUNDLED_DATA", str(root))
+    monkeypatch.setattr(
+        data_bundle.urllib.request,
+        "urlopen",
+        lambda url: overlay_tar.open("rb"),
+    )
+
+    data_bundle._download_and_apply_overlay(
+        "https://example.test/overlay.tar.gz",
+        root,
+        base_root=base,
+        verbose=False,
+        release_manifest=manifest,
+    )
+
+    assert (root / changed).read_text() == "replacement\n"
+    assert (root / "hpa-cell-type-expression.csv").read_text() == (
+        base / "hpa-cell-type-expression.csv"
+    ).read_text()
+    assert data_bundle.verify_local()["completion_marker"]["verified_sha256"] is True
+
+
+def test_overlay_reuses_matching_verified_base_cache(monkeypatch, tmp_path):
+    base = tmp_path / "v5.23.18"
+    root = tmp_path / f"v{DATA_VERSION}"
+    _write_bundle_fixture(base)
+    base_bundle = {
+        "data_version": "5.23.18",
+        "repo": data_bundle.GITHUB_REPO,
+        "tarball": {
+            "filename": "oncoref-data-v5.23.18.tar.gz",
+            "url": "https://example.test/base.tar.gz",
+            "bytes": 1234,
+            "sha256": "b" * 64,
+            "downloadable_paths": list(data_bundle.DOWNLOADABLE_PATHS),
+        },
+    }
+    data_bundle._write_completion_marker(
+        base,
+        source_url=base_bundle["tarball"]["url"],
+        release_manifest={"tarball": base_bundle["tarball"]},
+        data_version=base_bundle["data_version"],
+    )
+    monkeypatch.setattr(
+        data_bundle,
+        "_DEFAULT_CACHE_PARENT",
+        tmp_path / "other-default",
+    )
+    monkeypatch.setattr(
+        data_bundle,
+        "_LEGACY_CACHE_PARENT",
+        tmp_path / "other-legacy",
+    )
+
+    assert data_bundle._ensure_overlay_base(root, base_bundle, verbose=False) == base
+
+
+def test_overlay_base_download_creates_version_cache_before_extract(monkeypatch, tmp_path):
+    root = tmp_path / f"v{DATA_VERSION}"
+    base = tmp_path / "v5.23.18"
+    base_bundle = {
+        "data_version": "5.23.18",
+        "repo": data_bundle.GITHUB_REPO,
+        "tarball": {
+            "filename": "oncoref-data-v5.23.18.tar.gz",
+            "url": "https://example.test/base.tar.gz",
+            "bytes": 1234,
+            "sha256": "b" * 64,
+            "downloadable_paths": list(data_bundle.DOWNLOADABLE_PATHS),
+        },
+    }
+    attempted = []
+
+    def fake_download(url, destination, *, verbose, release_manifest, data_version):
+        assert destination == base
+        assert destination.is_dir()
+        attempted.append((url, data_version))
+        _write_bundle_fixture(destination)
+
+    monkeypatch.setattr(data_bundle, "_download_and_extract", fake_download)
+    monkeypatch.setattr(data_bundle, "_DEFAULT_CACHE_PARENT", tmp_path / "other-default")
+    monkeypatch.setattr(data_bundle, "_LEGACY_CACHE_PARENT", tmp_path / "other-legacy")
+
+    assert data_bundle._ensure_overlay_base(root, base_bundle, verbose=False) == base
+    assert attempted == [(base_bundle["tarball"]["url"], "5.23.18")]
 
 
 def test_prune_keeps_current(monkeypatch, tmp_path):
