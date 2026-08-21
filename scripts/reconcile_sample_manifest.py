@@ -73,6 +73,34 @@ def reconcile_sample_manifest(
     return out
 
 
+def replace_manifest_sources(samples: pd.DataFrame, updates: list[pd.DataFrame]) -> pd.DataFrame:
+    """Replace complete physical-source manifests while preserving the public schema."""
+    if not updates:
+        return samples.copy()
+    required = set(samples.columns)
+    normalized = []
+    replaced_sources: set[str] = set()
+    for update in updates:
+        missing = sorted(required - set(update.columns))
+        if missing:
+            raise ValueError(f"sample-manifest update lacks columns: {missing}")
+        current = update[list(samples.columns)].copy()
+        sources = {
+            str(value).strip()
+            for value in current["source_cohort"]
+            if pd.notna(value) and str(value).strip()
+        }
+        if not sources:
+            raise ValueError("sample-manifest update has no source_cohort")
+        overlap = replaced_sources & sources
+        if overlap:
+            raise ValueError(f"sample-manifest update repeats sources: {sorted(overlap)}")
+        replaced_sources.update(sources)
+        normalized.append(current)
+    retained = samples.loc[~samples["source_cohort"].astype(str).isin(replaced_sources)]
+    return pd.concat([retained, *normalized], ignore_index=True)
+
+
 def _write_deterministic_gzip_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with (
@@ -106,10 +134,19 @@ def main() -> None:
         type=Path,
         default=Path("oncoref/data/cancer-reference-expression-samples.csv.gz"),
     )
+    parser.add_argument(
+        "--append",
+        action="append",
+        default=[],
+        type=Path,
+        help="Complete source-manifest CSV to add or replace (repeatable)",
+    )
     args = parser.parse_args()
 
     samples = pd.read_csv(args.samples, dtype=str, keep_default_na=False)
     availability = pd.read_csv(args.availability, dtype=str, keep_default_na=False)
+    updates = [pd.read_csv(path, dtype=str, keep_default_na=False) for path in args.append]
+    samples = replace_manifest_sources(samples, updates)
     reconciled = reconcile_sample_manifest(samples, availability)
     _write_deterministic_gzip_csv(reconciled, args.output)
     print(f"wrote {len(reconciled)} reconciled sample rows to {args.output}")

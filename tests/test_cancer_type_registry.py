@@ -125,8 +125,8 @@ def test_source_scoped_clinical_aggregates_are_not_expression_computed():
     assert bool(records.loc["NSCLC", "has_expression_matrix"]) is False
     assert records.loc["NSCLC", "reference_source"] == "member_union"
     assert cohort_aggregate_members("BTC") == ["CHOL", "GBC"]
-    assert records.loc["BTC", "reference_source"] == "none"
-    assert bool(records.loc["BTC", "is_classification_target"]) is False
+    assert records.loc["BTC", "reference_source"] == "member_union"
+    assert bool(records.loc["BTC", "is_classification_target"]) is True
     assert cohort_aggregate_members("SGC") == ["ACINIC", "ADCC"]
     assert cohort_aggregate_members("NSCLC") == ["LUAD", "LUSC"]
 
@@ -154,10 +154,10 @@ def test_source_scope_mixture_targets_follow_reviewed_registry_policy():
         ]
     )
     assert declared_targets == {"BTC", "NSCLC"}
-    assert effective_targets == {"NSCLC"}
+    assert effective_targets == {"BTC", "NSCLC"}
     assert set(source_scope_mixtures.index) == {"BTC", "NSCLC", "SGC"}
     assert records.loc[source_scope_mixtures.index, "reference_source"].to_dict() == {
-        "BTC": "none",
+        "BTC": "member_union",
         "NSCLC": "member_union",
         "SGC": "member_union",
     }

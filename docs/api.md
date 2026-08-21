@@ -101,9 +101,10 @@ references, including source-scope unions such as `CRC_MSI`, `NSCLC`, and
 `SGC`. SGC remains a reference-only union because its reviewed
 `is_classification_target` policy is false.
 
-Source-scope union membership is all-or-nothing. BTC declares `CHOL ∪ GBC`, but
-GBC has no selected expression matrix, so BTC reports `reference_source="none"`,
-is not a classification target, and does not return CHOL alone as pan-BTC data.
+Source-scope union membership is all-or-nothing. BTC declares `CHOL ∪ GBC` and
+now reports a `member_union` only because both members have selected expression
+matrices. Before the direct GSE139682 GBC reference was published, BTC reported
+`reference_source="none"` rather than returning CHOL alone as pan-BTC data.
 
 ### Category queries
 
@@ -535,9 +536,9 @@ Every published source matrix has one regeneration path owned by oncoref. The
 path may use a generic builder or a small source-specific adapter, but it always
 ends at the same canonical matrix, mapping-audit, parse-diagnostic, sample-QC,
 and summary-row contract. Source-scale caveats remain data: microarray TPM
-proxies and CTCL/HCL single-cell pseudobulk nTPM are retained for within-sample rank
-uses while explicitly marked unsuitable for absolute comparison with bulk
-RNA-seq TPM.
+proxies, GSE125285 BCC/cSCC nCPM proxies, and CTCL/HCL single-cell pseudobulk
+nTPM are retained for within-sample rank uses while explicitly marked
+unsuitable for absolute comparison with bulk RNA-seq TPM.
 
 - `oncoref.expression_builders` — build-time ingestion and artifact cores used by
   data-bundle generation scripts. `GeoMatrixSource` /
@@ -608,13 +609,22 @@ RNA-seq TPM.
   adapters cover TARGET ALL phase-matrix B/T lineage, TARGET NBL cBioPortal MYCN
   status, GSE75885 histology titles, DRMetrics histology attributes, audited GEO
   microarrays, GSE171811 CTCL TCR-beta-selected case pseudobulks, and the
-  checksum-pinned Zenodo 14917813 HCL T0 donor pseudobulks. The HCL adapter
+  checksum-pinned Zenodo 14917813 HCL T0 donor pseudobulks, checksum-pinned
+  GSE125285 BCC/cSCC tumor routing, and checksum-pinned GSE139682 GBC tumor
+  routing. The GSE125285 adapter retains all matched normals as exclusions and
+  labels its inverse-transformed author CPM as an nCPM proxy; the GSE139682
+  adapter retains its matched normals as exclusions and renormalizes tumor
+  RPKM to TPM. Both emit stable GSM sample IDs and complete sample manifests.
+  The HCL adapter
   renames artifact-local columns to stable donor IDs, retains the sixth study
   donor as an explicit no-T0 exclusion, requires positive ANXA1/MS4A1/CD22/
   IL2RA/ITGAE/ITGAX marker values in every selected donor, and never infers a
   per-donor BRAF call. They
   delegate normalization, canonicalization, QC, summaries, and artifact writing
   to `expression_builders` rather than defining parallel data contracts.
+  `scripts/merge_expression_artifact_update.py` merges a targeted rebuild into
+  a complete prior bundle, recomputes representative partitions globally, and
+  preserves unrelated cohort shards byte-for-byte.
 
 ### Registry and low-level APIs
 
@@ -714,8 +724,9 @@ compatibility alias for that view and maps the default call to `normalize="tpm"`
 The pan-cancer view also emits raw-TPM companion columns for member-backed
 grouping/source-scope references (`NET`, `CRC`, `NSCLC`, `SGC`) by pooling
 the selected `cancer-reference-expression` summary rows with n-sample weights.
-Incomplete closed unions are omitted, so BTC is not emitted until both CHOL and
-GBC are reference-backed.
+Incomplete closed unions are omitted. BTC is now emitted because CHOL and GBC
+are both reference-backed; this does not make the small direct GBC cohort an
+independent classification target.
 Existing directly sourced columns, including `SARC` and `OV`, keep their current
 source-table behavior.
 

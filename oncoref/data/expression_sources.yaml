@@ -274,6 +274,80 @@ sources:
       HCL-cell UMIs are pseudobulked per donor and scaled to nTPM. The proxy
       scale is not bulk-TPM comparable or independently classification-ready.
 
+  - id: gse125285-bcc-cscc
+    category: expression
+    cancer_codes: [BCC, cSCC]
+    source_type: geo-rnaseq-cpm-proxy
+    accession: GSE125285
+    url: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE125285
+    source_cohort: GSE125285_BCC_CSCC
+    source_project: GEO
+    builder: scripts/build_nci_gap_geo_references.py
+    builder_args: [gse125285-bcc-cscc]
+    processing_pipeline: gse125285_log2_cpm_inverse_ncpm_proxy_ensembl112_clean_tpm_16_9_75
+    matrix_file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE125nnn/GSE125285/suppl/GSE125285_S35_log2GE.txt.gz
+    matrix_file_name: GSE125285_S35_log2GE.txt.gz
+    matrix_file_md5: 40021d435ed67c3f267fd4ac2a973d1e
+    matrix_file_bytes: 6265086
+    soft_file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE125nnn/GSE125285/soft/GSE125285_family.soft.gz
+    soft_file_name: GSE125285_family.soft.gz
+    soft_file_md5: 61f0585098689af76fa5039bf7d241c1
+    soft_file_bytes: 5094
+    unit: nCPM proxy
+    expected_source_samples: 70
+    expected_samples_by_code: {BCC: 25, cSCC: 10}
+    source_scale_class: bulk_rnaseq_cpm_proxy
+    linear_tpm_comparable: false
+    tpm_proxy: true
+    tumor_origin: primary
+    library_prep: bulk polyA RNA-seq
+    expected_size_gb: 0.01
+    citation: GSE125285; PMID:33997165
+    source_pmid: PMID:33997165
+    special_handling: >
+      Select the 25 diagnosis-confirmed BCC tumors and 10 diagnosis-confirmed
+      cSCC tumors from the 70-sample paired study; retain all 35 matched adjacent
+      normals as explicit exclusions. Invert author log2(CPM+1) and rescale each
+      tumor to nCPM. The result preserves within-sample ranks but lacks
+      gene-length normalization, so it is neither bulk-TPM comparable nor, by
+      itself, classification-ready.
+
+  - id: gse139682-gbc
+    category: expression
+    cancer_codes: [GBC]
+    source_type: geo-rnaseq-rpkm
+    accession: GSE139682
+    url: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE139682
+    source_cohort: GSE139682_GBC
+    source_project: GEO
+    builder: scripts/build_nci_gap_geo_references.py
+    builder_args: [gse139682-gbc]
+    processing_pipeline: gse139682_rpkm_to_tpm_ensembl112_clean_tpm_16_9_75
+    matrix_file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE139nnn/GSE139682/suppl/GSE139682_all.rpkm.txt.gz
+    matrix_file_name: GSE139682_all.rpkm.txt.gz
+    matrix_file_md5: 894fb8a763abba2f0e853d7216878725
+    matrix_file_bytes: 3191706
+    soft_file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE139nnn/GSE139682/soft/GSE139682_family.soft.gz
+    soft_file_name: GSE139682_family.soft.gz
+    soft_file_md5: e42ec1ed94481c6b251504a601fa50f2
+    soft_file_bytes: 2865
+    unit: RPKM-derived TPM
+    expected_source_samples: 20
+    expected_samples_by_code: {GBC: 10}
+    source_scale_class: linear_rnaseq_tpm
+    linear_tpm_comparable: true
+    tpm_proxy: false
+    tumor_origin: primary
+    library_prep: bulk RNA-seq
+    expected_size_gb: 0.01
+    citation: GSE139682; PMID:31792210
+    source_pmid: PMID:31792210
+    special_handling: >
+      Select all 10 primary gallbladder tumors and retain all 10 matched normal
+      gallbladder samples as explicit exclusions. Renormalize author RPKM to TPM
+      within each tumor sample. This direct n=10 reference is kept reference-only
+      rather than treated as independently classification-ready.
+
   # ---- imported via scripts/import_cancer_specific_expression.py ----
   # These come from external neutral-summary tables, not per-sample
   # quantifications. Extended-stat columns (std/min/max/p5/p10/p90/p95)

@@ -674,6 +674,7 @@ def test_reference_source_and_review_policy_drive_classification_targets():
         "SARC",
         "SARC_LPS",
         "CRC",
+        "BTC",
         "NSCLC",
         "SGC",
         "RCC",
@@ -688,7 +689,6 @@ def test_reference_source_and_review_policy_drive_classification_targets():
         "RCC_NCC",
         "NET_NONPANCREATIC",
         "NEN_EXTRAPULMONARY_HG",
-        "BTC",
     }
 
     all_records = cancer_types.cancer_type_records()
@@ -703,7 +703,6 @@ def test_reference_source_and_review_policy_drive_classification_targets():
         "NET_NONPANCREATIC",
         "NEN_EXTRAPULMONARY_HG",
         "CMN",
-        "BTC",
     }
     assert not records.loc[list(non_targets), "is_classification_target"].any()
     assert (
@@ -712,7 +711,7 @@ def test_reference_source_and_review_policy_drive_classification_targets():
     with pytest.raises(ValueError, match="classification_target"):
         cancer_types.cancer_type_codes(classification_target="maybe")
 
-    for code in ["CRC_MSI", "SARC", "CRC", "NET", "NSCLC", "OV"]:
+    for code in ["CRC_MSI", "SARC", "CRC", "NET", "BTC", "NSCLC", "OV"]:
         assert bool(records.loc[code, "is_classification_target"]) is True
         assert cancer_types.is_classification_target(code) is True
 
@@ -724,9 +723,12 @@ def test_reference_source_and_review_policy_drive_classification_targets():
         reference_source={"own_cohort", "member_union"}
     )
     assert set(reference_backed_codes) - set(cancer_types.classification_target_codes()) == {
+        "BCC",
         "CMN",
+        "GBC",
         "HCL",
         "SGC",
+        "cSCC",
     }
     assert cancer_types.reference_source_codes("member_union") == cancer_types.cancer_type_codes(
         reference_source="member_union"
@@ -739,8 +741,8 @@ def test_reference_source_and_review_policy_drive_classification_targets():
     assert cancer_types.cancer_type_reference_code("NET_NONPANCREATIC") == "NET"
     assert cancer_types.cancer_type_reference_source("SGC") == "member_union"
     assert cancer_types.cancer_type_reference_code("SGC") is None
-    assert cancer_types.cancer_type_reference_source("BTC") == "none"
-    assert cancer_types.cancer_type_reference_code("BTC") is None
+    assert cancer_types.cancer_type_reference_source("BTC") == "member_union"
+    assert cancer_types.cancer_type_reference_code("BTC") == "BTC"
 
     assert cancer_types.is_classification_target(None) is False
     assert cancer_types.cancer_type_reference_source(None) is None
@@ -948,7 +950,7 @@ def test_expression_reference_coverage_computed_groupings():
         ]
     ).set_index("code")
 
-    for code in ["NET", "CRC", "CRC_MSI", "NSCLC", "SARC", "SARC_LPS"]:
+    for code in ["NET", "CRC", "CRC_MSI", "BTC", "NSCLC", "SARC", "SARC_LPS"]:
         row = coverage.loc[code]
         assert bool(row["has_expression_reference"]) is True
         assert bool(row["has_direct_expression_reference"]) is False
@@ -970,16 +972,8 @@ def test_expression_reference_coverage_computed_groupings():
     assert bool(sgc["is_classification_target"]) is False
     assert sgc["consumer_recommendation"] == "reference_only"
 
-    btc = coverage.loc["BTC"]
-    assert bool(btc["has_expression_reference"]) is False
-    assert bool(btc["has_computed_expression_reference"]) is False
-    assert btc["reference_source"] == "none"
-    assert pd.isna(btc["classification_reference_code"])
-    assert bool(btc["is_classification_target"]) is False
-    assert btc["consumer_recommendation"] == "unsupported"
-    assert btc["missing_reason"] == "no_direct_expression_matrix"
-
     assert coverage.loc["CRC_MSI", "computed_expression_member_codes"] == ("COAD_MSI", "READ_MSI")
+    assert coverage.loc["BTC", "computed_expression_member_codes"] == ("CHOL", "GBC")
     assert bool(coverage.loc["OV", "has_direct_expression_reference"]) is True
     assert bool(coverage.loc["OV", "has_computed_expression_reference"]) is False
     assert coverage.loc["OV", "expression_reference_kind"] == "observed_bulk"
