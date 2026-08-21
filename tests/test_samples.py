@@ -68,3 +68,23 @@ def test_controlled_molecular_labels_survive_library_and_donor_aggregation():
     counts = molecular_sample_counts("CMN").set_index("source_cohort")
     ega = counts.loc["EGA_WEGERT_2018_IFS_CMN"]
     assert (ega["n_libraries"], ega["n_donors"], ega["n_expression_libraries"]) == (18, 17, 0)
+
+
+def test_hcl_manifest_keeps_five_t0_donors_and_one_audited_exclusion():
+    rows = samples_for_cancer_code("HCL", included_only=False).set_index("case_id")
+
+    assert set(rows.index) == {"P1", "P2", "P3", "P4", "P5", "P6"}
+    assert set(rows.loc[["P2", "P3", "P4", "P5", "P6"], "included"]) == {True}
+    assert not bool(rows.loc["P1", "included"])
+    assert rows.loc["P1", "exclusion_reason"] == "no_pretreatment_t0_pseudobulk"
+    assert set(rows["md5sum"]) == {"4f7676aa9dc44e9aa90e74495b5d9229"}
+
+
+def test_hcl_molecular_provenance_does_not_infer_braf_status():
+    rows = molecular_provenance_for_cancer_code("HCL")
+
+    assert set(rows["donor_id"]) == {"P1", "P2", "P3", "P4", "P5", "P6"}
+    assert set(rows["molecular_status"]) == {"unknown"}
+    assert rows["driver_event"].isna().all()
+    assert not rows["orthogonal_confirmed"].any()
+    assert rows["notes"].str.contains("no per-donor BRAF", case=False).all()

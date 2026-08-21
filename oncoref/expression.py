@@ -1801,11 +1801,24 @@ def _selected_expression_source_metadata(
         processing_pipeline,
     )
     text = " ".join(str(value or "") for value in scale_evidence).lower()
-    tpm_proxy = "microarray" in text or "tpm-proxy" in text or "tpm proxy" in text
-    if tpm_proxy:
+    inferred_microarray_proxy = "microarray" in text or "tpm-proxy" in text or "tpm proxy" in text
+    inferred_scrna_proxy = "scrna" in text or "single-cell" in text
+    explicit_scale_class = getattr(selected, "source_scale_class", None)
+    explicit_comparability = getattr(selected, "linear_tpm_comparable", None)
+    explicit_tpm_proxy = getattr(selected, "tpm_proxy", None)
+    tpm_proxy = bool(explicit_tpm_proxy) or inferred_microarray_proxy or inferred_scrna_proxy
+    if explicit_scale_class is not None:
+        source_scale_class = explicit_scale_class
+        linear_tpm_comparable = (
+            bool(explicit_comparability) if explicit_comparability is not None else False
+        )
+    elif inferred_microarray_proxy:
         source_scale_class = "microarray_tpm_proxy"
         linear_tpm_comparable = False
         unit = unit or "TPM proxy"
+    elif inferred_scrna_proxy:
+        source_scale_class = "scrna_pseudobulk_ntpm"
+        linear_tpm_comparable = False
     elif selected is not None or "rna-seq" in text or "rnaseq" in text:
         source_scale_class = "linear_rnaseq_tpm"
         linear_tpm_comparable = True
@@ -4973,9 +4986,8 @@ def _reference_summary_metadata_from_row(
             "processing_pipeline": source.get("processing_pipeline"),
             "notes": source.get("notes"),
             "unit": meta.get("unit") or "TPM",
-            "source_scale_class": "microarray_tpm_proxy"
-            if tpm_proxy
-            else meta.get("source_scale_class") or "linear_rnaseq_tpm",
+            "source_scale_class": meta.get("source_scale_class")
+            or ("microarray_tpm_proxy" if tpm_proxy else "linear_rnaseq_tpm"),
             "linear_tpm_comparable": False
             if tpm_proxy
             else bool(meta.get("linear_tpm_comparable", True)),

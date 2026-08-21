@@ -195,7 +195,8 @@ histologies and are deliberately excluded from those two references.
 ### Consumer readiness
 
 `expression_reference_coverage()` is the ontology-wide readiness table for
-classifier consumers. It reports direct observed-bulk source-matrix coverage,
+classifier consumers. It distinguishes direct observed-bulk source matrices
+from single-cell donor pseudobulks and microarray proxies,
 computed member-union references for curated grouping/source-scope codes such as
 `NET`, `CRC`, `CRC_MSI`, `NSCLC`, and `SGC`, parent fallback via
 `classification_reference_code`, explicit `is_classification_target` eligibility,
@@ -208,7 +209,12 @@ union remains available for comparison, but the source/therapy grouping is not a
 valid final classification label.
 `has_direct_expression_reference` remains literal; computed groupings use
 `expression_reference_kind="computed_union"` and expose their pooled member codes
-in `computed_expression_member_codes`. The table intentionally does not
+in `computed_expression_member_codes`. HCL is a concrete example of the
+difference between availability and classification eligibility: its five-donor
+T0 malignant-cell pseudobulk is a direct reference with
+`expression_reference_kind="single_cell_pseudobulk"`, but the non-comparable
+nTPM proxy remains `reference_only` and has no `classification_reference_code`.
+The table intentionally does not
 synthesize marker-program or discriminator fallbacks; those remain consumer-layer
 choices in packages such as trufflepig.
 
@@ -529,7 +535,7 @@ Every published source matrix has one regeneration path owned by oncoref. The
 path may use a generic builder or a small source-specific adapter, but it always
 ends at the same canonical matrix, mapping-audit, parse-diagnostic, sample-QC,
 and summary-row contract. Source-scale caveats remain data: microarray TPM
-proxies and CTCL single-cell pseudobulk nTPM are retained for within-sample rank
+proxies and CTCL/HCL single-cell pseudobulk nTPM are retained for within-sample rank
 uses while explicitly marked unsuitable for absolute comparison with bulk
 RNA-seq TPM.
 
@@ -601,7 +607,12 @@ RNA-seq TPM.
   sources whose sample labels live outside the primary expression matrix. These
   adapters cover TARGET ALL phase-matrix B/T lineage, TARGET NBL cBioPortal MYCN
   status, GSE75885 histology titles, DRMetrics histology attributes, audited GEO
-  microarrays, and GSE171811 CTCL TCR-beta-selected case pseudobulks. They
+  microarrays, GSE171811 CTCL TCR-beta-selected case pseudobulks, and the
+  checksum-pinned Zenodo 14917813 HCL T0 donor pseudobulks. The HCL adapter
+  renames artifact-local columns to stable donor IDs, retains the sixth study
+  donor as an explicit no-T0 exclusion, requires positive ANXA1/MS4A1/CD22/
+  IL2RA/ITGAE/ITGAX marker values in every selected donor, and never infers a
+  per-donor BRAF call. They
   delegate normalization, canonicalization, QC, summaries, and artifact writing
   to `expression_builders` rather than defining parallel data contracts.
 

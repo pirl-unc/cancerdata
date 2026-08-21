@@ -725,6 +725,7 @@ def test_reference_source_and_review_policy_drive_classification_targets():
     )
     assert set(reference_backed_codes) - set(cancer_types.classification_target_codes()) == {
         "CMN",
+        "HCL",
         "SGC",
     }
     assert cancer_types.reference_source_codes("member_union") == cancer_types.cancer_type_codes(
