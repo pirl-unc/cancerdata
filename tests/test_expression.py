@@ -2848,10 +2848,12 @@ def test_cancer_reference_expression_request_metadata_for_aggregate(monkeypatch)
 
 def test_source_scope_member_unions_expand_and_load_supported_members():
     expected_members = {
+        "BTC": ["CHOL", "GBC"],
         "SGC": ["ACINIC", "ADCC"],
         "NSCLC": ["LUAD", "LUSC"],
     }
     expected_loaded = {
+        "BTC": {"CHOL", "GBC"},
         "SGC": {"ACINIC", "ADCC"},
         "NSCLC": {"LUAD", "LUSC"},
     }
@@ -2874,26 +2876,6 @@ def test_source_scope_member_unions_expand_and_load_supported_members():
         )
         assert set(result["cancer_code"]) == expected_loaded[aggregate]
         assert set(result["request_kind"]) == {"aggregate_member"}
-
-    btc_availability = expression.cancer_reference_expression_availability(
-        "BTC",
-        sample_qc="artifact",
-    )
-    assert btc_availability[["requested_code", "cancer_code", "request_kind"]].to_dict(
-        "records"
-    ) == [{"requested_code": "BTC", "cancer_code": "BTC", "request_kind": "direct"}]
-    assert btc_availability["available"].tolist() == [False]
-
-    btc = expression.cancer_reference_expression(
-        "BTC",
-        genes=["TP53"],
-        sample_qc="artifact",
-        on_missing="empty",
-    )
-    assert btc.empty
-    assert [
-        (row["cancer_code"], row["missing_reason"]) for row in btc.attrs["missing_requests"]
-    ] == [("BTC", "no_percentile_artifact")]
 
 
 def test_cancer_reference_expression_raw_tpm_uses_source_stats(monkeypatch):

@@ -1778,6 +1778,163 @@ def test_build_hcl_source_matrices_writes_canonical_matrix_and_sidecars(monkeypa
     assert set(result.summary_rows["n_samples"]) == {5}
 
 
+def _write_gse125285_fixture(matrix_path: Path, soft_path: Path) -> None:
+    matrix = {"gene symbol": ["/TP53/", "/EGFR/"]}
+    soft_lines = []
+    gsm_number = 1
+    for diagnosis, n_cases in (
+        ("Basal cell carcinoma (BCC)", 25),
+        ("Squamous cell carcinoma (SCC)", 10),
+    ):
+        prefix = "B" if diagnosis.startswith("Basal") else "S"
+        for case_number in range(1, n_cases + 1):
+            patient = f"{prefix}{case_number:02d}"
+            for suffix, tissue in (("N", "Normal adjacent tissue"), ("T", "Tumor")):
+                title = f"{patient}-{suffix}"
+                matrix[f"{title}1"] = np.log2(np.array([400_001.0, 599_999.0]))
+                soft_lines.extend(
+                    [
+                        f"^SAMPLE = GSM{gsm_number:07d}",
+                        f"!Sample_title = {title}",
+                        "!Sample_source_name_ch1 = Skin",
+                        f"!Sample_characteristics_ch1 = disease state: {diagnosis}",
+                        f"!Sample_characteristics_ch1 = tissue: {tissue}",
+                        f"!Sample_characteristics_ch1 = patient id: {patient}",
+                    ]
+                )
+                gsm_number += 1
+    pd.DataFrame(matrix).to_csv(matrix_path, sep="\t", index=False, compression="gzip")
+    with gzip.open(soft_path, "wt") as handle:
+        handle.write("\n".join(soft_lines) + "\n")
+
+
+def _write_gse139682_fixture(matrix_path: Path, soft_path: Path) -> None:
+    matrix = {"GeneID": ["TP53", "EGFR"]}
+    soft_lines = []
+    gsm_number = 100
+    for individual in range(1, 11):
+        for label, tissue in (
+            ("Tumor", "gallbladder tumor"),
+            ("Normal", "normal gallbladder"),
+        ):
+            title = f"{label} {individual}"
+            matrix[title] = [20.0 + individual, 30.0 + individual]
+            soft_lines.extend(
+                [
+                    f"^SAMPLE = GSM{gsm_number:07d}",
+                    f"!Sample_title = {title}",
+                    "!Sample_source_name_ch1 = gallbladder tissue",
+                    "!Sample_characteristics_ch1 = diagnosis: gallbladder cancer",
+                    f"!Sample_characteristics_ch1 = tissue: {tissue}",
+                    f"!Sample_characteristics_ch1 = individual: {individual}",
+                ]
+            )
+            gsm_number += 1
+    pd.DataFrame(matrix).to_csv(matrix_path, sep="\t", index=False, compression="gzip")
+    with gzip.open(soft_path, "wt") as handle:
+        handle.write("\n".join(soft_lines) + "\n")
+
+
+@pytest.mark.parametrize(
+    ("source_id", "matrix_name", "soft_name", "writer", "builder", "expected_counts"),
+    [
+        (
+            "gse125285-bcc-cscc",
+            "GSE125285_S35_log2GE.txt.gz",
+            "GSE125285_family.soft.gz",
+            _write_gse125285_fixture,
+            expression_source_adapters.build_gse125285_source_matrices,
+            {"BCC": 25, "cSCC": 10},
+        ),
+        (
+            "gse139682-gbc",
+            "GSE139682_all.rpkm.txt.gz",
+            "GSE139682_family.soft.gz",
+            _write_gse139682_fixture,
+            expression_source_adapters.build_gse139682_source_matrices,
+            {"GBC": 10},
+        ),
+    ],
+)
+def test_build_nci_gap_geo_references_route_tumors_and_audit_controls(
+    monkeypatch,
+    tmp_path,
+    source_id,
+    matrix_name,
+    soft_name,
+    writer,
+    builder,
+    expected_counts,
+):
+    matrix_path = tmp_path / matrix_name
+    soft_path = tmp_path / soft_name
+    writer(matrix_path, soft_path)
+    matrix_digest = hashlib.md5(matrix_path.read_bytes()).hexdigest()
+    soft_digest = hashlib.md5(soft_path.read_bytes()).hexdigest()
+    entries = {
+        "gse125285-bcc-cscc": {
+            "id": source_id,
+            "source_cohort": "GSE125285_BCC_CSCC",
+            "source_project": "GEO",
+            "citation": "synthetic skin fixture",
+        },
+        "gse139682-gbc": {
+            "id": source_id,
+            "source_cohort": "GSE139682_GBC",
+            "source_project": "GEO",
+            "citation": "synthetic GBC fixture",
+        },
+    }
+    entry = entries[source_id] | {
+        "matrix_file_md5": matrix_digest,
+        "matrix_file_bytes": matrix_path.stat().st_size,
+        "soft_file_md5": soft_digest,
+        "soft_file_bytes": soft_path.stat().st_size,
+    }
+    monkeypatch.setattr(expression_source_adapters, "_registry_entry", lambda _id: entry)
+
+    result = builder(
+        cache_dir=tmp_path / "cache",
+        output_dir=tmp_path / "derived",
+        matrix_path=matrix_path,
+        soft_path=soft_path,
+    )
+
+    assert {
+        code: len(expression_builders.sample_columns(matrix))
+        for code, matrix in result.matrices.items()
+    } == expected_counts
+    assert all(
+        sample.startswith("GSM")
+        for matrix in result.matrices.values()
+        for sample in expression_builders.sample_columns(matrix)
+    )
+    manifest = pd.read_csv(result.sidecar_paths["sample_manifest"], keep_default_na=False)
+    assert int(manifest["included"].sum()) == sum(expected_counts.values())
+    assert set(manifest.loc[manifest["included"], "lineage_label"]) == set(expected_counts)
+    assert manifest.loc[~manifest["included"], "exclusion_reason"].ne("").all()
+    assert set(result.summary_rows["n_samples"]) == set(expected_counts.values())
+    if source_id == "gse125285-bcc-cscc":
+        assert set(result.sample_qc["source_scale_class"]) == {"bulk_rnaseq_cpm_proxy"}
+        assert not result.sample_qc["linear_tpm_comparable"].any()
+        assert result.sample_qc["tpm_proxy"].all()
+    else:
+        assert set(result.sample_qc["source_scale_class"]) == {"linear_rnaseq_tpm"}
+        assert result.sample_qc["linear_tpm_comparable"].all()
+        assert not result.sample_qc["tpm_proxy"].any()
+
+
+def test_geo_soft_parser_rejects_duplicate_sample_titles(tmp_path):
+    soft_path = tmp_path / "duplicate.soft.gz"
+    with gzip.open(soft_path, "wt") as handle:
+        handle.write(
+            "^SAMPLE = GSM1\n!Sample_title = duplicate\n^SAMPLE = GSM2\n!Sample_title = duplicate\n"
+        )
+
+    with pytest.raises(ValueError, match="duplicate GEO sample titles"):
+        expression_source_adapters.parse_geo_soft_samples(soft_path)
+
+
 def test_derive_mbl_subgroup_source_matrices_writes_cache_and_release_assets(tmp_path):
     script = _load_script("derive_mbl_subgroup_source_matrices")
     parent = tmp_path / "MBL.parquet"

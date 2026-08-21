@@ -105,6 +105,26 @@ HCL_MATRIX_MEMBER = "50_de_analysis/pseudobulk/bulk_response_t0_bulk_df.tsv"
 HCL_SAMPLESHEET_MEMBER = "50_de_analysis/pseudobulk/bulk_response_t0_samplesheet.csv"
 HCL_ALL_DONORS_MEMBER = "50_de_analysis/pseudobulk/bulk_response_all_timepoints_samplesheet.csv"
 HCL_MARKERS = ("ANXA1", "MS4A1", "CD22", "IL2RA", "ITGAE", "ITGAX")
+GSE125285_MATRIX_URL = (
+    "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE125nnn/GSE125285/suppl/GSE125285_S35_log2GE.txt.gz"
+)
+GSE125285_MATRIX_MD5 = "40021d435ed67c3f267fd4ac2a973d1e"
+GSE125285_MATRIX_BYTES = 6_265_086
+GSE125285_SOFT_URL = (
+    "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE125nnn/GSE125285/soft/GSE125285_family.soft.gz"
+)
+GSE125285_SOFT_MD5 = "61f0585098689af76fa5039bf7d241c1"
+GSE125285_SOFT_BYTES = 5_094
+GSE139682_MATRIX_URL = (
+    "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE139nnn/GSE139682/suppl/GSE139682_all.rpkm.txt.gz"
+)
+GSE139682_MATRIX_MD5 = "894fb8a763abba2f0e853d7216878725"
+GSE139682_MATRIX_BYTES = 3_191_706
+GSE139682_SOFT_URL = (
+    "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE139nnn/GSE139682/soft/GSE139682_family.soft.gz"
+)
+GSE139682_SOFT_MD5 = "e42ec1ed94481c6b251504a601fa50f2"
+GSE139682_SOFT_BYTES = 2_865
 
 
 @dataclass(frozen=True)
@@ -772,20 +792,47 @@ def parse_geo_soft_samples(path: str | Path) -> dict[str, dict[str, str]]:
         for line in handle:
             line = line.rstrip("\n")
             if line.startswith("^SAMPLE = "):
-                current = {"geo_accession": line.split(" = ", 1)[1]}
-                samples[current["geo_accession"]] = current
+                accession = line.split(" = ", 1)[1].strip()
+                if not accession or accession in samples:
+                    raise ValueError(f"{path} contains a blank or duplicate GEO sample")
+                current = {"geo_accession": accession}
+                samples[accession] = current
                 continue
             if current is None:
                 continue
             if line.startswith("!Sample_title = "):
-                current["title"] = line.split(" = ", 1)[1]
+                key = "title"
+                value = line.split(" = ", 1)[1].strip()
+                if key in current and current[key] != value:
+                    raise ValueError(
+                        f"{path} contains conflicting {key!r} values for {current['geo_accession']}"
+                    )
+                current[key] = value
+            elif line.startswith("!Sample_source_name_ch1 = "):
+                key = "source name"
+                value = line.split(" = ", 1)[1].strip()
+                if key in current and current[key] != value:
+                    raise ValueError(
+                        f"{path} contains conflicting {key!r} values for {current['geo_accession']}"
+                    )
+                current[key] = value
             elif line.startswith("!Sample_characteristics_ch1 = "):
                 value = line.split(" = ", 1)[1]
                 key, separator, field_value = value.partition(":")
                 if separator:
-                    current[key.strip().lower()] = field_value.strip()
+                    key = key.strip().lower()
+                    field_value = field_value.strip()
+                    if key in current and current[key] != field_value:
+                        raise ValueError(
+                            f"{path} contains conflicting {key!r} values for "
+                            f"{current['geo_accession']}"
+                        )
+                    current[key] = field_value
     if not samples:
         raise ValueError(f"{path} contains no GEO samples")
+    titles = [sample.get("title", "") for sample in samples.values()]
+    if any(not title for title in titles) or len(titles) != len(set(titles)):
+        raise ValueError(f"{path} contains blank or duplicate GEO sample titles")
     return samples
 
 
@@ -1088,6 +1135,22 @@ def _file_md5(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _verify_public_source_file(
+    path: Path,
+    *,
+    label: str,
+    expected_bytes: int,
+    expected_md5: str,
+) -> None:
+    """Verify one checksum-pinned public input before parsing it."""
+    observed_bytes = path.stat().st_size
+    if observed_bytes != expected_bytes:
+        raise ValueError(f"{label} size mismatch: {observed_bytes} != {expected_bytes}")
+    observed_md5 = _file_md5(path)
+    if observed_md5 != expected_md5.lower():
+        raise ValueError(f"{label} MD5 mismatch: {observed_md5} != {expected_md5.lower()}")
+
+
 def hcl_t0_pseudobulk(archive_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Read the five published pretreatment HCL donor pseudobulks.
 
@@ -1337,6 +1400,444 @@ def build_hcl_source_matrices(
             "sample_manifest": manifest_path,
             "marker_qc": marker_path,
         },
+    )
+
+
+def _geo_sample_records_by_matrix_column(
+    soft_path: str | Path,
+    matrix_columns: Iterable[str],
+    *,
+    matrix_column_for_title,
+    required_fields: Iterable[str],
+) -> dict[str, dict[str, str]]:
+    """Join one supplementary matrix to SOFT by its documented sample title."""
+    samples = parse_geo_soft_samples(soft_path)
+    required = tuple(required_fields)
+    records: dict[str, dict[str, str]] = {}
+    for sample in samples.values():
+        missing = [field for field in required if not str(sample.get(field, "")).strip()]
+        if missing:
+            raise ValueError(
+                f"{soft_path} sample {sample['geo_accession']} lacks fields: {missing}"
+            )
+        matrix_column = str(matrix_column_for_title(sample["title"]))
+        if not matrix_column or matrix_column in records:
+            raise ValueError(f"{soft_path} produces a blank or duplicate matrix column")
+        records[matrix_column] = sample
+    observed = [str(column) for column in matrix_columns]
+    if len(observed) != len(set(observed)):
+        raise ValueError("supplementary expression matrix contains duplicate sample columns")
+    if set(observed) != set(records):
+        missing_metadata = sorted(set(observed) - set(records))
+        missing_matrix = sorted(set(records) - set(observed))
+        raise ValueError(
+            "supplementary matrix/SOFT sample mismatch: "
+            f"matrix_without_metadata={missing_metadata}, metadata_without_matrix={missing_matrix}"
+        )
+    return records
+
+
+def _validate_nonnegative_numeric_values(values: pd.DataFrame, *, label: str) -> pd.DataFrame:
+    numeric = values.apply(pd.to_numeric, errors="raise")
+    array = numeric.to_numpy(dtype=float)
+    if not np.isfinite(array).all() or (array < 0).any():
+        raise ValueError(f"{label} contains non-finite or negative expression values")
+    return numeric
+
+
+def _scale_columns_to_million(values: pd.DataFrame, *, label: str) -> pd.DataFrame:
+    totals = values.sum(axis=0)
+    if not np.isfinite(totals.to_numpy(dtype=float)).all() or (totals <= 0).any():
+        raise ValueError(f"{label} contains a sample with no positive expression")
+    return values.div(totals, axis=1) * 1_000_000.0
+
+
+def gse125285_skin_matrix(
+    matrix_path: str | Path,
+    soft_path: str | Path,
+) -> tuple[pd.DataFrame, dict[str, list[str]], pd.DataFrame]:
+    """Return BCC/cSCC tumor nCPM proxies and a lossless sample manifest.
+
+    GSE125285 publishes ``log2(CPM + 1)`` for 35 paired tumors and adjacent
+    normals. The inverse-transformed tumor columns are scaled back to exactly
+    one million only to remove rounding drift. They remain CPM proxies, not
+    gene-length-normalized bulk TPM.
+    """
+    source = pd.read_csv(Path(matrix_path), sep="\t", low_memory=False)
+    if not len(source.columns) or source.columns[0] != "gene symbol":
+        raise ValueError("GSE125285 matrix must start with 'gene symbol'")
+    records = _geo_sample_records_by_matrix_column(
+        soft_path,
+        source.columns[1:],
+        matrix_column_for_title=lambda title: f"{title}1",
+        required_fields=("title", "source name", "disease state", "tissue", "patient id"),
+    )
+    diagnosis_to_code = {
+        "Basal cell carcinoma (BCC)": "BCC",
+        "Squamous cell carcinoma (SCC)": "cSCC",
+    }
+    unexpected_diagnoses = sorted(
+        {record["disease state"] for record in records.values()} - set(diagnosis_to_code)
+    )
+    unexpected_tissues = sorted(
+        {record["tissue"] for record in records.values()} - {"Tumor", "Normal adjacent tissue"}
+    )
+    if unexpected_diagnoses or unexpected_tissues:
+        raise ValueError(
+            "GSE125285 metadata changed: "
+            f"diagnoses={unexpected_diagnoses}, tissues={unexpected_tissues}"
+        )
+
+    symbols = source["gene symbol"].astype(str).str.strip()
+    if not symbols.str.fullmatch(r"/[^/]+/").all():
+        raise ValueError("GSE125285 gene symbols no longer use one /SYMBOL/ wrapper")
+    symbols = symbols.str.slice(1, -1).str.strip()
+    if symbols.eq("").any() or symbols.duplicated().any():
+        raise ValueError("GSE125285 matrix contains blank or duplicate gene symbols")
+
+    routed: dict[str, list[str]] = {"BCC": [], "cSCC": []}
+    tumor_columns: list[str] = []
+    tumor_ids: list[str] = []
+    manifest_rows = []
+    for matrix_column in source.columns[1:]:
+        record = records[str(matrix_column)]
+        code = diagnosis_to_code[record["disease state"]]
+        included = record["tissue"] == "Tumor"
+        gsm = record["geo_accession"]
+        if included:
+            tumor_columns.append(str(matrix_column))
+            tumor_ids.append(gsm)
+            routed[code].append(gsm)
+        manifest_rows.append(
+            {
+                "cancer_code": code,
+                "source_cohort": "GSE125285_BCC_CSCC",
+                "source_project": "GEO",
+                "case_id": f"GSE125285:{record['patient id']}",
+                "sample_id": gsm,
+                "source_file_id": gsm,
+                "source_file_name": Path(matrix_path).name,
+                "source_project_id": "GSE125285",
+                "sample_type": record["tissue"],
+                "primary_diagnosis": record["disease state"],
+                "md5sum": GSE125285_MATRIX_MD5,
+                "file_size": GSE125285_MATRIX_BYTES,
+                "workflow_type": "author HTSeq counts converted to log2(CPM+1)",
+                "raw_unit": "log2(CPM+1)",
+                "processing_pipeline": (
+                    "gse125285_log2_cpm_inverse_ncpm_proxy_ensembl112_clean_tpm_16_9_75"
+                ),
+                "source_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE125285",
+                "lineage_evidence_source": (
+                    f"GEO SOFT disease state={record['disease state']}; tissue={record['tissue']}"
+                ),
+                "included": included,
+                "exclusion_reason": "" if included else "matched_adjacent_normal",
+                "lineage_label": code if included else "",
+                "source_matrix_column": str(matrix_column),
+                "source_record": gsm,
+            }
+        )
+    if {code: len(samples) for code, samples in routed.items()} != {"BCC": 25, "cSCC": 10}:
+        raise ValueError(f"GSE125285 tumor routing changed: {routed}")
+
+    logged = _validate_nonnegative_numeric_values(
+        source[tumor_columns],
+        label="GSE125285 log2(CPM+1) matrix",
+    )
+    inverse = pd.DataFrame(
+        np.exp2(logged.to_numpy(dtype=float)) - 1.0,
+        index=logged.index,
+        columns=tumor_ids,
+    )
+    inverse = _validate_nonnegative_numeric_values(
+        inverse,
+        label="GSE125285 inverse-transformed CPM matrix",
+    )
+    ncpm = _scale_columns_to_million(inverse, label="GSE125285 inverse-transformed CPM matrix")
+    return (
+        pd.concat([pd.DataFrame({"source_symbol": symbols}), ncpm], axis=1),
+        routed,
+        pd.DataFrame(manifest_rows),
+    )
+
+
+def gse139682_gbc_matrix(
+    matrix_path: str | Path,
+    soft_path: str | Path,
+) -> tuple[pd.DataFrame, dict[str, list[str]], pd.DataFrame]:
+    """Return GSE139682 tumor RPKM-derived TPM and all sample provenance."""
+    source = pd.read_csv(Path(matrix_path), sep="\t", low_memory=False)
+    if not len(source.columns) or source.columns[0] != "GeneID":
+        raise ValueError("GSE139682 matrix must start with 'GeneID'")
+    records = _geo_sample_records_by_matrix_column(
+        soft_path,
+        source.columns[1:],
+        matrix_column_for_title=lambda title: title,
+        required_fields=("title", "source name", "diagnosis", "tissue", "individual"),
+    )
+    diagnoses = {record["diagnosis"] for record in records.values()}
+    tissues = {record["tissue"] for record in records.values()}
+    if diagnoses != {"gallbladder cancer"} or tissues != {
+        "gallbladder tumor",
+        "normal gallbladder",
+    }:
+        raise ValueError(f"GSE139682 metadata changed: diagnoses={diagnoses}, tissues={tissues}")
+
+    symbols = source["GeneID"].astype(str).str.strip()
+    if symbols.eq("").any() or symbols.duplicated().any():
+        raise ValueError("GSE139682 matrix contains blank or duplicate gene symbols")
+
+    tumor_columns: list[str] = []
+    tumor_ids: list[str] = []
+    manifest_rows = []
+    for matrix_column in source.columns[1:]:
+        record = records[str(matrix_column)]
+        included = record["tissue"] == "gallbladder tumor"
+        gsm = record["geo_accession"]
+        if included:
+            tumor_columns.append(str(matrix_column))
+            tumor_ids.append(gsm)
+        manifest_rows.append(
+            {
+                "cancer_code": "GBC",
+                "source_cohort": "GSE139682_GBC",
+                "source_project": "GEO",
+                "case_id": f"GSE139682:{record['individual']}",
+                "sample_id": gsm,
+                "source_file_id": gsm,
+                "source_file_name": Path(matrix_path).name,
+                "source_project_id": "GSE139682",
+                "sample_type": record["tissue"],
+                "primary_diagnosis": record["diagnosis"],
+                "md5sum": GSE139682_MATRIX_MD5,
+                "file_size": GSE139682_MATRIX_BYTES,
+                "workflow_type": "author HISAT2 gene-level RPKM",
+                "raw_unit": "RPKM",
+                "processing_pipeline": ("gse139682_rpkm_to_tpm_ensembl112_clean_tpm_16_9_75"),
+                "source_url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE139682",
+                "lineage_evidence_source": (
+                    f"GEO SOFT diagnosis={record['diagnosis']}; tissue={record['tissue']}"
+                ),
+                "included": included,
+                "exclusion_reason": "" if included else "matched_normal_gallbladder",
+                "lineage_label": "GBC" if included else "",
+                "source_matrix_column": str(matrix_column),
+                "source_record": gsm,
+            }
+        )
+    if len(tumor_ids) != 10:
+        raise ValueError(f"GSE139682 tumor routing changed: n={len(tumor_ids)}")
+    rpkm = _validate_nonnegative_numeric_values(
+        source[tumor_columns],
+        label="GSE139682 RPKM matrix",
+    )
+    rpkm.columns = tumor_ids
+    tpm = _scale_columns_to_million(rpkm, label="GSE139682 RPKM matrix")
+    return (
+        pd.concat([pd.DataFrame({"source_symbol": symbols}), tpm], axis=1),
+        {"GBC": tumor_ids},
+        pd.DataFrame(manifest_rows),
+    )
+
+
+def _build_geo_candidate_source_matrices(
+    *,
+    source_id: str,
+    cache_dir: str | Path,
+    output_dir: str | Path | None,
+    matrix_path: str | Path | None,
+    soft_path: str | Path | None,
+    force_download: bool,
+    high_expression_threshold: float,
+) -> SourceMatrixBuildResult:
+    entry = _registry_entry(source_id)
+    cache = Path(cache_dir)
+    defaults = {
+        "gse125285-bcc-cscc": {
+            "matrix_url": GSE125285_MATRIX_URL,
+            "matrix_name": "GSE125285_S35_log2GE.txt.gz",
+            "matrix_md5": GSE125285_MATRIX_MD5,
+            "matrix_bytes": GSE125285_MATRIX_BYTES,
+            "soft_url": GSE125285_SOFT_URL,
+            "soft_name": "GSE125285_family.soft.gz",
+            "soft_md5": GSE125285_SOFT_MD5,
+            "soft_bytes": GSE125285_SOFT_BYTES,
+        },
+        "gse139682-gbc": {
+            "matrix_url": GSE139682_MATRIX_URL,
+            "matrix_name": "GSE139682_all.rpkm.txt.gz",
+            "matrix_md5": GSE139682_MATRIX_MD5,
+            "matrix_bytes": GSE139682_MATRIX_BYTES,
+            "soft_url": GSE139682_SOFT_URL,
+            "soft_name": "GSE139682_family.soft.gz",
+            "soft_md5": GSE139682_SOFT_MD5,
+            "soft_bytes": GSE139682_SOFT_BYTES,
+        },
+    }[source_id]
+    matrix = (
+        Path(matrix_path)
+        if matrix_path is not None
+        else _download(
+            str(entry.get("matrix_file_url") or defaults["matrix_url"]),
+            cache / str(entry.get("matrix_file_name") or defaults["matrix_name"]),
+            force=force_download,
+        )
+    )
+    soft = (
+        Path(soft_path)
+        if soft_path is not None
+        else _download(
+            str(entry.get("soft_file_url") or defaults["soft_url"]),
+            cache / str(entry.get("soft_file_name") or defaults["soft_name"]),
+            force=force_download,
+        )
+    )
+    _verify_public_source_file(
+        matrix,
+        label=f"{source_id} matrix",
+        expected_bytes=int(entry.get("matrix_file_bytes") or defaults["matrix_bytes"]),
+        expected_md5=str(entry.get("matrix_file_md5") or defaults["matrix_md5"]),
+    )
+    _verify_public_source_file(
+        soft,
+        label=f"{source_id} SOFT",
+        expected_bytes=int(entry.get("soft_file_bytes") or defaults["soft_bytes"]),
+        expected_md5=str(entry.get("soft_file_md5") or defaults["soft_md5"]),
+    )
+
+    if source_id == "gse125285-bcc-cscc":
+        raw, routed, manifest = gse125285_skin_matrix(matrix, soft)
+        source = GeoMatrixSource(
+            cancer_code=["BCC", "cSCC"],
+            source_cohort=str(entry["source_cohort"]),
+            source_project=str(entry.get("source_project") or "GEO"),
+            citation=str(entry.get("citation") or ""),
+            file_name=matrix.name,
+            unit="TPM",
+            expected_source_samples=35,
+            expected_samples_by_code={"BCC": 25, "cSCC": 10},
+            source_scale_class="bulk_rnaseq_cpm_proxy",
+            linear_tpm_comparable=False,
+            tpm_proxy=True,
+            native_unit="nCPM proxy",
+            notes=(
+                "GSE125285 diagnosis-confirmed primary BCC and cSCC tumors. Author "
+                "log2(CPM+1) is inverted and rescaled to nCPM; matched adjacent normals "
+                "are excluded. The result preserves within-sample ranks but lacks "
+                "gene-length normalization and is not bulk-TPM comparable or, by "
+                "itself, classification-ready."
+            ),
+            processing_pipeline=(
+                "gse125285_log2_cpm_inverse_ncpm_proxy_ensembl112_clean_tpm_16_9_75"
+            ),
+            tumor_origin="primary",
+            source_type="geo-rnaseq-cpm-proxy",
+        )
+        manifest_name = "gse125285_bcc_cscc_sample_manifest.csv"
+    else:
+        raw, routed, manifest = gse139682_gbc_matrix(matrix, soft)
+        source = GeoMatrixSource(
+            cancer_code="GBC",
+            source_cohort=str(entry["source_cohort"]),
+            source_project=str(entry.get("source_project") or "GEO"),
+            citation=str(entry.get("citation") or ""),
+            file_name=matrix.name,
+            unit="TPM",
+            expected_source_samples=10,
+            expected_samples_by_code={"GBC": 10},
+            source_scale_class="linear_rnaseq_tpm",
+            linear_tpm_comparable=True,
+            tpm_proxy=False,
+            native_unit="RPKM-derived TPM",
+            notes=(
+                "GSE139682 primary GBC tumors only; matched normal gallbladder samples "
+                "are excluded. Author RPKM is renormalized per sample to TPM. The "
+                "n=10 cohort is a direct reference but, by itself, is not "
+                "classification-ready."
+            ),
+            processing_pipeline="gse139682_rpkm_to_tpm_ensembl112_clean_tpm_16_9_75",
+            tumor_origin="primary",
+            source_type="geo-rnaseq-rpkm",
+        )
+        manifest_name = "gse139682_gbc_sample_manifest.csv"
+
+    value_cols = [column for column in raw.columns if column != "source_symbol"]
+    _, diagnostics = coerce_source_expression_values(
+        raw,
+        value_cols=value_cols,
+        row_id_col="source_symbol",
+    )
+    canonical, audit = canonicalize_source_gene_matrix(
+        raw,
+        row_id_col="source_symbol",
+        value_cols=value_cols,
+        high_expression_threshold=high_expression_threshold,
+    )
+    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
+    result = build_canonical_source_matrices(
+        source,
+        canonical,
+        routed_samples=routed,
+        output_dir=out_dir,
+        mapping_audit=audit,
+        parse_diagnostics=diagnostics,
+    )
+    manifest_path = out_dir / manifest_name
+    manifest_temp = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
+    manifest.to_csv(manifest_temp, index=False)
+    manifest_temp.replace(manifest_path)
+    return SourceMatrixBuildResult(
+        source=result.source,
+        matrices=result.matrices,
+        matrix_paths=result.matrix_paths,
+        summary_rows=result.summary_rows,
+        mapping_audit=result.mapping_audit,
+        parse_diagnostics=result.parse_diagnostics,
+        sample_qc=result.sample_qc,
+        sidecar_paths={**result.sidecar_paths, "sample_manifest": manifest_path},
+    )
+
+
+def build_gse125285_source_matrices(
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    matrix_path: str | Path | None = None,
+    soft_path: str | Path | None = None,
+    force_download: bool = False,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build direct BCC/cSCC nCPM-proxy references from GSE125285."""
+    return _build_geo_candidate_source_matrices(
+        source_id="gse125285-bcc-cscc",
+        cache_dir=cache_dir,
+        output_dir=output_dir,
+        matrix_path=matrix_path,
+        soft_path=soft_path,
+        force_download=force_download,
+        high_expression_threshold=high_expression_threshold,
+    )
+
+
+def build_gse139682_source_matrices(
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    matrix_path: str | Path | None = None,
+    soft_path: str | Path | None = None,
+    force_download: bool = False,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build the direct GBC RPKM-derived TPM reference from GSE139682."""
+    return _build_geo_candidate_source_matrices(
+        source_id="gse139682-gbc",
+        cache_dir=cache_dir,
+        output_dir=output_dir,
+        matrix_path=matrix_path,
+        soft_path=soft_path,
+        force_download=force_download,
+        high_expression_threshold=high_expression_threshold,
     )
 
 

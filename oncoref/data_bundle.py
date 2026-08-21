@@ -62,6 +62,7 @@ import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 from filelock import FileLock
 
@@ -117,8 +118,8 @@ RELEASE_URLS: tuple[str, ...] = tuple(source["url"] for source in RELEASE_SOURCE
 
 CACHE_COMPLETE_FILENAME = ".oncoref-bundle-complete.json"
 CACHE_MANIFEST_VERSION = 1
-BUNDLE_MANIFEST_VERSION = 1
-BUNDLE_CONTRACT_VERSION = 2
+BUNDLE_MANIFEST_VERSION = 2
+BUNDLE_CONTRACT_VERSION = 3
 
 
 class BundleIntegrityError(RuntimeError):
@@ -264,13 +265,113 @@ def _parse_checksum_text(text: str, *, filename: str) -> dict:
     }
 
 
+def _valid_sha256(value: Any) -> str | None:
+    sha256 = str(value or "").lower()
+    if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
+        return None
+    return sha256
+
+
+def _bundle_relative_path(value: Any, *, manifest_url: str) -> str:
+    relative = str(value or "")
+    path = Path(relative)
+    if path.is_absolute() or not path.parts or ".." in path.parts:
+        raise BundleIntegrityError(f"{manifest_url} contains unsafe bundle path {relative!r}")
+    if not any(relative == root or relative.startswith(f"{root}/") for root in DOWNLOADABLE_PATHS):
+        raise BundleIntegrityError(
+            f"{manifest_url} overlay path is outside the bundle contract: {relative!r}"
+        )
+    return relative
+
+
+def _normalize_base_bundle(base: Any, *, manifest_url: str) -> dict:
+    if not isinstance(base, dict):
+        raise BundleIntegrityError(f"{manifest_url} overlay lacks a base_bundle object")
+    data_version = str(base.get("data_version") or "")
+    version_parts = data_version.split(".")
+    if len(version_parts) != 3 or not all(part.isdigit() for part in version_parts):
+        raise BundleIntegrityError(
+            f"{manifest_url} base_bundle has invalid data_version {data_version!r}"
+        )
+    if data_version == DATA_VERSION:
+        raise BundleIntegrityError(f"{manifest_url} overlay cannot use itself as its base")
+    repo = str(base.get("repo") or GITHUB_REPO)
+    if repo != GITHUB_REPO:
+        raise BundleIntegrityError(
+            f"{manifest_url} overlay base repo {repo!r} is not the oncoref authority"
+        )
+    tarball = base.get("tarball")
+    if not isinstance(tarball, dict):
+        raise BundleIntegrityError(f"{manifest_url} base_bundle lacks tarball metadata")
+    filename = str(tarball.get("filename") or "")
+    expected_filename = f"oncoref-data-v{data_version}.tar.gz"
+    if filename != expected_filename:
+        raise BundleIntegrityError(
+            f"{manifest_url} base tarball is {filename!r}, expected {expected_filename!r}"
+        )
+    sha256 = _valid_sha256(tarball.get("sha256"))
+    if sha256 is None:
+        raise BundleIntegrityError(f"{manifest_url} base_bundle lacks a valid tarball sha256")
+    try:
+        size_bytes = int(tarball.get("bytes"))
+    except (TypeError, ValueError) as e:
+        raise BundleIntegrityError(f"{manifest_url} base_bundle lacks a valid byte size") from e
+    if size_bytes <= 0:
+        raise BundleIntegrityError(f"{manifest_url} base_bundle byte size must be positive")
+    paths = tarball.get("downloadable_paths")
+    if paths is not None and tuple(paths) != DOWNLOADABLE_PATHS:
+        raise BundleIntegrityError(
+            f"{manifest_url} base downloadable_paths do not match this oncoref build"
+        )
+    return {
+        "data_version": data_version,
+        "repo": repo,
+        "tarball": {
+            "filename": filename,
+            "url": (f"https://github.com/{repo}/releases/download/v{data_version}/{filename}"),
+            "bytes": size_bytes,
+            "sha256": sha256,
+            "downloadable_paths": list(DOWNLOADABLE_PATHS),
+        },
+    }
+
+
+def _normalize_overlay(overlay: Any, *, manifest_url: str) -> dict:
+    if not isinstance(overlay, dict):
+        raise BundleIntegrityError(f"{manifest_url} overlay layout lacks overlay metadata")
+    raw_paths = overlay.get("paths")
+    raw_deleted_paths = overlay.get("deleted_paths", [])
+    if not isinstance(raw_paths, list) or not isinstance(raw_deleted_paths, list):
+        raise BundleIntegrityError(f"{manifest_url} overlay paths must be arrays")
+    paths = [_bundle_relative_path(p, manifest_url=manifest_url) for p in raw_paths]
+    deleted_paths = [_bundle_relative_path(p, manifest_url=manifest_url) for p in raw_deleted_paths]
+    if len(paths) != len(set(paths)) or len(deleted_paths) != len(set(deleted_paths)):
+        raise BundleIntegrityError(f"{manifest_url} overlay paths must be unique")
+    if set(paths) & set(deleted_paths):
+        raise BundleIntegrityError(f"{manifest_url} cannot replace and delete the same path")
+    if overlay.get("file_count", len(paths)) != len(paths):
+        raise BundleIntegrityError(f"{manifest_url} overlay file_count does not match its paths")
+    try:
+        size_bytes = int(overlay.get("size_bytes"))
+    except (TypeError, ValueError) as e:
+        raise BundleIntegrityError(f"{manifest_url} overlay lacks a valid byte size") from e
+    if size_bytes < 0:
+        raise BundleIntegrityError(f"{manifest_url} overlay byte size cannot be negative")
+    return {
+        "paths": paths,
+        "deleted_paths": deleted_paths,
+        "file_count": len(paths),
+        "size_bytes": size_bytes,
+    }
+
+
 def _validate_release_manifest(manifest: dict, source: dict, *, manifest_url: str) -> dict:
     if manifest.get("data_version") != DATA_VERSION:
         raise BundleIntegrityError(
             f"{manifest_url} is for data_version {manifest.get('data_version')!r}, "
             f"expected {DATA_VERSION!r}"
         )
-    if manifest.get("manifest_version") not in (None, BUNDLE_MANIFEST_VERSION):
+    if manifest.get("manifest_version") not in (None, 1, BUNDLE_MANIFEST_VERSION):
         raise BundleIntegrityError(
             f"{manifest_url} uses unsupported manifest_version {manifest.get('manifest_version')!r}"
         )
@@ -281,8 +382,8 @@ def _validate_release_manifest(manifest: dict, source: dict, *, manifest_url: st
             f"{manifest_url} describes tarball {filename!r}, "
             f"expected {source['tarball_filename']!r}"
         )
-    sha256 = str(tarball.get("sha256", "")).lower()
-    if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
+    sha256 = _valid_sha256(tarball.get("sha256"))
+    if sha256 is None:
         raise BundleIntegrityError(f"{manifest_url} lacks a valid tarball sha256")
     paths = tarball.get("downloadable_paths") or manifest.get("downloadable_paths")
     if paths is not None and tuple(paths) != DOWNLOADABLE_PATHS:
@@ -330,6 +431,21 @@ def _validate_release_manifest(manifest: dict, source: dict, *, manifest_url: st
             for path in DOWNLOADABLE_PATHS
             if isinstance(inventory.get(path), dict)
         }
+    layout = manifest.get("bundle_layout", "full")
+    if layout not in {"full", "overlay"}:
+        raise BundleIntegrityError(f"{manifest_url} has unsupported bundle_layout {layout!r}")
+    normalized["bundle_layout"] = layout
+    if layout == "overlay":
+        if manifest.get("manifest_version") != BUNDLE_MANIFEST_VERSION:
+            raise BundleIntegrityError(
+                f"{manifest_url} overlay requires manifest_version {BUNDLE_MANIFEST_VERSION}"
+            )
+        normalized["base_bundle"] = _normalize_base_bundle(
+            manifest.get("base_bundle"), manifest_url=manifest_url
+        )
+        normalized["overlay"] = _normalize_overlay(
+            manifest.get("overlay"), manifest_url=manifest_url
+        )
     for key in (
         "builder",
         "builder_commit",
@@ -419,16 +535,33 @@ def _completion_marker_valid(root: Path) -> bool:
     )
 
 
+def _base_cache_valid(root: Path, base_bundle: dict) -> bool:
+    marker = _read_completion_marker(root)
+    release_manifest = marker.get("release_manifest") if marker else None
+    tarball = release_manifest.get("tarball") if isinstance(release_manifest, dict) else None
+    expected = base_bundle["tarball"]
+    return bool(
+        marker
+        and marker.get("manifest_version") == CACHE_MANIFEST_VERSION
+        and marker.get("data_version") == base_bundle["data_version"]
+        and tuple(marker.get("downloadable_paths", ())) == DOWNLOADABLE_PATHS
+        and isinstance(tarball, dict)
+        and tarball.get("sha256") == expected["sha256"]
+        and not _incomplete_bundle_paths(root)
+    )
+
+
 def _write_completion_marker(
     root: Path,
     *,
     source_url: str,
     release_manifest: dict | None,
+    data_version: str = DATA_VERSION,
 ) -> None:
     marker = _completion_marker_path(root)
     payload = {
         "manifest_version": CACHE_MANIFEST_VERSION,
-        "data_version": DATA_VERSION,
+        "data_version": data_version,
         "source_url": source_url,
         "release_manifest": release_manifest,
         "verified_sha256": bool(
@@ -598,6 +731,7 @@ def _download_and_extract(
     *,
     verbose: bool,
     release_manifest: dict | None = None,
+    data_version: str = DATA_VERSION,
 ) -> None:
     """Download a tarball from ``url`` and extract it into ``root``.
 
@@ -649,10 +783,176 @@ def _download_and_extract(
             elif dest.exists():
                 dest.unlink()
             shutil.move(str(entry), str(dest))
-        _write_completion_marker(root, source_url=url, release_manifest=release_manifest)
+        _write_completion_marker(
+            root,
+            source_url=url,
+            release_manifest=release_manifest,
+            data_version=data_version,
+        )
     finally:
         tmp_path.unlink(missing_ok=True)
         shutil.rmtree(staging, ignore_errors=True)
+
+
+def _link_or_copy(source: str, destination: str) -> str:
+    """Hard-link unchanged cached artifacts, falling back across filesystems."""
+    try:
+        os.link(source, destination)
+        return destination
+    except OSError:
+        return shutil.copy2(source, destination)
+
+
+def _overlay_file_members(archive: tarfile.TarFile) -> list[str]:
+    files: list[str] = []
+    for member in archive.getmembers():
+        path = Path(member.name)
+        if path.is_absolute() or ".." in path.parts:
+            raise BundleIntegrityError(f"overlay archive contains unsafe path {member.name!r}")
+        if member.isfile():
+            files.append(path.as_posix())
+        elif not member.isdir():
+            raise BundleIntegrityError(
+                f"overlay archive contains unsupported member {member.name!r}"
+            )
+    return files
+
+
+def _download_and_apply_overlay(
+    url: str,
+    root: Path,
+    *,
+    base_root: Path,
+    verbose: bool,
+    release_manifest: dict,
+) -> None:
+    """Compose a complete cache from a verified base and a small overlay archive."""
+    with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+    overlay_staging = Path(tempfile.mkdtemp(prefix=".overlay-", dir=root.parent))
+    composition = Path(tempfile.mkdtemp(prefix=".composition-", dir=root.parent))
+    try:
+        with urllib.request.urlopen(url) as resp, tmp_path.open("wb") as handle:
+            shutil.copyfileobj(resp, handle, length=1024 * 1024)
+        tarball = release_manifest["tarball"]
+        expected_bytes = tarball.get("bytes")
+        if expected_bytes is not None and tmp_path.stat().st_size != int(expected_bytes):
+            raise BundleIntegrityError(
+                f"{url} size mismatch: got {tmp_path.stat().st_size} bytes, "
+                f"expected {expected_bytes}"
+            )
+        actual_sha256 = _sha256_file(tmp_path)
+        if actual_sha256 != tarball["sha256"]:
+            raise BundleIntegrityError(
+                f"{url} sha256 mismatch: got {actual_sha256}, expected {tarball['sha256']}"
+            )
+        if verbose:
+            sys.stderr.write("oncoref: composing verified base bundle and overlay...\n")
+            sys.stderr.flush()
+        with tarfile.open(tmp_path) as archive:
+            archived_paths = _overlay_file_members(archive)
+            declared_paths = release_manifest["overlay"]["paths"]
+            if archived_paths != declared_paths:
+                raise BundleIntegrityError(
+                    f"{url} archive paths do not match the release overlay manifest"
+                )
+            try:
+                archive.extractall(overlay_staging, filter="data")
+            except TypeError:
+                archive.extractall(overlay_staging)
+
+        for relative in DOWNLOADABLE_PATHS:
+            source = base_root / relative
+            destination = composition / relative
+            if source.is_dir():
+                shutil.copytree(source, destination, copy_function=_link_or_copy)
+            else:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                _link_or_copy(str(source), str(destination))
+
+        for relative in release_manifest["overlay"]["deleted_paths"]:
+            destination = composition / relative
+            if destination.is_dir():
+                shutil.rmtree(destination)
+            else:
+                destination.unlink(missing_ok=True)
+        for relative in release_manifest["overlay"]["paths"]:
+            source = overlay_staging / relative
+            if not source.is_file():
+                raise BundleIntegrityError(f"{url} is missing overlay file {relative!r}")
+            destination = composition / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.unlink(missing_ok=True)
+            shutil.move(str(source), str(destination))
+
+        incomplete = _incomplete_bundle_paths(composition)
+        if incomplete:
+            raise tarfile.TarError(
+                "composed bundle is missing or has empty required paths: " + ", ".join(incomplete)
+            )
+
+        root.mkdir(parents=True, exist_ok=True)
+        _completion_marker_path(root).unlink(missing_ok=True)
+        for relative in DOWNLOADABLE_PATHS:
+            destination = root / relative
+            if destination.is_dir():
+                shutil.rmtree(destination)
+            elif destination.exists():
+                destination.unlink()
+            shutil.move(str(composition / relative), str(destination))
+        _write_completion_marker(root, source_url=url, release_manifest=release_manifest)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+        shutil.rmtree(overlay_staging, ignore_errors=True)
+        shutil.rmtree(composition, ignore_errors=True)
+
+
+def _base_cache_candidates(root: Path, data_version: str) -> tuple[Path, ...]:
+    candidates = [
+        root.parent / f"v{data_version}",
+        _DEFAULT_CACHE_PARENT / f"v{data_version}",
+        _LEGACY_CACHE_PARENT / f"v{data_version}",
+    ]
+    unique: list[Path] = []
+    for candidate in candidates:
+        if candidate not in unique and candidate != root:
+            unique.append(candidate)
+    return tuple(unique)
+
+
+def _ensure_overlay_base(root: Path, base_bundle: dict, *, verbose: bool) -> Path:
+    for candidate in _base_cache_candidates(root, base_bundle["data_version"]):
+        if _base_cache_valid(candidate, base_bundle):
+            if verbose:
+                sys.stderr.write(f"oncoref: reusing verified base bundle at {candidate}\n")
+                sys.stderr.flush()
+            return candidate
+
+    destination = _base_cache_candidates(root, base_bundle["data_version"])[0]
+    if verbose:
+        sys.stderr.write(
+            f"oncoref: verified base v{base_bundle['data_version']} is not cached; "
+            "downloading it once\n"
+        )
+        sys.stderr.flush()
+    base_manifest = {
+        "manifest_version": 1,
+        "data_version": base_bundle["data_version"],
+        "source": "oncoref",
+        "repo": base_bundle["repo"],
+        "tarball": base_bundle["tarball"],
+    }
+    destination.mkdir(parents=True, exist_ok=True)
+    with _cache_lock(destination):
+        if not _base_cache_valid(destination, base_bundle):
+            _download_and_extract(
+                base_bundle["tarball"]["url"],
+                destination,
+                verbose=verbose,
+                release_manifest=base_manifest,
+                data_version=base_bundle["data_version"],
+            )
+    return destination
 
 
 def _fetch_into_cache(root: Path, *, verbose: bool) -> Path:
@@ -677,12 +977,26 @@ def _fetch_into_cache(root: Path, *, verbose: bool) -> Path:
             sys.stderr.flush()
         try:
             release_manifest = _fetch_release_manifest(source)
-            _download_and_extract(
-                url,
-                root,
-                verbose=verbose,
-                release_manifest=release_manifest,
-            )
+            if release_manifest and release_manifest.get("bundle_layout") == "overlay":
+                base_root = _ensure_overlay_base(
+                    root,
+                    release_manifest["base_bundle"],
+                    verbose=verbose,
+                )
+                _download_and_apply_overlay(
+                    url,
+                    root,
+                    base_root=base_root,
+                    verbose=verbose,
+                    release_manifest=release_manifest,
+                )
+            else:
+                _download_and_extract(
+                    url,
+                    root,
+                    verbose=verbose,
+                    release_manifest=release_manifest,
+                )
         except BundleIntegrityError as e:
             errors.append(f"{url}: {e}")
             if source["require_integrity"]:

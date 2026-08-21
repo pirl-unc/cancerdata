@@ -424,7 +424,9 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
     assert set(direct.index) == {
         "ACINIC",
         "ADCC",
+        "BCC",
         "CHOL",
+        "GBC",
         "HCL",
         "NEC_MERKEL",
         "SARC_IFS",
@@ -434,6 +436,7 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
         "SCLC_NEUROD1",
         "SCLC_POU2F3",
         "SCLC_YAP1",
+        "cSCC",
     }
     assert set(direct.index) <= set(selected.index)
     assert (direct["reference_code"] == direct.index).all()
@@ -448,23 +451,49 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
     assert direct.loc["NEC_MERKEL", "accession"] == "GSE235092"
     assert direct.loc["HCL", "accession"] == "DOI:10.5281/zenodo.14917813"
     assert int(direct.loc["HCL", "estimated_samples"]) == 5
+    assert int(direct.loc["BCC", "estimated_samples"]) == 25
+    assert int(direct.loc["cSCC", "estimated_samples"]) == 10
+    assert int(direct.loc["GBC", "estimated_samples"]) == 10
     assert "no per-donor BRAF V600E call is inferred" in direct.loc["HCL", "notes"]
     assert direct.loc["CHOL", "source_cohort"] == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
-
-    gbc = candidates.set_index("cancer_code").loc["GBC"]
-    assert gbc["source_status"] == "bulk_candidate_ready"
-    assert gbc["accession"] == "GSE139682"
-    assert "GBC" not in selected.index
 
     divergent = candidates.set_index("cancer_code").loc[["FL", "NPC", "SARC_ASPS", "SARC_MYXLPS"]]
     assert not divergent["source_status"].eq("direct_reference_available").any()
     assert (divergent["source_cohort"] != selected.loc[divergent.index, "source_cohort"]).all()
 
 
+def test_nci_gap_direct_geo_references_have_explicit_scale_and_target_policy():
+    expected = {
+        "BCC": ("GSE125285_BCC_CSCC", "bulk_rnaseq_cpm_proxy", False, 25),
+        "cSCC": ("GSE125285_BCC_CSCC", "bulk_rnaseq_cpm_proxy", False, 10),
+        "GBC": ("GSE139682_GBC", "linear_rnaseq_tpm", True, 10),
+    }
+    registry = oncoref.cancer_type_registry().set_index("code")
+    manifest = samples.sample_manifest()
+    for code, (cohort, scale, comparable, n_samples) in expected.items():
+        availability = oncoref.cancer_reference_expression_availability(
+            code,
+            reference_source="summary_rows_all",
+            sample_qc="all",
+        ).iloc[0]
+        coverage = oncoref.expression_reference_coverage(code).iloc[0]
+        included = manifest[
+            manifest["source_cohort"].eq(cohort)
+            & manifest["cancer_code"].eq(code)
+            & manifest["included"].astype(str).str.lower().isin(("true", "1"))
+        ]
+
+        assert registry.loc[code, "source_cohort"] == cohort
+        assert availability["source_scale_class"] == scale
+        assert bool(availability["linear_tpm_comparable"]) is comparable
+        assert int(availability["n_reference_samples"]) == n_samples
+        assert len(included) == n_samples
+        assert not bool(coverage["is_classification_target"])
+        assert coverage["consumer_recommendation"] == "reference_only"
+
+
 def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
     expected_status = {
-        "BCC": "bulk_candidate_needs_sample_selection",
-        "cSCC": "bulk_candidate_needs_sample_selection",
         "VSCC": "bulk_candidate_needs_quantification",
         "VAGC": "deferred_no_dedicated_source",
         "FTC": "deferred_pooled_source_not_direct",
@@ -472,7 +501,6 @@ def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
         "PENSCC": "microarray_proxy_only",
         "URETH": "deferred_no_dedicated_source",
         "ANSC": "bulk_candidate_needs_sample_selection",
-        "GBC": "bulk_candidate_ready",
         "EPN": "bulk_candidate_needs_sample_selection",
         "PITNET": "microarray_proxy_only",
         "CRANIO": "bulk_candidate_needs_sample_selection",
@@ -504,7 +532,11 @@ def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
     )
     assert "exclude unannotated and H3-wild-type cases" in rows.loc["DIPG", "notes"]
 
-    availability = oncoref.cancer_reference_expression_availability(list(expected_status))
+    availability = oncoref.cancer_reference_expression_availability(
+        list(expected_status),
+        reference_source="summary_rows_all",
+        sample_qc="all",
+    )
     assert set(availability["requested_code"]) == set(expected_status)
     assert not availability["available"].any()
 
