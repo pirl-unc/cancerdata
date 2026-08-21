@@ -4,6 +4,9 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 
+import hashlib
+import re
+
 import pandas as pd
 import pytest
 
@@ -72,12 +75,15 @@ def test_burden_table_exposes_source_provenance_schema():
         "derivation_basis",
         "rounding_rule",
         "provenance_notes",
+        "aggregation",
+        "source_anchor",
     }
     assert expected <= set(df.columns)
     assert set(df["us_source_locator_status"]) == {"not_extracted"}
     assert set(df["world_source_locator_status"]) == {"not_extracted"}
     assert set(df["rounding_rule"]) == {"not_extracted"}
     assert set(df["derivation_basis"]) <= {
+        "direct_source",
         "not_extracted",
         "sum_of_sites",
         "residual",
@@ -86,6 +92,49 @@ def test_burden_table_exposes_source_provenance_schema():
     by_category = df.set_index("burden_category")
     assert by_category.loc["colorectal", "derivation_basis"] == "sum_of_sites"
     assert by_category.loc["other_and_unknown_primary", "derivation_basis"] == "residual"
+
+
+def test_burden_provenance_is_a_lossless_pirlygenes_replacement():
+    df = incidence.cancer_burden_df()
+    assert not df["aggregation"].isna().any()
+    assert not df["source_anchor"].isna().any()
+    assert df["aggregation"].astype(str).str.strip().ne("").all()
+    assert df["source_anchor"].astype(str).str.strip().ne("").all()
+
+    # Frozen from pirlygenes' 37 populated burden-category aggregation values.
+    ordered = df.sort_values("burden_category")
+    aggregation_payload = "\n".join(
+        f"{row.burden_category}\t{row.aggregation}" for row in ordered.itertuples()
+    )
+    assert hashlib.sha256(aggregation_payload.encode()).hexdigest() == (
+        "0a1e3af0cf10da3fb43e180ca0d0c6d0f7cd081f53af3a4c58f3bcab48cbd589"
+    )
+
+    anchor_pattern = re.compile(r"(?:PMID:\d+|DOI:10\.\d{4,9}/\S+)")
+    for source_anchor in df["source_anchor"].astype(str):
+        assert all(anchor_pattern.fullmatch(token) for token in source_anchor.split(";"))
+
+    by_category = df.set_index("burden_category")
+    assert by_category.loc["adrenal", "source_anchor"] == "PMID:29977421;PMID:33112261"
+    assert by_category.loc["soft_tissue_sarcoma", "source_anchor"] == (
+        "PMID:38230766;PMID:39498209"
+    )
+    assert by_category.loc["kaposi_sarcoma", "source_anchor"] == (
+        "DOI:10.3322/caac.21834;DOI:10.1016/S2214-109X(23)00349-2"
+    )
+
+    acs_rows = df["source"].astype(str).str.contains("ACS-CFF2024")
+    globocan_rows = df["source"].astype(str).str.contains("GLOBOCAN2022")
+    assert df.loc[acs_rows, "source_anchor"].str.contains("PMID:38230766", regex=False).all()
+    assert (
+        df.loc[globocan_rows, "source_anchor"]
+        .str.contains("DOI:10.3322/caac.21834", regex=False)
+        .all()
+    )
+
+    head_and_neck = by_category.loc["head_and_neck"]
+    assert head_and_neck["us_mortality_pct"] == 2.6
+    assert "downstream 1.8% omitted larynx" in head_and_neck["provenance_notes"]
 
 
 def test_burden_category_from_primary_tissue():
