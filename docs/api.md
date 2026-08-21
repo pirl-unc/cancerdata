@@ -1078,9 +1078,12 @@ order.
 - `oncoref.incidence` — incidence/mortality burden and burden categories.
   `incidence.cancer_burden_df()` is the auditable burden table: percentages are
   the public lookup values, and raw-count, source-locator, source-site,
-  derivation, and rounding columns are preserved as provenance fields. Existing
-  legacy rows keep locator status values such as `not_extracted` until exact
-  ACS/GLOBOCAN table/export anchors are filled in.
+  derivation, and rounding columns are preserved as provenance fields. The
+  `aggregation` and `source_anchor` columns are the lossless pirlygenes
+  compatibility contract: every burden category has an explicit site
+  composition or residual formula and one or more resolvable PMID/DOI anchors.
+  Locator status values such as `not_extracted` remain explicit until exact
+  per-region table/export locators and raw counts are filled in.
 - `oncoref.fusions` — defining fusions and partner-family lookups.
 - `oncoref.response_signatures` — legacy/compatibility response-signature
   surface used by oncoref plots. Treat it as transitional: new or extended

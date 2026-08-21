@@ -36,11 +36,13 @@ def cancer_burden_df():
 
     The percentage columns are the current public lookup surface. The companion
     ``*_count`` / ``*_total`` columns, ``*_source_locator`` fields, source-site
-    fields, ``derivation_basis``, and ``rounding_rule`` are the audit/provenance
-    contract. Legacy rows keep ``*_source_locator_status="not_extracted"`` until
-    exact ACS/GLOBOCAN table/export anchors and raw counts are filled in. Rows
-    flagged in ``notes`` as subsets/rollups overlap others — don't sum them
-    blindly."""
+    fields, ``derivation_basis``, and ``rounding_rule`` are the structured audit
+    contract. ``aggregation`` and ``source_anchor`` preserve the complete legacy
+    pirlygenes site-composition and resolvable citation surface so consumers can
+    delegate without a compatibility table. Rows keep
+    ``*_source_locator_status="not_extracted"`` until exact per-region exports and
+    raw counts are filled in. Rows flagged in ``notes`` as subsets/rollups overlap
+    others — don't sum them blindly."""
     return get_data("cancer-incidence-mortality")
 
 
