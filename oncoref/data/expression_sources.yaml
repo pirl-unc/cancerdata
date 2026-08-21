@@ -243,6 +243,37 @@ sources:
     special_handling: >
       scRNA + TCR-β ECCITE-seq; pseudobulk per donor; output is nTPM.
 
+  - id: zenodo-14917813-hcl
+    category: expression
+    cancer_codes: [HCL]
+    source_type: zenodo
+    accession: DOI:10.5281/zenodo.14917813
+    url: https://zenodo.org/records/14917813
+    source_cohort: ZENODO_14917813_BOHN_2026_HCL
+    source_project: Zenodo
+    builder: scripts/build_hcl_scrna_reference_expression.py
+    processing_pipeline: zenodo_14917813_hcl_t0_malignant_cell_pseudobulk_ntpm_ensembl112_clean_tpm_16_9_75
+    file_url: https://zenodo.org/records/14917813/files/50_de_analysis.zip?download=1
+    file_name: 50_de_analysis.zip
+    file_md5: 4f7676aa9dc44e9aa90e74495b5d9229
+    file_bytes: 68163890
+    unit: nTPM (pseudobulk)
+    expected_samples_by_code: {HCL: 5}
+    source_scale_class: scrna_malignant_cell_pseudobulk_ntpm
+    linear_tpm_comparable: false
+    tpm_proxy: true
+    tumor_origin: primary
+    expected_size_gb: 0.064
+    citation: Bohn et al. Blood Advances 2026; PMID:42200459; DOI:10.1182/bloodadvances.2025019057
+    source_pmid: PMID:42200459
+    license: CC-BY-4.0
+    special_handling: >
+      Use the published T0 matrix only; rename artifact-local sample IDs to
+      donor IDs P2-P6, retain P1 as excluded because it has no T0 pseudobulk,
+      and do not infer per-donor BRAF V600E status. Author-annotated malignant
+      HCL-cell UMIs are pseudobulked per donor and scaled to nTPM. The proxy
+      scale is not bulk-TPM comparable or independently classification-ready.
+
   # ---- imported via scripts/import_cancer_specific_expression.py ----
   # These come from external neutral-summary tables, not per-sample
   # quantifications. Extended-stat columns (std/min/max/p5/p10/p90/p95)

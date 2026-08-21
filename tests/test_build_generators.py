@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import tarfile
+import zipfile
 from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
@@ -1666,6 +1667,115 @@ def test_ctcl_pseudobulk_requires_identical_gex_and_tcr_cell_columns(tmp_path):
 
     with pytest.raises(ValueError, match="different cell columns"):
         expression_source_adapters.ctcl_case_pseudobulk(raw_tar)
+
+
+def _write_hcl_archive(path: Path, *, marker_zero: bool = False) -> None:
+    selected = pd.DataFrame(
+        {
+            "sample_id": ["sample_0", "sample_1", "sample_2", "sample_3", "sample_4"],
+            "patient": ["P2", "P4", "P6", "P3", "P5"],
+            "response": ["short_term", "long_term", "long_term", "short_term", "long_term"],
+            "sex": ["male", "female", "male", "male", "male"],
+            "age": [73, 67, 71, 75, 56],
+            "n_obs": [3353, 3824, 4253, 1109, 5292],
+        }
+    )
+    all_donors = pd.DataFrame(
+        {
+            "sample_id": [f"all_{index}" for index in range(6)],
+            "patient": ["P1", "P2", "P3", "P4", "P5", "P6"],
+            "response": [
+                "short_term",
+                "short_term",
+                "short_term",
+                "long_term",
+                "long_term",
+                "long_term",
+            ],
+            "sex": ["female", "male", "male", "female", "male", "male"],
+            "age": [85, 73, 75, 67, 56, 71],
+            "n_obs": [421, 8061, 13900, 3824, 5292, 4253],
+        }
+    )
+    genes = [*expression_source_adapters.HCL_MARKERS, "TP53"]
+    matrix = pd.DataFrame({"gene_id": genes, "gene_name": genes})
+    for index, sample_id in enumerate(selected["sample_id"]):
+        matrix[sample_id] = [
+            0 if marker_zero and marker == "ANXA1" else (index + 1) * (gene_index + 2)
+            for gene_index, marker in enumerate(genes)
+        ]
+    with zipfile.ZipFile(path, "w") as zipped:
+        zipped.writestr(
+            expression_source_adapters.HCL_MATRIX_MEMBER,
+            matrix.to_csv(sep="\t", index=False),
+        )
+        zipped.writestr(
+            expression_source_adapters.HCL_SAMPLESHEET_MEMBER,
+            selected.to_csv(index=False),
+        )
+        zipped.writestr(
+            expression_source_adapters.HCL_ALL_DONORS_MEMBER,
+            all_donors.to_csv(index=False),
+        )
+
+
+def test_hcl_t0_pseudobulk_uses_donors_and_audits_missing_t0(tmp_path):
+    archive = tmp_path / "50_de_analysis.zip"
+    _write_hcl_archive(archive)
+
+    counts, manifest = expression_source_adapters.hcl_t0_pseudobulk(archive)
+
+    assert list(counts.columns) == ["source_symbol", "P2", "P4", "P6", "P3", "P5"]
+    assert set(counts["source_symbol"]) >= set(expression_source_adapters.HCL_MARKERS)
+    assert len(manifest) == 6
+    assert manifest["included"].value_counts().to_dict() == {True: 5, False: 1}
+    excluded = manifest.loc[~manifest["included"]].iloc[0]
+    assert excluded["case_id"] == "P1"
+    assert excluded["exclusion_reason"] == "no_pretreatment_t0_pseudobulk"
+    assert (
+        manifest["molecular_evidence_source"]
+        .str.contains("BRAF V600E is not inferred", regex=False)
+        .all()
+    )
+
+
+def test_hcl_t0_pseudobulk_requires_each_marker_in_each_donor(tmp_path):
+    archive = tmp_path / "50_de_analysis.zip"
+    _write_hcl_archive(archive, marker_zero=True)
+
+    with pytest.raises(ValueError, match="non-positive HCL marker"):
+        expression_source_adapters.hcl_t0_pseudobulk(archive)
+
+
+def test_build_hcl_source_matrices_writes_canonical_matrix_and_sidecars(monkeypatch, tmp_path):
+    archive = tmp_path / "50_de_analysis.zip"
+    _write_hcl_archive(archive)
+    digest = hashlib.md5(archive.read_bytes()).hexdigest()
+    entry = {
+        "id": "zenodo-14917813-hcl",
+        "source_cohort": "ZENODO_14917813_BOHN_2026_HCL",
+        "source_project": "Zenodo",
+        "citation": "synthetic HCL fixture",
+        "unit": "nTPM (pseudobulk)",
+        "file_md5": digest,
+        "file_bytes": archive.stat().st_size,
+    }
+    monkeypatch.setattr(expression_source_adapters, "_registry_entry", lambda _id: entry)
+
+    result = expression_source_adapters.build_hcl_source_matrices(
+        cache_dir=tmp_path / "cache",
+        output_dir=tmp_path / "derived",
+        archive_path=archive,
+    )
+
+    matrix = result.matrices["HCL"]
+    assert list(expression_builders.sample_columns(matrix)) == ["P2", "P4", "P6", "P3", "P5"]
+    assert set(matrix["Symbol"]) >= set(expression_source_adapters.HCL_MARKERS)
+    assert result.matrix_paths["HCL"].exists()
+    assert result.sidecar_paths["sample_manifest"].exists()
+    assert result.sidecar_paths["marker_qc"].exists()
+    assert set(result.summary_rows["cancer_code"]) == {"HCL"}
+    assert set(result.summary_rows["n_samples"]) == {5}
 
 
 def test_derive_mbl_subgroup_source_matrices_writes_cache_and_release_assets(tmp_path):

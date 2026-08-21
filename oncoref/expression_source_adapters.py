@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 import gzip
+import hashlib
 import io
 import json
 import re
@@ -97,6 +98,13 @@ CTCL_SOFT_URL = (
     "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE171nnn/GSE171811/soft/GSE171811_family.soft.gz"
 )
 CTCL_SAMPLE_NAME = re.compile(r"^(GSM\d+)_(.+)_(Blood|Skin)_GEX\.tsv\.gz$")
+HCL_ZENODO_URL = "https://zenodo.org/records/14917813/files/50_de_analysis.zip?download=1"
+HCL_ZENODO_MD5 = "4f7676aa9dc44e9aa90e74495b5d9229"
+HCL_ZENODO_BYTES = 68_163_890
+HCL_MATRIX_MEMBER = "50_de_analysis/pseudobulk/bulk_response_t0_bulk_df.tsv"
+HCL_SAMPLESHEET_MEMBER = "50_de_analysis/pseudobulk/bulk_response_t0_samplesheet.csv"
+HCL_ALL_DONORS_MEMBER = "50_de_analysis/pseudobulk/bulk_response_all_timepoints_samplesheet.csv"
+HCL_MARKERS = ("ANXA1", "MS4A1", "CD22", "IL2RA", "ITGAE", "ITGAX")
 
 
 @dataclass(frozen=True)
@@ -1069,6 +1077,266 @@ def build_ctcl_source_matrices(
         parse_diagnostics=result.parse_diagnostics,
         sample_qc=result.sample_qc,
         sidecar_paths={**result.sidecar_paths, "sample_manifest": manifest_path},
+    )
+
+
+def _file_md5(path: Path) -> str:
+    digest = hashlib.md5()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def hcl_t0_pseudobulk(archive_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Read the five published pretreatment HCL donor pseudobulks.
+
+    The Zenodo artifact assigns local ``sample_N`` labels independently in each
+    analysis table. Columns are therefore renamed to donor IDs so the selected
+    matrix is stable and auditable. P1 is retained in the manifest as excluded:
+    it appears in the all-timepoints table but has no T0 pseudobulk.
+    """
+    archive = Path(archive_path)
+    with zipfile.ZipFile(archive) as zipped:
+        names = set(zipped.namelist())
+        required_members = {
+            HCL_MATRIX_MEMBER,
+            HCL_SAMPLESHEET_MEMBER,
+            HCL_ALL_DONORS_MEMBER,
+        }
+        missing_members = sorted(required_members - names)
+        if missing_members:
+            raise ValueError(f"HCL archive lacks required members: {missing_members}")
+        with zipped.open(HCL_MATRIX_MEMBER) as handle:
+            raw = pd.read_csv(handle, sep="\t")
+        with zipped.open(HCL_SAMPLESHEET_MEMBER) as handle:
+            selected = pd.read_csv(handle)
+        with zipped.open(HCL_ALL_DONORS_MEMBER) as handle:
+            all_donors = pd.read_csv(handle)
+
+    required_sample_columns = {"sample_id", "patient", "response", "sex", "age", "n_obs"}
+    for label, table in (("T0", selected), ("all-donor", all_donors)):
+        missing = sorted(required_sample_columns - set(table.columns))
+        if missing:
+            raise ValueError(f"HCL {label} samplesheet lacks columns: {missing}")
+        if table["patient"].astype(str).duplicated().any():
+            raise ValueError(f"HCL {label} samplesheet contains duplicate donors")
+
+    selected_ids = selected["sample_id"].astype(str).tolist()
+    selected_donors = selected["patient"].astype(str).tolist()
+    if set(selected_donors) != {"P2", "P3", "P4", "P5", "P6"}:
+        raise ValueError(f"HCL T0 donor set changed: {sorted(selected_donors)}")
+    all_donor_ids = set(all_donors["patient"].astype(str))
+    if all_donor_ids != {"P1", "P2", "P3", "P4", "P5", "P6"}:
+        raise ValueError(f"HCL study donor set changed: {sorted(all_donor_ids)}")
+    if len(set(selected_ids)) != len(selected_ids):
+        raise ValueError("HCL T0 samplesheet contains duplicate source sample IDs")
+
+    required_matrix_columns = ["gene_id", "gene_name", *selected_ids]
+    if list(raw.columns) != required_matrix_columns:
+        raise ValueError(
+            f"HCL T0 matrix columns do not match its samplesheet: {list(raw.columns)!r}"
+        )
+    source_symbols = raw["gene_name"].astype(str).str.strip()
+    if source_symbols.eq("").any() or source_symbols.duplicated().any():
+        raise ValueError("HCL T0 matrix contains blank or duplicate gene symbols")
+    if not raw["gene_id"].astype(str).str.strip().eq(source_symbols).all():
+        raise ValueError("HCL T0 matrix gene_id and gene_name columns disagree")
+
+    values = raw[selected_ids].apply(pd.to_numeric, errors="raise")
+    numeric = values.to_numpy(dtype=float)
+    if not np.isfinite(numeric).all() or (numeric < 0).any():
+        raise ValueError("HCL T0 matrix contains non-finite or negative counts")
+    if not np.equal(numeric, np.floor(numeric)).all():
+        raise ValueError("HCL T0 matrix contains non-integral UMI counts")
+    marker_counts = raw.assign(_symbol=source_symbols).set_index("_symbol").reindex(HCL_MARKERS)
+    if marker_counts["gene_name"].isna().any():
+        missing_markers = marker_counts.index[marker_counts["gene_name"].isna()].tolist()
+        raise ValueError(f"HCL T0 matrix lacks marker genes: {missing_markers}")
+    if (marker_counts[selected_ids].apply(pd.to_numeric) <= 0).any().any():
+        raise ValueError("HCL T0 matrix has a non-positive HCL marker count")
+
+    donor_by_sample = dict(zip(selected_ids, selected_donors))
+    counts = pd.DataFrame({"source_symbol": source_symbols})
+    for sample_id in selected_ids:
+        counts[donor_by_sample[sample_id]] = values[sample_id].to_numpy(dtype=float)
+
+    selected_by_donor = selected.assign(
+        patient=selected["patient"].astype(str),
+        sample_id=selected["sample_id"].astype(str),
+    ).set_index("patient")
+    manifest_rows = []
+    for donor in sorted(all_donor_ids):
+        included = donor in selected_by_donor.index
+        row = (
+            selected_by_donor.loc[donor] if included else all_donors.set_index("patient").loc[donor]
+        )
+        source_sample_id = str(row["sample_id"])
+        n_cells = int(row["n_obs"])
+        manifest_rows.append(
+            {
+                "cancer_code": "HCL",
+                "source_cohort": "ZENODO_14917813_BOHN_2026_HCL",
+                "source_project": "Zenodo",
+                "case_id": donor,
+                "sample_id": donor,
+                "source_file_id": source_sample_id,
+                "source_file_name": (
+                    f"50_de_analysis.zip:{HCL_MATRIX_MEMBER}"
+                    if included
+                    else f"50_de_analysis.zip:{HCL_ALL_DONORS_MEMBER}"
+                ),
+                "source_project_id": "DOI:10.5281/zenodo.14917813",
+                "sample_type": "author-annotated malignant HCL cells",
+                "md5sum": HCL_ZENODO_MD5,
+                "file_size": HCL_ZENODO_BYTES,
+                "workflow_type": "author-generated scRNA malignant-cell donor pseudobulk",
+                "raw_unit": "scRNA UMI counts",
+                "processing_pipeline": (
+                    "zenodo_14917813_hcl_t0_malignant_cell_pseudobulk_ntpm_"
+                    "ensembl112_clean_tpm_16_9_75"
+                ),
+                "source_url": "https://zenodo.org/records/14917813",
+                "lineage_evidence_source": (
+                    f"author cell_type=HCL cell; pretreatment T0; {n_cells} cells pseudobulked"
+                    if included
+                    else "study donor present, but no pretreatment T0 pseudobulk is published"
+                ),
+                "included": included,
+                "exclusion_reason": "" if included else "no_pretreatment_t0_pseudobulk",
+                "lineage_label": "HCL" if included else "",
+                "primary_diagnosis": "classic hairy cell leukemia (author diagnosis)",
+                "treatment_status": "pretreatment T0" if included else "unresolved",
+                "molecular_evidence_source": (
+                    "No per-donor BRAF call used; BRAF V600E is not inferred from diagnosis "
+                    "or expression"
+                ),
+                "response_group": str(row["response"]),
+                "sex": str(row["sex"]),
+                "age": int(row["age"]),
+                "n_cells": n_cells,
+                "source_record": "DOI:10.5281/zenodo.14917813",
+            }
+        )
+    return counts, pd.DataFrame(manifest_rows)
+
+
+def build_hcl_source_matrices(
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    archive_path: str | Path | None = None,
+    force_download: bool = False,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build five donor-level HCL T0 malignant-cell pseudobulks from Zenodo."""
+    entry = _registry_entry("zenodo-14917813-hcl")
+    cache = Path(cache_dir)
+    archive = (
+        Path(archive_path)
+        if archive_path is not None
+        else _download(
+            str(entry.get("file_url") or HCL_ZENODO_URL),
+            cache / str(entry.get("file_name") or "50_de_analysis.zip"),
+            force=force_download,
+        )
+    )
+    expected_bytes = int(entry.get("file_bytes") or HCL_ZENODO_BYTES)
+    observed_bytes = archive.stat().st_size
+    if observed_bytes != expected_bytes:
+        raise ValueError(f"HCL Zenodo archive size mismatch: {observed_bytes} != {expected_bytes}")
+    expected_md5 = str(entry.get("file_md5") or HCL_ZENODO_MD5).lower()
+    observed_md5 = _file_md5(archive)
+    if observed_md5 != expected_md5:
+        raise ValueError(f"HCL Zenodo archive MD5 mismatch: {observed_md5} != {expected_md5}")
+
+    counts, manifest = hcl_t0_pseudobulk(archive)
+    value_cols = [column for column in counts.columns if column != "source_symbol"]
+    values = counts[value_cols].apply(pd.to_numeric, errors="raise")
+    totals = values.sum(axis=0)
+    if (totals <= 0).any():
+        raise ValueError("HCL pseudobulk contains a donor with no selected UMI counts")
+    ntpm = values.div(totals, axis=1) * 1_000_000.0
+    raw = pd.concat([counts[["source_symbol"]], ntpm], axis=1)
+    _, diagnostics = coerce_source_expression_values(
+        raw,
+        value_cols=value_cols,
+        row_id_col="source_symbol",
+    )
+    matrix, audit = canonicalize_source_gene_matrix(
+        raw,
+        row_id_col="source_symbol",
+        value_cols=value_cols,
+        high_expression_threshold=high_expression_threshold,
+    )
+    marker_rows = matrix[matrix["Symbol"].isin(HCL_MARKERS)].copy()
+    if set(marker_rows["Symbol"].astype(str)) != set(HCL_MARKERS):
+        missing = sorted(set(HCL_MARKERS) - set(marker_rows["Symbol"].astype(str)))
+        raise ValueError(f"canonical HCL matrix lacks marker genes: {missing}")
+    if (marker_rows[value_cols] <= 0).any().any():
+        raise ValueError("canonical HCL matrix has a non-positive HCL marker value")
+
+    source = GeoMatrixSource(
+        cancer_code="HCL",
+        source_cohort=str(entry["source_cohort"]),
+        source_project=str(entry.get("source_project") or "Zenodo"),
+        citation=str(entry.get("citation") or ""),
+        file_name=archive.name,
+        unit="TPM",
+        expected_source_samples=5,
+        expected_samples_by_code={"HCL": 5},
+        source_scale_class="scrna_malignant_cell_pseudobulk_ntpm",
+        linear_tpm_comparable=False,
+        tpm_proxy=True,
+        native_unit=str(entry.get("unit") or "nTPM (pseudobulk)"),
+        notes=(
+            "Bohn et al. primary classic-HCL scRNA-seq. Author-annotated malignant "
+            "HCL cells from one pretreatment T0 profile per donor are pseudobulked "
+            "and library-size scaled to nTPM. P1 is excluded because no T0 pseudobulk "
+            "is published. No per-donor BRAF status is inferred. This single-cell "
+            "pseudobulk is a direct HCL reference but is not bulk-TPM comparable or, "
+            "by itself, classification-ready."
+        ),
+        processing_pipeline=(
+            "zenodo_14917813_hcl_t0_malignant_cell_pseudobulk_ntpm_ensembl112_clean_tpm_16_9_75"
+        ),
+        tumor_origin="primary",
+        source_type="zenodo-scrna-pseudobulk",
+    )
+    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
+    result = build_canonical_source_matrices(
+        source,
+        matrix,
+        routed_samples={"HCL": value_cols},
+        output_dir=out_dir,
+        mapping_audit=audit,
+        parse_diagnostics=diagnostics,
+    )
+
+    manifest_path = out_dir / "zenodo_14917813_bohn_2026_hcl_sample_manifest.csv"
+    marker_path = out_dir / "zenodo_14917813_bohn_2026_hcl_marker_qc.csv"
+    manifest_temp = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
+    marker_temp = marker_path.with_suffix(marker_path.suffix + ".tmp")
+    manifest.to_csv(manifest_temp, index=False)
+    manifest_temp.replace(manifest_path)
+    marker_qc = marker_rows[["Ensembl_Gene_ID", "Symbol", *value_cols]].copy()
+    marker_qc["minimum_ntpm"] = marker_qc[value_cols].min(axis=1)
+    marker_qc["median_ntpm"] = marker_qc[value_cols].median(axis=1)
+    marker_qc.to_csv(marker_temp, index=False)
+    marker_temp.replace(marker_path)
+    return SourceMatrixBuildResult(
+        source=result.source,
+        matrices=result.matrices,
+        matrix_paths=result.matrix_paths,
+        summary_rows=result.summary_rows,
+        mapping_audit=result.mapping_audit,
+        parse_diagnostics=result.parse_diagnostics,
+        sample_qc=result.sample_qc,
+        sidecar_paths={
+            **result.sidecar_paths,
+            "sample_manifest": manifest_path,
+            "marker_qc": marker_path,
+        },
     )
 
 

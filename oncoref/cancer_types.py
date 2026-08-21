@@ -288,6 +288,7 @@ def _clear_caches():
     _classification_target_map.cache_clear()
     _classification_reference_code_map.cache_clear()
     _expression_source_cohort_counts.cache_clear()
+    _direct_expression_reference_kind_map.cache_clear()
     _cancer_type_record_frame.cache_clear()
     _clear_cache()  # frame cache + registered derived caches (burden maps, CTA, …)
 
@@ -786,6 +787,36 @@ def _source_matrix_frame():
             "n_samples": "source_matrix_n_samples",
         }
     )
+
+
+@lru_cache(maxsize=1)
+def _direct_expression_reference_kind_map() -> dict[str, str]:
+    """Classify selected direct matrices without treating every source as bulk RNA-seq."""
+    from .expression_registry import expression_source_registry_entries
+
+    entries_by_cohort: dict[str, list[dict]] = {}
+    for entry in expression_source_registry_entries():
+        cohort = str(entry.get("source_cohort") or "").strip()
+        if cohort:
+            entries_by_cohort.setdefault(cohort, []).append(entry)
+
+    out: dict[str, str] = {}
+    for row in _source_matrix_frame().to_dict("records"):
+        code = str(row["cancer_code"])
+        cohort = str(row["source_matrix_cohort"])
+        entries = entries_by_cohort.get(cohort, [])
+        searchable = " ".join(
+            str(entry.get(field) or "").lower()
+            for entry in entries
+            for field in ("source_type", "source_scale_class", "unit", "assay")
+        )
+        if "scrna" in searchable or "single-cell" in searchable:
+            out[code] = "single_cell_pseudobulk"
+        elif "microarray" in searchable:
+            out[code] = "microarray_proxy"
+        else:
+            out[code] = "observed_bulk"
+    return out
 
 
 def _subtype_group_maps():
@@ -1701,7 +1732,11 @@ def expression_reference_coverage(cancer_types=None, **query_kwargs) -> pd.DataF
             record["hpa_tissues"]
         )
         reference_kind = (
-            "observed_bulk" if has_direct else "computed_union" if has_computed else "none"
+            _direct_expression_reference_kind_map().get(code, "observed_bulk")
+            if has_direct
+            else "computed_union"
+            if has_computed
+            else "none"
         )
         source_matrix_n_samples = (
             _none_if_missing(record["source_matrix_n_samples"])
@@ -1747,11 +1782,13 @@ def expression_reference_coverage(cancer_types=None, **query_kwargs) -> pd.DataF
                 "has_direct_expression_reference": has_direct,
                 "has_computed_expression_reference": has_computed,
                 "computed_expression_member_codes": computed_members,
-                "observed_bulk_reference": has_direct,
+                "observed_bulk_reference": has_direct and reference_kind == "observed_bulk",
                 "deconvolved_tumor_reference": False,
                 "subtype_deconvolved_reference": False,
                 "cell_line_reference": False,
-                "single_cell_pseudobulk_reference": False,
+                "single_cell_pseudobulk_reference": (
+                    has_direct and reference_kind == "single_cell_pseudobulk"
+                ),
                 "expression_reference_kind": reference_kind,
                 "expression_reference_source_code": code if has_reference else None,
                 "source_matrix_cohort": source_matrix_cohort,

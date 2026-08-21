@@ -209,6 +209,9 @@ def test_expression_sources_df_shape():
         "source_cohort",
         "source_project",
         "processing_pipeline",
+        "source_scale_class",
+        "linear_tpm_comparable",
+        "tpm_proxy",
         "citation",
         "source_pmid",
         "access_level",
@@ -254,6 +257,28 @@ def test_sclc_subtype_registry_sources_roundtrip_into_reference_filters():
         )
         assert availability["available"].tolist() == [True]
         assert availability["source_cohort"].tolist() == [source_cohort]
+
+
+def test_hcl_direct_reference_is_an_explicit_nonclassifying_scrna_proxy():
+    registry = oncoref.cancer_type_registry().set_index("code").loc["HCL"]
+    availability = oncoref.cancer_reference_expression_availability(
+        "HCL",
+        reference_source="summary_rows_all",
+        sample_qc="all",
+    ).iloc[0]
+    coverage = oncoref.expression_reference_coverage("HCL").iloc[0]
+
+    assert registry["source_cohort"] == "ZENODO_14917813_BOHN_2026_HCL"
+    assert registry["source_pmid"] == "PMID:42200459"
+    assert bool(availability["available"])
+    assert availability["source_scale_class"] == "scrna_malignant_cell_pseudobulk_ntpm"
+    assert not bool(availability["linear_tpm_comparable"])
+    assert not bool(coverage["is_classification_target"])
+    assert coverage["classification_reference_code"] is None
+    assert not bool(coverage["observed_bulk_reference"])
+    assert bool(coverage["single_cell_pseudobulk_reference"])
+    assert coverage["expression_reference_kind"] == "single_cell_pseudobulk"
+    assert coverage["consumer_recommendation"] == "reference_only"
 
 
 def test_ifs_cmn_sources_keep_public_and_controlled_acquisition_explicit():
@@ -400,6 +425,7 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
         "ACINIC",
         "ADCC",
         "CHOL",
+        "HCL",
         "NEC_MERKEL",
         "SARC_IFS",
         "SARC_MMNST",
@@ -420,6 +446,9 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
     assert direct.loc["ADCC", "accession"] == "GSE294016"
     assert direct.loc["ACINIC", "accession"] == "GSE294016"
     assert direct.loc["NEC_MERKEL", "accession"] == "GSE235092"
+    assert direct.loc["HCL", "accession"] == "DOI:10.5281/zenodo.14917813"
+    assert int(direct.loc["HCL", "estimated_samples"]) == 5
+    assert "no per-donor BRAF V600E call is inferred" in direct.loc["HCL", "notes"]
     assert direct.loc["CHOL", "source_cohort"] == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
 
     gbc = candidates.set_index("cancer_code").loc["GBC"]

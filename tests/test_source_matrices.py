@@ -86,6 +86,20 @@ def test_mbl_molecular_subgroups_are_source_matrix_cohorts():
         assert cancer_types.cohort_source_version(code) == "112"
 
 
+def test_hcl_selected_matrix_is_donor_level_and_reproducible():
+    info = sm.cohort_info("HCL")
+    resolution = sm.resolution_for_source("zenodo-14917813-hcl")
+
+    assert info == {
+        "cancer_code": "HCL",
+        "source_cohort": "ZENODO_14917813_BOHN_2026_HCL",
+        "n_samples": 5,
+    }
+    assert resolution.resolution_method == "physical_source"
+    assert resolution.codes == ("HCL",)
+    assert resolution.matrices[0].source_cohort == "ZENODO_14917813_BOHN_2026_HCL"
+
+
 def test_stad_ucec_molecular_subtypes_are_source_matrix_cohorts():
     expected = {
         "STAD_CIN": ("TREEHOUSE_POLYA_25_01_TCGA_STAD_SUBTYPE", 221),

@@ -67,6 +67,9 @@ class ExpressionSource:
     data_access_url: str | None = None
     molecular_annotation_status: str | None = None
     source_pmid: str | None = None
+    source_scale_class: str | None = None
+    linear_tpm_comparable: bool | None = None
+    tpm_proxy: bool | None = None
 
 
 def _coerce_tuple(value) -> tuple[str, ...]:
@@ -89,6 +92,14 @@ def _coerce_float(value) -> float | None:
 def _coerce_bool(value, *, field: str) -> bool:
     if value is None:
         return False
+    if isinstance(value, bool):
+        return value
+    raise ValueError(f"{field} must be a YAML boolean")
+
+
+def _coerce_optional_bool(value, *, field: str) -> bool | None:
+    if value is None:
+        return None
     if isinstance(value, bool):
         return value
     raise ValueError(f"{field} must be a YAML boolean")
@@ -160,6 +171,15 @@ def load_registry() -> tuple[ExpressionSource, ...]:
                 accession=_clean(entry.get("accession")),
                 url=_clean(entry.get("url")),
                 unit=_clean(entry.get("unit")),
+                source_scale_class=_clean(entry.get("source_scale_class")),
+                linear_tpm_comparable=_coerce_optional_bool(
+                    entry.get("linear_tpm_comparable"),
+                    field=f"{entry['id']}.linear_tpm_comparable",
+                ),
+                tpm_proxy=_coerce_optional_bool(
+                    entry.get("tpm_proxy"),
+                    field=f"{entry['id']}.tpm_proxy",
+                ),
                 expected_size_gb=_coerce_float(entry.get("expected_size_gb")),
                 citation=_clean(entry.get("citation")),
                 source_pmid=_clean(entry.get("source_pmid")),
@@ -212,6 +232,9 @@ def expression_sources_df() -> pd.DataFrame:
             "source_project": s.source_project,
             "source_version": s.source_version,
             "unit": s.unit,
+            "source_scale_class": s.source_scale_class,
+            "linear_tpm_comparable": s.linear_tpm_comparable,
+            "tpm_proxy": s.tpm_proxy,
             "library_prep": s.library_prep,
             "project_id": ";".join(s.project_ids) or s.project_id or s.accession or s.recount3_srp,
             "tumor_origin": s.tumor_origin,
