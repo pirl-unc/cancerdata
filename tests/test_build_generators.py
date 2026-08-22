@@ -1778,6 +1778,207 @@ def test_build_hcl_source_matrices_writes_canonical_matrix_and_sidecars(monkeypa
     assert set(result.summary_rows["n_samples"]) == {5}
 
 
+_GSE141460_ARCHIVE_SAMPLES = [
+    "BT1030",
+    "BT1313",
+    "BT1334",
+    "BT1678",
+    "CPDM0785",
+    "MUV006",
+    "MUV013",
+    "MUV014",
+    "MUV018",
+    "MUV021",
+    "MUV038",
+    "MUV043",
+    "MUV051",
+    "MUV052",
+    "MUV053",
+    "MUV056",
+    "MUV063",
+    "MUV068",
+    "MUV071",
+    "Peds4",
+    "BT1412Nuc",
+    "BT1480Nuc",
+    "MUV043Nuc1",
+    "MUV043Nuc2",
+    "WEPN1DiaANGANuc",
+    "WEPN1RecDUDRNuc",
+    "WEPN20DiaVEMI00Nuc",
+    "WEPN20RecVEMI01Nuc",
+]
+_GSE141460_INCLUDED_CELLS = {
+    "BT1412Nuc": 293,
+    "BT1480Nuc": 278,
+    "BT1678": 85,
+    "MUV006": 140,
+    "MUV013": 320,
+    "MUV018": 332,
+    "MUV063": 164,
+    "MUV068": 248,
+    "Peds4": 88,
+    "WEPN1DiaANGANuc": 160,
+    "WEPN20DiaVEMI00Nuc": 162,
+}
+_GSE141460_TENX_SAMPLES = {
+    # Explicit Table S1 protocol assignments; do not infer protocol from the name.
+    "WEPN1DiaANGANuc",
+    "WEPN1RecDUDRNuc",
+    "WEPN20DiaVEMI00Nuc",
+    "WEPN20RecVEMI01Nuc",
+}
+_GSE141460_FROZEN_SAMPLES = {
+    # Explicit archive layout assignments; file placement is not inferred from names.
+    "BT1412Nuc",
+    "BT1480Nuc",
+    "MUV043Nuc1",
+    "MUV043Nuc2",
+    "WEPN1DiaANGANuc",
+    "WEPN1RecDUDRNuc",
+    "WEPN20DiaVEMI00Nuc",
+    "WEPN20RecVEMI01Nuc",
+}
+
+
+def _write_gse141460_fixture(
+    archive_path: Path,
+    clinical_path: Path,
+    *,
+    promote_recurrence: bool = False,
+) -> None:
+    clinical_rows = []
+    with tarfile.open(archive_path, "w:gz") as tar:
+        for archive_sample in _GSE141460_ARCHIVE_SAMPLES:
+            clinical_name = expression_source_adapters.GSE141460_SAMPLE_TO_CLINICAL_NAME.get(
+                archive_sample,
+                archive_sample,
+            )
+            diagnostic = (
+                archive_sample in _GSE141460_INCLUDED_CELLS
+                or archive_sample in {"BT1313", "BT1334"}
+                or (promote_recurrence and archive_sample == "MUV014")
+            )
+            n_malignant = _GSE141460_INCLUDED_CELLS.get(archive_sample, 0)
+            if promote_recurrence and archive_sample == "MUV014":
+                n_malignant = 2
+            if not diagnostic:
+                n_malignant = 1
+            n_normal = 2 if archive_sample in {"BT1313", "BT1334"} else 1
+            cell_ids = [f"{archive_sample}.M{index}" for index in range(n_malignant)]
+            cell_ids.extend(f"{archive_sample}.N{index}" for index in range(n_normal))
+            metadata = ["sample\tsubtype\tmalignant\tannotation"]
+            metadata.extend(
+                f"{cell_id}\t{archive_sample}\tPF-A\tMalignant\tPF-tumor"
+                for cell_id in cell_ids[:n_malignant]
+            )
+            metadata.extend(
+                f"{cell_id}\t{archive_sample}\tPF-A\tNormal\timmune"
+                for cell_id in cell_ids[n_malignant:]
+            )
+            matrix = ["\t".join(cell_ids)]
+            matrix.append("TP53\t" + "\t".join("400000" for _ in cell_ids))
+            matrix.append("EGFR\t" + "\t".join("600000" for _ in cell_ids))
+            folder = "Frozen" if archive_sample in _GSE141460_FROZEN_SAMPLES else "Fresh"
+            stem = f"{archive_sample}_200113lj"
+            for suffix, content in (("meta", metadata), ("cm", matrix)):
+                compressed = gzip.compress(("\n".join(content) + "\n").encode())
+                info = tarfile.TarInfo(f"Ependymoma/{folder}/{stem}_{suffix}.txt.gz")
+                info.size = len(compressed)
+                tar.addfile(info, io.BytesIO(compressed))
+            clinical_rows.append(
+                {
+                    "Name of Sample": clinical_name,
+                    "Location": "Posterior Fossa",
+                    "Molecular group": "PFA-1",
+                    "Age at Diagnosis [Years]": 5,
+                    "Sex": "F",
+                    "Primary/ Recurrence": "diagnostic" if diagnostic else "recurrence",
+                    "therapy": "",
+                    "PFS [Years]": "",
+                    "OS [years]": "",
+                    "outcome": "alive",
+                    "Tissue Material": "fresh",
+                    "Sequencing Protocol": (
+                        "10X Genomics"
+                        if archive_sample in _GSE141460_TENX_SAMPLES
+                        else "scSmart-seq2"
+                    ),
+                }
+            )
+    with pd.ExcelWriter(clinical_path) as writer:
+        pd.DataFrame(clinical_rows).to_excel(
+            writer,
+            sheet_name="clinical annotation",
+            index=False,
+            startrow=1,
+        )
+
+
+def test_gse141460_epn_pseudobulk_routes_only_diagnostic_malignant_cells(tmp_path):
+    archive = tmp_path / "GSE141460_EPN_tpm_meta.tar.gz"
+    clinical = tmp_path / "GSE141460_Table_S1.xlsx"
+    _write_gse141460_fixture(archive, clinical)
+
+    matrix, manifest = expression_source_adapters.gse141460_epn_pseudobulk(
+        archive,
+        clinical,
+    )
+
+    assert (
+        set(matrix.columns[1:]) == expression_source_adapters.GSE141460_EXPECTED_REFERENCE_SAMPLES
+    )
+    assert np.allclose(matrix.iloc[:, 1:].sum(axis=0), 1_000_000.0)
+    assert manifest["included"].value_counts().to_dict() == {False: 17, True: 11}
+    exclusions = manifest.set_index("sample_id")["exclusion_reason"]
+    assert exclusions["BT1313"] == "no_author_annotated_malignant_cells"
+    assert exclusions["MUV014"] == "non_diagnostic_recurrent_specimen"
+    cases = manifest.set_index("sample_id")["case_id"]
+    assert cases["MUV038"] == cases["MUV021"]
+
+
+def test_gse141460_epn_pseudobulk_rejects_recurrence_promotion(tmp_path):
+    archive = tmp_path / "GSE141460_EPN_tpm_meta.tar.gz"
+    clinical = tmp_path / "GSE141460_Table_S1.xlsx"
+    _write_gse141460_fixture(archive, clinical, promote_recurrence=True)
+
+    with pytest.raises(ValueError, match="diagnosis-stage malignant-cell routing changed"):
+        expression_source_adapters.gse141460_epn_pseudobulk(archive, clinical)
+
+
+def test_build_gse141460_source_matrices_writes_reference_and_manifest(monkeypatch, tmp_path):
+    archive = tmp_path / "GSE141460_EPN_tpm_meta.tar.gz"
+    clinical = tmp_path / "GSE141460_Table_S1.xlsx"
+    _write_gse141460_fixture(archive, clinical)
+    entry = {
+        "id": "gse141460-epn",
+        "source_cohort": "GSE141460_GOJO_2020_EPN",
+        "source_project": "GEO",
+        "citation": "synthetic EPN fixture",
+        "unit": "nTPM (malignant-cell mean pseudobulk)",
+        "file_md5": hashlib.md5(archive.read_bytes()).hexdigest(),
+        "file_bytes": archive.stat().st_size,
+        "clinical_file_md5": hashlib.md5(clinical.read_bytes()).hexdigest(),
+        "clinical_file_bytes": clinical.stat().st_size,
+    }
+    monkeypatch.setattr(expression_source_adapters, "_registry_entry", lambda _id: entry)
+
+    result = expression_source_adapters.build_gse141460_source_matrices(
+        cache_dir=tmp_path / "cache",
+        output_dir=tmp_path / "derived",
+        archive_path=archive,
+        clinical_path=clinical,
+    )
+
+    assert set(expression_builders.sample_columns(result.matrices["EPN"])) == (
+        expression_source_adapters.GSE141460_EXPECTED_REFERENCE_SAMPLES
+    )
+    assert result.matrix_paths["EPN"].exists()
+    assert result.sidecar_paths["sample_manifest"].exists()
+    assert set(result.summary_rows["cancer_code"]) == {"EPN"}
+    assert set(result.summary_rows["n_samples"]) == {11}
+
+
 def _write_gse125285_fixture(matrix_path: Path, soft_path: Path) -> None:
     matrix = {"gene symbol": ["/TP53/", "/EGFR/"]}
     soft_lines = []

@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "1.8.178"
+__version__ = "1.8.179"
 
 # Version of the downloadable data bundle (the heavy per-cohort percentile +
 # representative shards). Bump when the DERIVED reference artifacts change — it pins
@@ -48,7 +48,8 @@ __version__ = "1.8.178"
 # compartment; concentration QC now evaluates the clean rather than raw space.
 # 5.23.18 adds the five-donor direct HCL reference. 5.23.19 adds direct BCC,
 # cSCC, and GBC references and makes the complete CHOL/GBC BTC union available.
-DATA_VERSION = "5.23.19"
+# 5.23.20 adds the 11-patient diagnosis-stage EPN malignant-cell pseudobulk.
+DATA_VERSION = "5.23.20"
 
 # Version of the per-cohort RAW source matrices (source_matrices.py). Independent of
 # DATA_VERSION: the source matrices are the unchanging raw-TPM inputs, while DATA_VERSION

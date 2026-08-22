@@ -88,3 +88,43 @@ def test_hcl_molecular_provenance_does_not_infer_braf_status():
     assert rows["driver_event"].isna().all()
     assert not rows["orthogonal_confirmed"].any()
     assert rows["notes"].str.contains("no per-donor BRAF", case=False).all()
+
+
+def test_epn_manifest_keeps_all_source_specimens_and_only_diagnosis_stage_tumor_profiles():
+    rows = samples_for_cancer_code("EPN", included_only=False)
+
+    assert len(rows) == 28
+    assert rows["included"].sum() == 11
+    assert rows.loc[~rows["included"], "exclusion_reason"].value_counts().to_dict() == {
+        "non_diagnostic_recurrent_specimen": 15,
+        "no_author_annotated_malignant_cells": 2,
+    }
+    assert set(rows.loc[rows["included"], "sample_id"]) == {
+        "BT1412",
+        "BT1480",
+        "BT1678",
+        "MUV006",
+        "MUV013",
+        "MUV018",
+        "MUV063",
+        "MUV068",
+        "Peds4_BT775",
+        "WEPN1Dia",
+        "WEPN20Dia",
+    }
+
+
+def test_epn_molecular_provenance_preserves_donors_protocols_and_exclusions():
+    rows = molecular_provenance_for_cancer_code("EPN").set_index("sample_id")
+
+    assert len(rows) == 28
+    assert rows["expression_available"].sum() == 11
+    assert rows.loc["CPDM0785", "donor_id"] == "BT1030"
+    assert rows.loc["MUV038", "donor_id"] == "MUV021"
+    assert set(rows.loc[["MUV043_R1", "MUV043_R2", "MUV043_R4"], "donor_id"]) == {"MUV043"}
+    assert rows.loc["MUV013", "assay"].startswith("scSmart-seq2, 10X Genomics;")
+    assert rows.loc["WEPN1Dia", "assay"].startswith("10X Genomics;")
+    assert rows.loc["BT1412", "assay"].startswith("snSmart-seq2;")
+    assert "no author-labeled malignant cells" in rows.loc["BT1313", "notes"]
+    assert "non_diagnostic_recurrent_specimen" in rows.loc["WEPN1Rec", "notes"]
+    assert not rows["orthogonal_confirmed"].any()

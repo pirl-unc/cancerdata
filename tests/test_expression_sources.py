@@ -426,6 +426,7 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
         "ADCC",
         "BCC",
         "CHOL",
+        "EPN",
         "GBC",
         "HCL",
         "NEC_MERKEL",
@@ -454,6 +455,8 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
     assert int(direct.loc["BCC", "estimated_samples"]) == 25
     assert int(direct.loc["cSCC", "estimated_samples"]) == 10
     assert int(direct.loc["GBC", "estimated_samples"]) == 10
+    assert int(direct.loc["EPN", "estimated_samples"]) == 11
+    assert direct.loc["EPN", "accession"] == "GSE141460"
     assert "no per-donor BRAF V600E call is inferred" in direct.loc["HCL", "notes"]
     assert direct.loc["CHOL", "source_cohort"] == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
 
@@ -467,6 +470,12 @@ def test_nci_gap_direct_geo_references_have_explicit_scale_and_target_policy():
         "BCC": ("GSE125285_BCC_CSCC", "bulk_rnaseq_cpm_proxy", False, 25),
         "cSCC": ("GSE125285_BCC_CSCC", "bulk_rnaseq_cpm_proxy", False, 10),
         "GBC": ("GSE139682_GBC", "linear_rnaseq_tpm", True, 10),
+        "EPN": (
+            "GSE141460_GOJO_2020_EPN",
+            "scrna_malignant_cell_mean_tpm_pseudobulk",
+            False,
+            11,
+        ),
     }
     registry = oncoref.cancer_type_registry().set_index("code")
     manifest = samples.sample_manifest()
@@ -501,7 +510,6 @@ def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
         "PENSCC": "microarray_proxy_only",
         "URETH": "deferred_no_dedicated_source",
         "ANSC": "bulk_candidate_needs_sample_selection",
-        "EPN": "bulk_candidate_needs_sample_selection",
         "PITNET": "microarray_proxy_only",
         "CRANIO": "bulk_candidate_needs_sample_selection",
         "DIPG": "bulk_candidate_needs_sample_selection",

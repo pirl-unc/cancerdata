@@ -105,6 +105,51 @@ HCL_MATRIX_MEMBER = "50_de_analysis/pseudobulk/bulk_response_t0_bulk_df.tsv"
 HCL_SAMPLESHEET_MEMBER = "50_de_analysis/pseudobulk/bulk_response_t0_samplesheet.csv"
 HCL_ALL_DONORS_MEMBER = "50_de_analysis/pseudobulk/bulk_response_all_timepoints_samplesheet.csv"
 HCL_MARKERS = ("ANXA1", "MS4A1", "CD22", "IL2RA", "ITGAE", "ITGAX")
+GSE141460_TPM_META_URL = (
+    "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE141nnn/GSE141460/suppl/"
+    "GSE141460_EPN_tpm_meta.tar.gz"
+)
+GSE141460_TPM_META_MD5 = "b4020a7029ebe72777e08afd984b5a3f"
+GSE141460_TPM_META_BYTES = 139_899_167
+GSE141460_CLINICAL_URL = "https://pmc-oa-opendata.s3.amazonaws.com/PMC7479515.1/mmc2.xlsx"
+GSE141460_CLINICAL_MD5 = "894aa13d3c91a61d6c748cb5ce63b548"
+GSE141460_CLINICAL_BYTES = 15_615
+GSE141460_SAMPLE_TO_CLINICAL_NAME = {
+    "BT1412Nuc": "BT1412",
+    "BT1480Nuc": "BT1480",
+    "MUV043": "MUV043/R4",
+    "MUV043Nuc1": "MUV043/R1",
+    "MUV043Nuc2": "MUV043/R2",
+    "Peds4": "Peds4/BT775",
+    "WEPN1DiaANGANuc": "WEPN1Dia",
+    "WEPN1RecDUDRNuc": "WEPN1Rec",
+    "WEPN20DiaVEMI00Nuc": "WEPN20Dia",
+    "WEPN20RecVEMI01Nuc": "WEPN20Rec",
+}
+GSE141460_LONGITUDINAL_CASE = {
+    "CPDM0785": "BT1030",
+    "MUV038": "MUV021",
+    "MUV043/R1": "MUV043",
+    "MUV043/R2": "MUV043",
+    "MUV043/R4": "MUV043",
+    "WEPN1Dia": "WEPN1",
+    "WEPN1Rec": "WEPN1",
+    "WEPN20Dia": "WEPN20",
+    "WEPN20Rec": "WEPN20",
+}
+GSE141460_EXPECTED_REFERENCE_SAMPLES = {
+    "BT1412",
+    "BT1480",
+    "BT1678",
+    "MUV006",
+    "MUV013",
+    "MUV018",
+    "MUV063",
+    "MUV068",
+    "Peds4_BT775",
+    "WEPN1Dia",
+    "WEPN20Dia",
+}
 GSE125285_MATRIX_URL = (
     "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE125nnn/GSE125285/suppl/GSE125285_S35_log2GE.txt.gz"
 )
@@ -1400,6 +1445,387 @@ def build_hcl_source_matrices(
             "sample_manifest": manifest_path,
             "marker_qc": marker_path,
         },
+    )
+
+
+def _gse141460_cell_metadata(
+    tar: tarfile.TarFile,
+    member_name: str,
+) -> list[dict[str, str]]:
+    with _tar_gzip_rows(tar, member_name) as reader:
+        header = next(reader)
+        if header != ["sample", "subtype", "malignant", "annotation"]:
+            raise ValueError(f"GSE141460 metadata header changed in {member_name}: {header}")
+        rows = []
+        for row in reader:
+            # The source omits a heading for the leading cell-ID field.
+            if len(row) != 5:
+                raise ValueError(f"GSE141460 metadata row is malformed in {member_name}")
+            rows.append(
+                {
+                    "cell_id": row[0],
+                    "sample": row[1],
+                    "subtype": row[2],
+                    "malignant": row[3],
+                    "annotation": row[4],
+                }
+            )
+    if not rows:
+        raise ValueError(f"GSE141460 metadata member is empty: {member_name}")
+    cell_ids = [row["cell_id"] for row in rows]
+    if len(cell_ids) != len(set(cell_ids)) or any(not cell_id for cell_id in cell_ids):
+        raise ValueError(f"GSE141460 metadata has blank or duplicate cell IDs: {member_name}")
+    sample_names = {row["sample"] for row in rows}
+    subtypes = {row["subtype"] for row in rows}
+    malignant_labels = {row["malignant"] for row in rows}
+    if len(sample_names) != 1 or len(subtypes) != 1:
+        raise ValueError(f"GSE141460 metadata mixes samples or subtypes: {member_name}")
+    if not malignant_labels <= {"Malignant", "Normal"}:
+        raise ValueError(f"GSE141460 metadata has unsupported malignant labels: {malignant_labels}")
+    return rows
+
+
+def _gse141460_malignant_cell_mean_tpm(
+    tar: tarfile.TarFile,
+    member_name: str,
+    metadata: list[dict[str, str]],
+) -> tuple[list[str], np.ndarray]:
+    """Mean author TPM across malignant cells in one patient specimen."""
+    malignant_cells = {row["cell_id"] for row in metadata if row["malignant"] == "Malignant"}
+    if not malignant_cells:
+        raise ValueError(f"GSE141460 selected matrix has no malignant cells: {member_name}")
+    with _tar_gzip_rows(tar, member_name) as reader:
+        cell_header = next(reader)
+        metadata_cells = {row["cell_id"] for row in metadata}
+        if len(cell_header) != len(set(cell_header)) or set(cell_header) != metadata_cells:
+            raise ValueError(f"GSE141460 matrix and metadata cell IDs disagree: {member_name}")
+        selected_indices = [
+            index + 1 for index, cell_id in enumerate(cell_header) if cell_id in malignant_cells
+        ]
+        selected_totals = np.zeros(len(selected_indices), dtype=float)
+        symbols = []
+        means = []
+        for row in reader:
+            if len(row) != len(cell_header) + 1:
+                raise ValueError(f"GSE141460 matrix row is malformed: {member_name}")
+            symbol = row[0].strip()
+            if not symbol:
+                raise ValueError(f"GSE141460 matrix contains a blank symbol: {member_name}")
+            values = np.fromiter(
+                (float(row[index]) for index in selected_indices),
+                dtype=float,
+                count=len(selected_indices),
+            )
+            if not np.isfinite(values).all() or (values < 0).any():
+                raise ValueError(
+                    f"GSE141460 matrix contains non-finite or negative TPM: {member_name}"
+                )
+            symbols.append(symbol)
+            means.append(float(values.mean()))
+            selected_totals += values
+    if len(symbols) != len(set(symbols)):
+        raise ValueError(f"GSE141460 matrix contains duplicate symbols: {member_name}")
+    if not np.allclose(selected_totals, 1_000_000.0, rtol=0.0, atol=1.0):
+        raise ValueError(f"GSE141460 per-cell TPM totals changed: {member_name}")
+    mean_tpm = np.asarray(means, dtype=float)
+    total = float(mean_tpm.sum())
+    if not np.isfinite(total) or total <= 0:
+        raise ValueError(f"GSE141460 malignant-cell mean has no expression: {member_name}")
+    return symbols, mean_tpm / total * 1_000_000.0
+
+
+def gse141460_epn_pseudobulk(
+    archive_path: str | Path,
+    clinical_path: str | Path,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Build diagnosis-only EPN malignant-cell mean-TPM pseudobulks.
+
+    The archive contains 28 patient tissue specimens. Table S1 identifies 15
+    as recurrent/non-diagnostic, and two diagnostic specimens contain no cells
+    carrying the authors' malignant label. All 17 exclusions remain in the
+    manifest; only the 11 diagnosis-stage malignant-cell profiles are routed.
+    """
+    archive = Path(archive_path)
+    clinical = pd.read_excel(
+        Path(clinical_path),
+        sheet_name="clinical annotation",
+        header=1,
+    )
+    clinical.columns = [str(column).strip() for column in clinical.columns]
+    required = {
+        "Name of Sample",
+        "Location",
+        "Molecular group",
+        "Age at Diagnosis [Years]",
+        "Sex",
+        "Primary/ Recurrence",
+        "Tissue Material",
+        "Sequencing Protocol",
+    }
+    missing = sorted(required - set(clinical.columns))
+    if missing:
+        raise ValueError(f"GSE141460 clinical Table S1 lacks columns: {missing}")
+    clinical["Name of Sample"] = clinical["Name of Sample"].astype(str).str.strip()
+    if clinical["Name of Sample"].eq("").any():
+        raise ValueError("GSE141460 clinical Table S1 contains a blank sample name")
+    clinical = clinical[
+        ~clinical["Tissue Material"]
+        .astype(str)
+        .str.contains(
+            r"cell line|PDX",
+            case=False,
+            regex=True,
+        )
+    ].copy()
+    clinical_rows = {}
+    for sample_name, rows in clinical.groupby("Name of Sample", sort=False):
+        if len(rows) > 1:
+            smart_seq2 = rows[
+                rows["Sequencing Protocol"]
+                .astype(str)
+                .str.contains(
+                    "Smart-seq2",
+                    case=False,
+                    regex=False,
+                )
+            ]
+            if len(smart_seq2) != 1:
+                raise ValueError(
+                    f"GSE141460 clinical Table S1 has ambiguous tissue rows for {sample_name}"
+                )
+            rows = smart_seq2
+        clinical_rows[str(sample_name)] = rows.iloc[0]
+    manifest_rows = []
+    profiles: dict[str, np.ndarray] = {}
+    reference_symbols: list[str] | None = None
+    included_cell_count = 0
+    with tarfile.open(archive, "r:gz") as tar:
+        archive_names = set(tar.getnames())
+        meta_names = sorted(
+            name
+            for name in archive_names
+            if name.startswith(("Ependymoma/Fresh/", "Ependymoma/Frozen/"))
+            and name.endswith("_meta.txt.gz")
+            and not name.rsplit("/", 1)[-1].startswith("._")
+        )
+        if len(meta_names) != 28:
+            raise ValueError(f"GSE141460 patient matrix count changed: {len(meta_names)} != 28")
+        for meta_name in meta_names:
+            matrix_name = meta_name.replace("_meta.txt.gz", "_cm.txt.gz")
+            if matrix_name not in archive_names:
+                raise ValueError(f"GSE141460 metadata member lacks matrix: {meta_name}")
+            metadata = _gse141460_cell_metadata(tar, meta_name)
+            archive_sample = metadata[0]["sample"]
+            clinical_name = GSE141460_SAMPLE_TO_CLINICAL_NAME.get(
+                archive_sample,
+                archive_sample,
+            )
+            clinical = clinical_rows.get(clinical_name)
+            if clinical is None:
+                raise ValueError(
+                    f"GSE141460 archive sample lacks clinical annotation: {archive_sample}"
+                )
+            status = str(clinical["Primary/ Recurrence"]).strip()
+            molecular_group = str(clinical["Molecular group"]).strip()
+            location = str(clinical["Location"]).strip()
+            tissue_material = str(clinical["Tissue Material"]).strip()
+            sequencing_protocol = str(clinical["Sequencing Protocol"]).strip()
+            metadata_subtype = metadata[0]["subtype"]
+            n_cells = len(metadata)
+            n_malignant = sum(row["malignant"] == "Malignant" for row in metadata)
+            included = status.casefold() == "diagnostic" and n_malignant > 0
+            sample_id = clinical_name.replace("/", "_")
+            if included:
+                symbols, profile = _gse141460_malignant_cell_mean_tpm(
+                    tar,
+                    matrix_name,
+                    metadata,
+                )
+                if reference_symbols is None:
+                    reference_symbols = symbols
+                elif symbols != reference_symbols:
+                    raise ValueError(
+                        f"GSE141460 included matrices have different gene rows: {matrix_name}"
+                    )
+                if sample_id in profiles:
+                    raise ValueError(f"GSE141460 duplicate reference sample: {sample_id}")
+                profiles[sample_id] = profile
+                included_cell_count += n_malignant
+            exclusion_reason = ""
+            if not included:
+                exclusion_reason = (
+                    "no_author_annotated_malignant_cells"
+                    if status.casefold() == "diagnostic"
+                    else "non_diagnostic_recurrent_specimen"
+                )
+            manifest_rows.append(
+                {
+                    "cancer_code": "EPN",
+                    "source_cohort": "GSE141460_GOJO_2020_EPN",
+                    "source_project": "GEO",
+                    "case_id": GSE141460_LONGITUDINAL_CASE.get(clinical_name, clinical_name),
+                    "sample_id": sample_id,
+                    "source_file_id": archive_sample,
+                    "source_file_name": f"{archive.name}:{matrix_name}",
+                    "source_project_id": "GSE141460",
+                    "sample_type": tissue_material,
+                    "primary_diagnosis": f"ependymoma ({molecular_group})",
+                    "md5sum": GSE141460_TPM_META_MD5,
+                    "file_size": GSE141460_TPM_META_BYTES,
+                    "workflow_type": (
+                        "author per-cell TPM; malignant-cell mean patient pseudobulk"
+                    ),
+                    "raw_unit": "author per-cell TPM",
+                    "processing_pipeline": (
+                        "gse141460_diagnosis_malignant_cell_mean_tpm_pseudobulk_"
+                        "ensembl112_clean_tpm_16_9_75"
+                    ),
+                    "source_url": ("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE141460"),
+                    "lineage_evidence_source": (
+                        f"Table S1 status={status}; molecular group={molecular_group}; "
+                        f"source subtype={metadata_subtype}; author-labeled malignant "
+                        f"cells={n_malignant}/{n_cells}"
+                    ),
+                    "included": included,
+                    "exclusion_reason": exclusion_reason,
+                    "lineage_label": "EPN" if included else "",
+                    "anatomic_site": location,
+                    "age_at_diagnosis": clinical["Age at Diagnosis [Years]"],
+                    "sex": str(clinical["Sex"]).strip(),
+                    "treatment_status": status,
+                    "molecular_group": molecular_group,
+                    "source_subtype": metadata_subtype,
+                    "sequencing_protocol": sequencing_protocol,
+                    "n_cells": n_cells,
+                    "n_malignant_cells": n_malignant,
+                    "source_record": "PMID:32663469; PMC7479515 Table S1",
+                }
+            )
+
+    if set(profiles) != GSE141460_EXPECTED_REFERENCE_SAMPLES:
+        raise ValueError(
+            f"GSE141460 diagnosis-stage malignant-cell routing changed: {sorted(profiles)}"
+        )
+    if included_cell_count != 2_270:
+        raise ValueError(
+            f"GSE141460 included malignant-cell count changed: {included_cell_count} != 2270"
+        )
+    if reference_symbols is None:
+        raise ValueError("GSE141460 produced no diagnosis-stage EPN reference profiles")
+    matrix = pd.DataFrame({"source_symbol": reference_symbols})
+    for sample_id in sorted(profiles):
+        matrix[sample_id] = profiles[sample_id]
+    manifest = pd.DataFrame(manifest_rows).sort_values("sample_id").reset_index(drop=True)
+    if manifest["included"].value_counts().to_dict() != {False: 17, True: 11}:
+        raise ValueError("GSE141460 inclusion audit no longer has 11 included and 17 excluded")
+    return matrix, manifest
+
+
+def build_gse141460_source_matrices(
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    archive_path: str | Path | None = None,
+    clinical_path: str | Path | None = None,
+    force_download: bool = False,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build 11 diagnosis-stage EPN malignant-cell mean-TPM pseudobulks."""
+    entry = _registry_entry("gse141460-epn")
+    cache = Path(cache_dir)
+    archive = (
+        Path(archive_path)
+        if archive_path is not None
+        else _download(
+            str(entry.get("file_url") or GSE141460_TPM_META_URL),
+            cache / str(entry.get("file_name") or "GSE141460_EPN_tpm_meta.tar.gz"),
+            force=force_download,
+        )
+    )
+    clinical = (
+        Path(clinical_path)
+        if clinical_path is not None
+        else _download(
+            str(entry.get("clinical_file_url") or GSE141460_CLINICAL_URL),
+            cache / str(entry.get("clinical_file_name") or "GSE141460_Table_S1.xlsx"),
+            force=force_download,
+        )
+    )
+    _verify_public_source_file(
+        archive,
+        label="GSE141460 TPM/metadata archive",
+        expected_bytes=int(entry.get("file_bytes") or GSE141460_TPM_META_BYTES),
+        expected_md5=str(entry.get("file_md5") or GSE141460_TPM_META_MD5),
+    )
+    _verify_public_source_file(
+        clinical,
+        label="GSE141460 clinical Table S1",
+        expected_bytes=int(entry.get("clinical_file_bytes") or GSE141460_CLINICAL_BYTES),
+        expected_md5=str(entry.get("clinical_file_md5") or GSE141460_CLINICAL_MD5),
+    )
+
+    raw, manifest = gse141460_epn_pseudobulk(archive, clinical)
+    value_cols = [column for column in raw.columns if column != "source_symbol"]
+    _, diagnostics = coerce_source_expression_values(
+        raw,
+        value_cols=value_cols,
+        row_id_col="source_symbol",
+    )
+    canonical, audit = canonicalize_source_gene_matrix(
+        raw,
+        row_id_col="source_symbol",
+        value_cols=value_cols,
+        high_expression_threshold=high_expression_threshold,
+    )
+    source = GeoMatrixSource(
+        cancer_code="EPN",
+        source_cohort=str(entry["source_cohort"]),
+        source_project=str(entry.get("source_project") or "GEO"),
+        citation=str(entry.get("citation") or ""),
+        file_name=archive.name,
+        unit="TPM",
+        expected_source_samples=11,
+        expected_samples_by_code={"EPN": 11},
+        source_scale_class="scrna_malignant_cell_mean_tpm_pseudobulk",
+        linear_tpm_comparable=False,
+        tpm_proxy=True,
+        native_unit=str(entry.get("unit") or "nTPM (malignant-cell mean pseudobulk)"),
+        notes=(
+            "GSE141460 pediatric ependymoma single-cell/nucleus RNA-seq. Only "
+            "diagnosis-stage patient specimens with author-labeled malignant cells "
+            "are retained; recurrent specimens, normal-only diagnostic samples, "
+            "cell lines, and PDXs are excluded. Per-cell author TPM is averaged "
+            "within each patient and rescaled to one million. The direct EPN "
+            "reference is not bulk-TPM comparable or independently classification-ready."
+        ),
+        processing_pipeline=(
+            "gse141460_diagnosis_malignant_cell_mean_tpm_pseudobulk_ensembl112_clean_tpm_16_9_75"
+        ),
+        tumor_origin="primary",
+        source_type="geo-scrna-pseudobulk",
+    )
+    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
+    result = build_canonical_source_matrices(
+        source,
+        canonical,
+        routed_samples={"EPN": value_cols},
+        output_dir=out_dir,
+        mapping_audit=audit,
+        parse_diagnostics=diagnostics,
+    )
+    manifest_path = out_dir / "gse141460_gojo_2020_epn_sample_manifest.csv"
+    temporary = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
+    manifest.to_csv(temporary, index=False)
+    temporary.replace(manifest_path)
+    return SourceMatrixBuildResult(
+        source=result.source,
+        matrices=result.matrices,
+        matrix_paths=result.matrix_paths,
+        summary_rows=result.summary_rows,
+        mapping_audit=result.mapping_audit,
+        parse_diagnostics=result.parse_diagnostics,
+        sample_qc=result.sample_qc,
+        sidecar_paths={**result.sidecar_paths, "sample_manifest": manifest_path},
     )
 
 

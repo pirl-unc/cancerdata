@@ -215,6 +215,9 @@ difference between availability and classification eligibility: its five-donor
 T0 malignant-cell pseudobulk is a direct reference with
 `expression_reference_kind="single_cell_pseudobulk"`, but the non-comparable
 nTPM proxy remains `reference_only` and has no `classification_reference_code`.
+EPN follows the same consumer contract: its 11 diagnosis-stage, patient-level
+malignant-cell mean-TPM pseudobulks are direct reference-only profiles, not
+bulk-TPM-comparable classifier targets.
 The table intentionally does not
 synthesize marker-program or discriminator fallbacks; those remain consumer-layer
 choices in packages such as trufflepig.
@@ -610,6 +613,7 @@ unsuitable for absolute comparison with bulk RNA-seq TPM.
   status, GSE75885 histology titles, DRMetrics histology attributes, audited GEO
   microarrays, GSE171811 CTCL TCR-beta-selected case pseudobulks, and the
   checksum-pinned Zenodo 14917813 HCL T0 donor pseudobulks, checksum-pinned
+  GSE141460 EPN diagnosis-stage malignant-cell mean-TPM pseudobulks, checksum-pinned
   GSE125285 BCC/cSCC tumor routing, and checksum-pinned GSE139682 GBC tumor
   routing. The GSE125285 adapter retains all matched normals as exclusions and
   labels its inverse-transformed author CPM as an nCPM proxy; the GSE139682
@@ -622,6 +626,13 @@ unsuitable for absolute comparison with bulk RNA-seq TPM.
   per-donor BRAF call. They
   delegate normalization, canonicalization, QC, summaries, and artifact writing
   to `expression_builders` rather than defining parallel data contracts.
+  For GSE141460, `gse141460_epn_pseudobulk(...)` is the public, deterministic
+  source transform and `build_gse141460_source_matrices(...)` is the public
+  checksum-verified canonical builder. The transform reads each specimen's
+  sequencing protocol from the pinned clinical Table S1; neither sample naming
+  nor cancer type supplies a protocol assumption. It retains all 28 patient
+  specimens in the audit manifest while routing only the 11 diagnosis-stage
+  specimens with author-labeled malignant cells.
   `scripts/merge_expression_artifact_update.py` merges a targeted rebuild into
   a complete prior bundle, recomputes representative partitions globally, and
   preserves unrelated cohort shards byte-for-byte.
