@@ -69,8 +69,13 @@ from filelock import FileLock
 from .version import DATA_VERSION, SOURCE_MATRIX_VERSION, __version__
 
 
-def _release_url(repo: str, filename: str) -> str:
-    return f"https://github.com/{repo}/releases/download/v{DATA_VERSION}/{filename}"
+def _release_url(
+    repo: str,
+    filename: str,
+    *,
+    data_version: str = DATA_VERSION,
+) -> str:
+    return f"https://github.com/{repo}/releases/download/v{data_version}/{filename}"
 
 
 # oncoref owns the bundle: its own release is the checksum-verified source.
@@ -244,7 +249,12 @@ def _read_url_text(url: str) -> str:
         return resp.read().decode("utf-8")
 
 
-def _parse_checksum_text(text: str, *, filename: str) -> dict:
+def _parse_checksum_text(
+    text: str,
+    *,
+    filename: str,
+    data_version: str = DATA_VERSION,
+) -> dict:
     first = next((line.strip() for line in text.splitlines() if line.strip()), "")
     parts = first.split()
     if not parts:
@@ -257,7 +267,7 @@ def _parse_checksum_text(text: str, *, filename: str) -> dict:
         raise BundleIntegrityError(f"checksum file names {recorded_name!r}, expected {filename!r}")
     return {
         "manifest_version": BUNDLE_MANIFEST_VERSION,
-        "data_version": DATA_VERSION,
+        "data_version": data_version,
         "tarball": {
             "filename": filename,
             "sha256": sha256.lower(),
@@ -284,7 +294,12 @@ def _bundle_relative_path(value: Any, *, manifest_url: str) -> str:
     return relative
 
 
-def _normalize_base_bundle(base: Any, *, manifest_url: str) -> dict:
+def _normalize_base_bundle(
+    base: Any,
+    *,
+    manifest_url: str,
+    release_data_version: str = DATA_VERSION,
+) -> dict:
     if not isinstance(base, dict):
         raise BundleIntegrityError(f"{manifest_url} overlay lacks a base_bundle object")
     data_version = str(base.get("data_version") or "")
@@ -293,7 +308,7 @@ def _normalize_base_bundle(base: Any, *, manifest_url: str) -> dict:
         raise BundleIntegrityError(
             f"{manifest_url} base_bundle has invalid data_version {data_version!r}"
         )
-    if data_version == DATA_VERSION:
+    if data_version == release_data_version:
         raise BundleIntegrityError(f"{manifest_url} overlay cannot use itself as its base")
     repo = str(base.get("repo") or GITHUB_REPO)
     if repo != GITHUB_REPO:
@@ -328,7 +343,7 @@ def _normalize_base_bundle(base: Any, *, manifest_url: str) -> dict:
         "repo": repo,
         "tarball": {
             "filename": filename,
-            "url": (f"https://github.com/{repo}/releases/download/v{data_version}/{filename}"),
+            "url": _release_url(repo, filename, data_version=data_version),
             "bytes": size_bytes,
             "sha256": sha256,
             "downloadable_paths": list(DOWNLOADABLE_PATHS),
@@ -365,11 +380,17 @@ def _normalize_overlay(overlay: Any, *, manifest_url: str) -> dict:
     }
 
 
-def _validate_release_manifest(manifest: dict, source: dict, *, manifest_url: str) -> dict:
-    if manifest.get("data_version") != DATA_VERSION:
+def _validate_release_manifest(
+    manifest: dict,
+    source: dict,
+    *,
+    manifest_url: str,
+    expected_data_version: str = DATA_VERSION,
+) -> dict:
+    if manifest.get("data_version") != expected_data_version:
         raise BundleIntegrityError(
             f"{manifest_url} is for data_version {manifest.get('data_version')!r}, "
-            f"expected {DATA_VERSION!r}"
+            f"expected {expected_data_version!r}"
         )
     if manifest.get("manifest_version") not in (None, 1, BUNDLE_MANIFEST_VERSION):
         raise BundleIntegrityError(
@@ -413,7 +434,7 @@ def _validate_release_manifest(manifest: dict, source: dict, *, manifest_url: st
             )
     normalized = {
         "manifest_version": manifest.get("manifest_version", BUNDLE_MANIFEST_VERSION),
-        "data_version": DATA_VERSION,
+        "data_version": expected_data_version,
         "source": source["name"],
         "repo": source["repo"],
         "manifest_url": manifest_url,
@@ -441,7 +462,9 @@ def _validate_release_manifest(manifest: dict, source: dict, *, manifest_url: st
                 f"{manifest_url} overlay requires manifest_version {BUNDLE_MANIFEST_VERSION}"
             )
         normalized["base_bundle"] = _normalize_base_bundle(
-            manifest.get("base_bundle"), manifest_url=manifest_url
+            manifest.get("base_bundle"),
+            manifest_url=manifest_url,
+            release_data_version=expected_data_version,
         )
         normalized["overlay"] = _normalize_overlay(
             manifest.get("overlay"), manifest_url=manifest_url
@@ -462,7 +485,11 @@ def _validate_release_manifest(manifest: dict, source: dict, *, manifest_url: st
     return normalized
 
 
-def _fetch_release_manifest(source: dict) -> dict | None:
+def _fetch_release_manifest(
+    source: dict,
+    *,
+    expected_data_version: str = DATA_VERSION,
+) -> dict | None:
     """Fetch and validate the release manifest/checksum for a bundle source.
 
     The oncoref-owned source is strict: a missing manifest/checksum is a release
@@ -473,7 +500,12 @@ def _fetch_release_manifest(source: dict) -> dict | None:
     manifest_url = source["manifest_url"]
     try:
         manifest = json.loads(_read_url_text(manifest_url))
-        return _validate_release_manifest(manifest, source, manifest_url=manifest_url)
+        return _validate_release_manifest(
+            manifest,
+            source,
+            manifest_url=manifest_url,
+            expected_data_version=expected_data_version,
+        )
     except urllib.error.HTTPError as manifest_error:
         if manifest_error.code != 404:
             raise
@@ -485,8 +517,14 @@ def _fetch_release_manifest(source: dict) -> dict | None:
         manifest = _parse_checksum_text(
             _read_url_text(checksum_url),
             filename=source["tarball_filename"],
+            data_version=expected_data_version,
         )
-        return _validate_release_manifest(manifest, source, manifest_url=checksum_url)
+        return _validate_release_manifest(
+            manifest,
+            source,
+            manifest_url=checksum_url,
+            expected_data_version=expected_data_version,
+        )
     except urllib.error.HTTPError as checksum_error:
         if checksum_error.code != 404:
             raise
@@ -825,6 +863,7 @@ def _download_and_apply_overlay(
     base_root: Path,
     verbose: bool,
     release_manifest: dict,
+    data_version: str = DATA_VERSION,
 ) -> None:
     """Compose a complete cache from a verified base and a small overlay archive."""
     with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
@@ -900,7 +939,12 @@ def _download_and_apply_overlay(
             elif destination.exists():
                 destination.unlink()
             shutil.move(str(composition / relative), str(destination))
-        _write_completion_marker(root, source_url=url, release_manifest=release_manifest)
+        _write_completion_marker(
+            root,
+            source_url=url,
+            release_manifest=release_manifest,
+            data_version=data_version,
+        )
     finally:
         tmp_path.unlink(missing_ok=True)
         shutil.rmtree(overlay_staging, ignore_errors=True)
@@ -920,7 +964,18 @@ def _base_cache_candidates(root: Path, data_version: str) -> tuple[Path, ...]:
     return tuple(unique)
 
 
-def _ensure_overlay_base(root: Path, base_bundle: dict, *, verbose: bool) -> Path:
+def _ensure_overlay_base(
+    root: Path,
+    base_bundle: dict,
+    *,
+    verbose: bool,
+    _seen_versions: frozenset[str] = frozenset(),
+) -> Path:
+    base_version = base_bundle["data_version"]
+    seen_versions = _seen_versions or frozenset({DATA_VERSION})
+    if base_version in seen_versions:
+        chain = " -> ".join((*sorted(seen_versions), base_version))
+        raise BundleIntegrityError(f"data-bundle overlay dependency cycle: {chain}")
     for candidate in _base_cache_candidates(root, base_bundle["data_version"]):
         if _base_cache_valid(candidate, base_bundle):
             if verbose:
@@ -928,30 +983,78 @@ def _ensure_overlay_base(root: Path, base_bundle: dict, *, verbose: bool) -> Pat
                 sys.stderr.flush()
             return candidate
 
-    destination = _base_cache_candidates(root, base_bundle["data_version"])[0]
+    destination = _base_cache_candidates(root, base_version)[0]
     if verbose:
         sys.stderr.write(
-            f"oncoref: verified base v{base_bundle['data_version']} is not cached; "
-            "downloading it once\n"
+            f"oncoref: verified base v{base_version} is not cached; downloading it once\n"
         )
         sys.stderr.flush()
-    base_manifest = {
-        "manifest_version": 1,
-        "data_version": base_bundle["data_version"],
-        "source": "oncoref",
+    tarball_filename = f"oncoref-data-v{base_version}.tar.gz"
+    base_source = {
+        "name": "oncoref",
         "repo": base_bundle["repo"],
-        "tarball": base_bundle["tarball"],
+        "url": _release_url(
+            base_bundle["repo"],
+            tarball_filename,
+            data_version=base_version,
+        ),
+        "tarball_filename": tarball_filename,
+        "manifest_url": _release_url(
+            base_bundle["repo"],
+            f"oncoref-data-v{base_version}.manifest.json",
+            data_version=base_version,
+        ),
+        "checksum_url": _release_url(
+            base_bundle["repo"],
+            f"{tarball_filename}.sha256",
+            data_version=base_version,
+        ),
+        "require_integrity": True,
     }
+    base_manifest = _fetch_release_manifest(
+        base_source,
+        expected_data_version=base_version,
+    )
+    if base_manifest is None:
+        raise BundleIntegrityError(f"base release v{base_version} lacks integrity metadata")
+    pinned_tarball = base_bundle["tarball"]
+    published_tarball = base_manifest["tarball"]
+    if published_tarball["sha256"] != pinned_tarball["sha256"]:
+        raise BundleIntegrityError(
+            f"base release v{base_version} sha256 disagrees with the overlay manifest"
+        )
+    if published_tarball.get("bytes") is not None and int(published_tarball["bytes"]) != int(
+        pinned_tarball["bytes"]
+    ):
+        raise BundleIntegrityError(
+            f"base release v{base_version} byte size disagrees with the overlay manifest"
+        )
     destination.mkdir(parents=True, exist_ok=True)
     with _cache_lock(destination):
         if not _base_cache_valid(destination, base_bundle):
-            _download_and_extract(
-                base_bundle["tarball"]["url"],
-                destination,
-                verbose=verbose,
-                release_manifest=base_manifest,
-                data_version=base_bundle["data_version"],
-            )
+            if base_manifest.get("bundle_layout") == "overlay":
+                nested_base = _ensure_overlay_base(
+                    destination,
+                    base_manifest["base_bundle"],
+                    verbose=verbose,
+                    _seen_versions=seen_versions | {base_version},
+                )
+                _download_and_apply_overlay(
+                    published_tarball["url"],
+                    destination,
+                    base_root=nested_base,
+                    verbose=verbose,
+                    release_manifest=base_manifest,
+                    data_version=base_version,
+                )
+            else:
+                _download_and_extract(
+                    published_tarball["url"],
+                    destination,
+                    verbose=verbose,
+                    release_manifest=base_manifest,
+                    data_version=base_version,
+                )
     return destination
 
 

@@ -606,6 +606,17 @@ def test_overlay_base_download_creates_version_cache_before_extract(monkeypatch,
     }
     attempted = []
 
+    monkeypatch.setattr(
+        data_bundle,
+        "_fetch_release_manifest",
+        lambda _source, *, expected_data_version: {
+            "manifest_version": 1,
+            "data_version": expected_data_version,
+            "bundle_layout": "full",
+            "tarball": base_bundle["tarball"],
+        },
+    )
+
     def fake_download(url, destination, *, verbose, release_manifest, data_version):
         assert destination == base
         assert destination.is_dir()
@@ -618,6 +629,147 @@ def test_overlay_base_download_creates_version_cache_before_extract(monkeypatch,
 
     assert data_bundle._ensure_overlay_base(root, base_bundle, verbose=False) == base
     assert attempted == [(base_bundle["tarball"]["url"], "5.23.18")]
+
+
+def test_overlay_base_rejects_release_checksum_that_disagrees_with_parent_pin(
+    monkeypatch, tmp_path
+):
+    base_bundle = {
+        "data_version": "5.23.18",
+        "repo": data_bundle.GITHUB_REPO,
+        "tarball": {
+            "filename": "oncoref-data-v5.23.18.tar.gz",
+            "url": "https://example.test/base.tar.gz",
+            "bytes": 1234,
+            "sha256": "b" * 64,
+            "downloadable_paths": list(data_bundle.DOWNLOADABLE_PATHS),
+        },
+    }
+    monkeypatch.setattr(
+        data_bundle,
+        "_fetch_release_manifest",
+        lambda _source, *, expected_data_version: {
+            "data_version": expected_data_version,
+            "bundle_layout": "full",
+            "tarball": {**base_bundle["tarball"], "sha256": "c" * 64},
+        },
+    )
+
+    with pytest.raises(data_bundle.BundleIntegrityError, match="sha256 disagrees"):
+        data_bundle._ensure_overlay_base(
+            tmp_path / f"v{DATA_VERSION}",
+            base_bundle,
+            verbose=False,
+        )
+
+
+def test_overlay_base_rejects_dependency_cycle(tmp_path):
+    with pytest.raises(data_bundle.BundleIntegrityError, match="dependency cycle"):
+        data_bundle._ensure_overlay_base(
+            tmp_path / f"v{DATA_VERSION}",
+            {"data_version": DATA_VERSION},
+            verbose=False,
+        )
+
+
+def test_overlay_base_download_recursively_composes_overlay_chain(monkeypatch, tmp_path):
+    root = tmp_path / f"v{DATA_VERSION}"
+    full_version = "5.23.18"
+    overlay_version = "5.23.19"
+    full_source = tmp_path / "full-source"
+    _write_bundle_fixture(full_source)
+    full_tar = tmp_path / "full.tar.gz"
+    with tarfile.open(full_tar, "w:gz") as archive:
+        for relative in data_bundle.DOWNLOADABLE_PATHS:
+            archive.add(full_source / relative, arcname=relative)
+
+    changed = "pan-cancer-expression.csv"
+    overlay_source = tmp_path / "overlay-source"
+    overlay_file = overlay_source / changed
+    overlay_file.parent.mkdir(parents=True)
+    overlay_file.write_text("nested overlay replacement\n")
+    overlay_tar = tmp_path / "overlay.tar.gz"
+    with tarfile.open(overlay_tar, "w:gz") as archive:
+        archive.add(overlay_file, arcname=changed)
+
+    def pin(version, tar_path):
+        return {
+            "filename": f"oncoref-data-v{version}.tar.gz",
+            "bytes": tar_path.stat().st_size,
+            "sha256": hashlib.sha256(tar_path.read_bytes()).hexdigest(),
+            "downloadable_paths": list(data_bundle.DOWNLOADABLE_PATHS),
+        }
+
+    full_pin = pin(full_version, full_tar)
+    overlay_pin = pin(overlay_version, overlay_tar)
+    full_manifest = {
+        "manifest_version": 2,
+        "data_version": full_version,
+        "source_matrix_version": SOURCE_MATRIX_VERSION,
+        "tarball": full_pin,
+    }
+    overlay_manifest = {
+        "manifest_version": 2,
+        "bundle_layout": "overlay",
+        "data_version": overlay_version,
+        "source_matrix_version": SOURCE_MATRIX_VERSION,
+        "tarball": overlay_pin,
+        "base_bundle": {
+            "data_version": full_version,
+            "repo": data_bundle.GITHUB_REPO,
+            "tarball": full_pin,
+        },
+        "overlay": {
+            "file_count": 1,
+            "size_bytes": overlay_file.stat().st_size,
+            "paths": [changed],
+            "deleted_paths": [],
+        },
+    }
+    manifests = {
+        full_version: full_manifest,
+        overlay_version: overlay_manifest,
+    }
+
+    def fake_read_url_text(url):
+        version = next(version for version in manifests if f"/v{version}/" in url)
+        return data_bundle.json.dumps(manifests[version])
+
+    def fake_urlopen(url):
+        if f"/v{full_version}/" in url:
+            return full_tar.open("rb")
+        if f"/v{overlay_version}/" in url:
+            return overlay_tar.open("rb")
+        raise AssertionError(url)
+
+    monkeypatch.setattr(data_bundle, "_read_url_text", fake_read_url_text)
+    monkeypatch.setattr(data_bundle.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(data_bundle, "_DEFAULT_CACHE_PARENT", tmp_path / "other-default")
+    monkeypatch.setattr(data_bundle, "_LEGACY_CACHE_PARENT", tmp_path / "other-legacy")
+
+    composed = data_bundle._ensure_overlay_base(
+        root,
+        {
+            "data_version": overlay_version,
+            "repo": data_bundle.GITHUB_REPO,
+            "tarball": {
+                **overlay_pin,
+                "url": "https://unused.example/overlay.tar.gz",
+            },
+        },
+        verbose=False,
+    )
+
+    assert composed == tmp_path / f"v{overlay_version}"
+    assert (composed / changed).read_text() == "nested overlay replacement\n"
+    assert (composed / "hpa-cell-type-expression.csv").read_text() == (
+        full_source / "hpa-cell-type-expression.csv"
+    ).read_text()
+    assert data_bundle._read_completion_marker(composed)["data_version"] == overlay_version
+    assert (
+        data_bundle._read_completion_marker(tmp_path / f"v{full_version}")["data_version"]
+        == full_version
+    )
 
 
 def test_prune_keeps_current(monkeypatch, tmp_path):
