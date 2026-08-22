@@ -30,6 +30,7 @@ dependencies = [
     "pandas",
     "numpy",
     "pyarrow",
+    "openpyxl>=3.1",
     "PyYAML",
     "matplotlib",
     "adjustText",

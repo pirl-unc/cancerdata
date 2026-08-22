@@ -274,6 +274,45 @@ sources:
       HCL-cell UMIs are pseudobulked per donor and scaled to nTPM. The proxy
       scale is not bulk-TPM comparable or independently classification-ready.
 
+  - id: gse141460-epn
+    category: expression
+    cancer_codes: [EPN]
+    source_type: geo-scrna-pseudobulk
+    accession: GSE141460
+    url: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE141460
+    source_cohort: GSE141460_GOJO_2020_EPN
+    source_project: GEO
+    builder: scripts/build_epn_scrna_reference_expression.py
+    processing_pipeline: gse141460_diagnosis_malignant_cell_mean_tpm_pseudobulk_ensembl112_clean_tpm_16_9_75
+    file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE141nnn/GSE141460/suppl/GSE141460_EPN_tpm_meta.tar.gz
+    file_name: GSE141460_EPN_tpm_meta.tar.gz
+    file_md5: b4020a7029ebe72777e08afd984b5a3f
+    file_bytes: 139899167
+    clinical_file_url: https://pmc-oa-opendata.s3.amazonaws.com/PMC7479515.1/mmc2.xlsx
+    clinical_file_name: GSE141460_Table_S1.xlsx
+    clinical_file_md5: 894aa13d3c91a61d6c748cb5ce63b548
+    clinical_file_bytes: 15615
+    unit: nTPM (malignant-cell mean pseudobulk)
+    expected_source_samples: 28
+    expected_samples_by_code: {EPN: 11}
+    source_scale_class: scrna_malignant_cell_mean_tpm_pseudobulk
+    linear_tpm_comparable: false
+    tpm_proxy: true
+    tumor_origin: primary
+    library_prep: Smart-seq2 and 10X single-cell/single-nucleus RNA-seq
+    expected_size_gb: 0.131
+    citation: GSE141460; Gojo et al. Cancer Cell 2020; PMID:32663469; PMC7479515
+    source_pmid: PMID:32663469
+    license: CC-BY
+    special_handling: >
+      Join the 28 patient tissue matrices to checksum-pinned clinical Table S1.
+      Retain only the 11 diagnosis-stage specimens containing author-labeled
+      malignant cells; preserve 15 recurrent specimens and two diagnostic
+      normal-only specimens as explicit exclusions. Average author per-cell TPM
+      within each included patient and rescale to nTPM. Exclude cell lines and
+      PDXs. The direct EPN pseudobulk is neither bulk-TPM comparable nor, by
+      itself, classification-ready.
+
   - id: gse125285-bcc-cscc
     category: expression
     cancer_codes: [BCC, cSCC]
