@@ -426,6 +426,7 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
         "ADCC",
         "BCC",
         "CHOL",
+        "CRANIO",
         "EPN",
         "GBC",
         "HCL",
@@ -456,7 +457,10 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
     assert int(direct.loc["cSCC", "estimated_samples"]) == 10
     assert int(direct.loc["GBC", "estimated_samples"]) == 10
     assert int(direct.loc["EPN", "estimated_samples"]) == 11
+    assert int(direct.loc["CRANIO", "estimated_samples"]) == 29
     assert direct.loc["EPN", "accession"] == "GSE141460"
+    assert direct.loc["CRANIO", "accession"] == "OpenPBTA release-v23-20230115"
+    assert "no papillary tumors" in direct.loc["CRANIO", "notes"]
     assert "no per-donor BRAF V600E call is inferred" in direct.loc["HCL", "notes"]
     assert direct.loc["CHOL", "source_cohort"] == "TREEHOUSE_POLYA_25_01_TCGA_SAMPLES"
 
@@ -470,6 +474,7 @@ def test_nci_gap_direct_geo_references_have_explicit_scale_and_target_policy():
         "BCC": ("GSE125285_BCC_CSCC", "bulk_rnaseq_cpm_proxy", False, 25),
         "cSCC": ("GSE125285_BCC_CSCC", "bulk_rnaseq_cpm_proxy", False, 10),
         "GBC": ("GSE139682_GBC", "linear_rnaseq_tpm", True, 10),
+        "CRANIO": ("OPENPBTA_V23_CBTN_CRANIO", "linear_rnaseq_tpm", True, 29),
         "EPN": (
             "GSE141460_GOJO_2020_EPN",
             "scrna_malignant_cell_mean_tpm_pseudobulk",
@@ -511,7 +516,6 @@ def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
         "URETH": "deferred_no_dedicated_source",
         "ANSC": "bulk_candidate_needs_sample_selection",
         "PITNET": "microarray_proxy_only",
-        "CRANIO": "bulk_candidate_needs_sample_selection",
         "DIPG": "bulk_candidate_needs_sample_selection",
     }
     candidates = es.expression_source_candidates()
@@ -539,6 +543,8 @@ def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
         in rows.loc["DIPG", "processing_plan"]
     )
     assert "exclude unannotated and H3-wild-type cases" in rows.loc["DIPG", "notes"]
+    assert int(rows.loc["ANSC", "estimated_samples"]) == 23
+    assert "lacks an explicit public matrix-to-GEO sample crosswalk" in rows.loc["ANSC", "notes"]
 
     availability = oncoref.cancer_reference_expression_availability(
         list(expected_status),

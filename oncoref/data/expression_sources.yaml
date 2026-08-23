@@ -387,6 +387,46 @@ sources:
       within each tumor sample. This direct n=10 reference is kept reference-only
       rather than treated as independently classification-ready.
 
+  - id: openpbta-v23-cranio
+    category: expression
+    cancer_codes: [CRANIO]
+    source_type: openpbta-rnaseq-rsem
+    accession: OpenPBTA release-v23-20230115
+    url: https://github.com/AlexsLemonade/OpenPBTA-analysis
+    source_cohort: OPENPBTA_V23_CBTN_CRANIO
+    source_project: OpenPBTA
+    source_version: release-v23-20230115
+    builder: scripts/build_openpbta_cranio_reference_expression.py
+    processing_pipeline: openpbta_v23_primary_cranio_stranded_rsem_tpm_ensembl112_clean_tpm_16_9_75
+    expression_file_url: https://s3.amazonaws.com/d3b-openaccess-us-east-1-prd-pbta/data/release-v23-20230115/pbta-gene-expression-rsem-tpm.stranded.rds
+    expression_file_name: pbta-gene-expression-rsem-tpm.stranded.rds
+    expression_file_md5: 1f3c8bfa55ba38db2edde1a206f90bf1
+    expression_file_bytes: 77863728
+    histologies_file_url: https://s3.amazonaws.com/d3b-openaccess-us-east-1-prd-pbta/data/release-v23-20230115/pbta-histologies.tsv
+    histologies_file_name: pbta-histologies.tsv
+    histologies_file_md5: 954c536c308f30c1214f0aa632908c96
+    histologies_file_bytes: 1222838
+    unit: RSEM TPM
+    expected_source_samples: 36
+    expected_samples_by_code: {CRANIO: 29}
+    source_scale_class: linear_rnaseq_tpm
+    linear_tpm_comparable: true
+    tpm_proxy: false
+    tumor_origin: primary
+    library_prep: stranded bulk RNA-seq
+    expected_size_gb: 0.074
+    citation: Shapiro et al. Cell Genomics 2023; PMID:37492101; DOI:10.1016/j.xgen.2023.100340
+    source_pmid: PMID:37492101
+    license: CC-BY-4.0
+    special_handling: >
+      Select the 29 independent CBTN solid-tissue initial CNS tumors harmonized
+      by OpenPBTA as craniopharyngioma, all from the stranded RSEM-TPM matrix.
+      Retain three recurrent and four progressive craniopharyngiomas as explicit
+      exclusions. Twenty selected tumors are adamantinomatous and nine are not
+      molecularly classified; no papillary tumors are represented, so subtype
+      status is never inferred. This direct pediatric cohort remains
+      reference-only rather than independently classification-ready.
+
   # ---- imported via scripts/import_cancer_specific_expression.py ----
   # These come from external neutral-summary tables, not per-sample
   # quantifications. Extended-stat columns (std/min/max/p5/p10/p90/p95)

@@ -128,3 +128,32 @@ def test_epn_molecular_provenance_preserves_donors_protocols_and_exclusions():
     assert "no author-labeled malignant cells" in rows.loc["BT1313", "notes"]
     assert "non_diagnostic_recurrent_specimen" in rows.loc["WEPN1Rec", "notes"]
     assert not rows["orthogonal_confirmed"].any()
+
+
+def test_openpbta_cranio_manifest_keeps_primary_tumors_and_audits_relapses():
+    rows = samples_for_cancer_code("CRANIO", included_only=False)
+
+    assert len(rows) == 36
+    assert rows["included"].sum() == 29
+    assert rows["case_id"].nunique() == 36
+    assert rows.loc[~rows["included"], "exclusion_reason"].value_counts().to_dict() == {
+        "non_initial_cns_tumor": 7
+    }
+    assert set(rows["md5sum"]) == {"1f3c8bfa55ba38db2edde1a206f90bf1"}
+
+
+def test_openpbta_cranio_molecular_provenance_does_not_infer_drivers_or_papillary_status():
+    rows = molecular_provenance_for_cancer_code("CRANIO")
+
+    assert len(rows) == 36
+    assert rows["expression_available"].sum() == 29
+    assert rows["donor_id"].nunique() == 36
+    assert rows["driver_event"].isna().all()
+    assert not rows["orthogonal_confirmed"].any()
+    included = rows[rows["expression_available"]]
+    assert included["molecular_status"].value_counts().to_dict() == {
+        "adamantinomatous": 20,
+        "not_molecularly_classified": 9,
+    }
+    unclassified = rows[rows["molecular_status"].eq("not_molecularly_classified")]
+    assert unclassified["notes"].str.contains("no papillary or BRAF status inferred").all()
