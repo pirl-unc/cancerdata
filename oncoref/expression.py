@@ -92,6 +92,7 @@ from .expression_builders import (
 )
 from .expression_engine import id_columns, sample_columns
 from .gene_ids import (
+    canonical_gene_symbol,
     cdna_identical_groups,
     ensembl_id_alias_symbols,
     gene_biotype,
@@ -192,7 +193,7 @@ _WITHIN_SAMPLE = SHARD_DATASETS["within_sample"]
 
 REPRESENTATIVE_ARTIFACT_SCHEMA_VERSION = "representative_expression_v2"
 PERCENTILE_ARTIFACT_SCHEMA_VERSION = "cohort_percentile_expression_v1"
-REFERENCE_EXPRESSION_SCHEMA_VERSION = "cancer_reference_expression_v4"
+REFERENCE_EXPRESSION_SCHEMA_VERSION = "cancer_reference_expression_v5"
 REPRESENTATIVE_SELECTION_METHOD = "central_medoid_then_farthest_first"
 REPRESENTATIVE_SELECTION_BASIS = "biological_clean_tpm_log1p_distance"
 
@@ -1751,9 +1752,25 @@ def _min_housekeeping_detected(panel_ids) -> int | None:
     return min(DEFAULT_MIN_HOUSEKEEPING_GENES_FOR_QC, n) if n else None
 
 
-def _selected_expression_source_metadata(
-    code: str, *, source_cohort: str | None = None
+def cancer_reference_expression_source_metadata(
+    cancer_type: str, *, source_cohort: str | None = None
 ) -> dict[str, str | bool | int | float | None]:
+    """Structured provenance and scale metadata for one expression source.
+
+    ``cancer_type`` accepts canonical codes and aliases. With ``source_cohort``
+    omitted, the source selected by the source-matrix registry is returned; an
+    explicit cohort instead resolves that physical source without falling back to
+    another source registered for the same cancer type. The result includes the
+    stable source identity, PMID, native unit, scale class, linear-TPM
+    comparability, sample count when selected, and build provenance.
+
+    Unknown build-time placeholder codes are retained as given and return
+    ``source_scale_class="unknown"`` rather than borrowing unrelated metadata.
+    """
+    try:
+        code = resolve_cancer_type(cancer_type) or str(cancer_type)
+    except ValueError:
+        code = str(cancer_type)
     source_type = unit = None
     n_reference_samples = None
     source_was_explicit = source_cohort is not None
@@ -1830,6 +1847,7 @@ def _selected_expression_source_metadata(
         "source_cohort": source_cohort or None,
         "source_project": source_project,
         "source_version": getattr(selected, "source_version", None),
+        "source_pmid": getattr(selected, "source_pmid", None),
         "source_type": source_type,
         "unit": unit,
         "source_scale_class": source_scale_class,
@@ -1936,7 +1954,7 @@ def sample_expression_qc_from_matrix(
     )
     if source_metadata is None:
         meta = (
-            _selected_expression_source_metadata(str(code))
+            cancer_reference_expression_source_metadata(str(code))
             if code is not None
             else {
                 "source_cohort": None,
@@ -2241,7 +2259,7 @@ def housekeeping_cancer_expression_coverage_from_matrix(
     )
     if source_metadata is None:
         meta = (
-            _selected_expression_source_metadata(str(code))
+            cancer_reference_expression_source_metadata(str(code))
             if code is not None
             else {
                 "source_cohort": None,
@@ -2381,7 +2399,7 @@ def housekeeping_cancer_expression_coverage(
                 raise
             missing_codes.append(code)
             continue
-        meta = _selected_expression_source_metadata(str(code))
+        meta = cancer_reference_expression_source_metadata(str(code))
         audited_codes.append(code)
         frames.append(
             housekeeping_cancer_expression_coverage_from_matrix(
@@ -3568,6 +3586,7 @@ _REFERENCE_PROVENANCE_COLUMNS = [
     "source_cohort",
     "source_project",
     "source_version",
+    "source_pmid",
     "source_type",
     "source_unit",
     "source_scale_class",
@@ -3623,6 +3642,7 @@ _REFERENCE_AVAILABILITY_COLUMNS = [
     "source_cohort",
     "source_project",
     "source_version",
+    "source_pmid",
     "source_type",
     "source_unit",
     "source_scale_class",
@@ -3918,6 +3938,7 @@ def _reference_source_availability_row(
             "source_cohort": metadata.get("source_cohort"),
             "source_project": metadata.get("source_project"),
             "source_version": metadata.get("source_version"),
+            "source_pmid": metadata.get("source_pmid"),
             "source_type": metadata.get("source_type"),
             "source_unit": metadata.get("unit"),
             "source_scale_class": metadata.get("source_scale_class"),
@@ -4468,6 +4489,10 @@ def _reference_summary_source_table() -> pd.DataFrame:
         "source_cohort",
         "source_project",
         "source_version",
+        "source_pmid",
+        "source_type",
+        "source_scale_class",
+        "linear_tpm_comparable",
         "tumor_origin",
         "metastasis_site",
         "n_reference_genes",
@@ -4690,10 +4715,41 @@ def _filter_reference_summary_sources(
         kind_map = _source_cohort_kind_map()
         out = out.loc[out["source_cohort"].astype(str).map(kind_map).isin(source_kinds)]
     if exclude_microarray_proxy:
+        scale = out.get("source_scale_class", pd.Series(pd.NA, index=out.index))
+        source_type = out.get("source_type", pd.Series(pd.NA, index=out.index))
+        scale = scale.astype("string").fillna("").str.strip()
+        source_type = source_type.astype("string").fillna("").str.strip()
+
+        missing_scale = scale.str.lower().isin({"", "unknown", "nan", "none"})
+        missing_type = source_type.str.lower().isin({"", "unknown", "nan", "none"})
+        if missing_scale.any() or missing_type.any():
+            inferred = [
+                cancer_reference_expression_source_metadata(str(code), source_cohort=str(source))
+                for code, source in zip(out["cancer_code"], out["source_cohort"])
+            ]
+            inferred_scale = pd.Series(
+                [row.get("source_scale_class") for row in inferred], index=out.index
+            ).astype("string")
+            inferred_type = pd.Series(
+                [row.get("source_type") for row in inferred], index=out.index
+            ).astype("string")
+            scale = scale.mask(missing_scale, inferred_scale.fillna(""))
+            source_type = source_type.mask(missing_type, inferred_type.fillna(""))
+
+        normalized_scale = scale.str.lower()
+        normalized_type = source_type.str.lower()
+        scale_is_known = ~normalized_scale.isin({"", "unknown", "nan", "none"})
+        is_microarray = scale_is_known & normalized_scale.str.contains("microarray", regex=False)
+        is_microarray |= ~scale_is_known & normalized_type.str.contains("microarray", regex=False)
+
+        # Compatibility for older manifests whose structured scale/type fields are
+        # both unavailable or generic (for example ``source_type='geo-matrix'``).
         pipeline = out.get("processing_pipeline", pd.Series("", index=out.index))
         pipeline = pipeline.astype("string").fillna("")
         text = pipeline.astype(str).str.lower()
-        out = out.loc[~text.str.contains("microarray|tpm_proxy|tpm-proxy", regex=True)]
+        legacy_proxy = text.str.contains("microarray|tpm_proxy|tpm-proxy", regex=True)
+        is_microarray |= ~scale_is_known & legacy_proxy
+        out = out.loc[~is_microarray]
     return out
 
 
@@ -4799,13 +4855,23 @@ def _attach_summary_row_provenance(df: pd.DataFrame, *, code: str) -> pd.DataFra
     manifest_counts = source_table.set_index("source_cohort")[
         ["n_reference_genes", "n_reference_samples"]
     ].to_dict("index")
+    source_records = source_table.set_index("source_cohort").to_dict("index")
     meta_by_source = {
-        str(source): _selected_expression_source_metadata(code, source_cohort=str(source))
+        str(source): _reference_summary_metadata_from_row(
+            code,
+            {
+                "source_cohort": str(source),
+                **source_records.get(str(source), {}),
+            },
+        )
         for source in out["source_cohort"].astype("string").fillna("").unique()
     }
     source_key = out["source_cohort"].astype("string").fillna("")
     out["source_type"] = source_key.map(
         lambda source: meta_by_source.get(source, {}).get("source_type")
+    )
+    out["source_pmid"] = source_key.map(
+        lambda source: meta_by_source.get(source, {}).get("source_pmid")
     )
     out["source_unit"] = source_key.map(lambda source: meta_by_source.get(source, {}).get("unit"))
     out["source_scale_class"] = source_key.map(
@@ -4853,22 +4919,71 @@ def _pool_reference_expression_rows(long: pd.DataFrame) -> pd.DataFrame:
         col
         for col in (
             "Ensembl_Gene_ID",
-            "Symbol",
-            "Proteoform_ID",
-            "Member_Ensembl_Gene_IDs",
             "cancer_code",
             "normalization",
-            *_REFERENCE_REQUEST_COLUMNS,
-            *_ARTIFACT_GENE_UNIVERSE_FLAG_COLUMNS,
         )
         if col in long.columns
     ]
     for keys, group in long.groupby(group_cols, dropna=False, sort=False, observed=True):
         row = dict(zip(group_cols, keys))
-        expr = pd.to_numeric(group["expression"], errors="coerce")
+        physical = group
+        if "source_cohort" in group.columns and group["source_cohort"].duplicated().any():
+            for source, duplicate_rows in group.groupby(
+                "source_cohort", dropna=False, sort=False, observed=True
+            ):
+                expression_values = pd.to_numeric(
+                    duplicate_rows["expression"], errors="coerce"
+                ).dropna()
+                sample_values = pd.to_numeric(
+                    duplicate_rows.get(
+                        "n_reference_samples",
+                        duplicate_rows.get("n_samples", pd.Series(1, index=duplicate_rows.index)),
+                    ),
+                    errors="coerce",
+                ).dropna()
+                if expression_values.nunique() > 1 or sample_values.nunique() > 1:
+                    raise ValueError(
+                        "cannot pool duplicate rows for one physical source and output gene: "
+                        f"{source}/{row.get('Ensembl_Gene_ID')}"
+                    )
+            physical = group.drop_duplicates("source_cohort", keep="first")
+
+        gene_id = str(row.get("Ensembl_Gene_ID", ""))
+        row["Symbol"] = canonical_gene_symbol(gene_id) or _first_nonempty(group["Symbol"])
+        proteoform_ids = {
+            str(value)
+            for value in group.get("Proteoform_ID", pd.Series(dtype=object))
+            if pd.notna(value) and str(value)
+        }
+        row["Proteoform_ID"] = next(iter(proteoform_ids)) if len(proteoform_ids) == 1 else gene_id
+        members = {
+            member
+            for value in group.get("Member_Ensembl_Gene_IDs", pd.Series(dtype=object))
+            if pd.notna(value)
+            for member in str(value).split(";")
+            if member
+        }
+        row["Member_Ensembl_Gene_IDs"] = ";".join(sorted(members)) or gene_id
+        for column in _REFERENCE_REQUEST_COLUMNS:
+            if column not in group.columns:
+                continue
+            if column == "available":
+                row[column] = bool(group[column].fillna(False).all())
+            else:
+                row[column] = _join_nonempty(group[column])
+        for column in _ARTIFACT_GENE_UNIVERSE_FLAG_COLUMNS:
+            if column not in group.columns:
+                continue
+            if column in {"is_filterable_extra", "is_technical_extra", "is_missing_biological"}:
+                row[column] = bool(group[column].fillna(False).any())
+            else:
+                row[column] = _join_nonempty(group[column])
+
+        expr = pd.to_numeric(physical["expression"], errors="coerce")
         weights = pd.to_numeric(
-            group.get(
-                "n_reference_samples", group.get("n_samples", pd.Series(1, index=group.index))
+            physical.get(
+                "n_reference_samples",
+                physical.get("n_samples", pd.Series(1, index=physical.index)),
             ),
             errors="coerce",
         ).fillna(0.0)
@@ -4883,34 +4998,37 @@ def _pool_reference_expression_rows(long: pd.DataFrame) -> pd.DataFrame:
         row["q3"] = np.nan
         row["source_cohort"] = "POOLED"
         row["source_project"] = "pooled_source_union"
-        row["source_version"] = _join_nonempty(group.get("source_version", pd.Series(dtype=object)))
+        row["source_version"] = _join_nonempty(
+            physical.get("source_version", pd.Series(dtype=object))
+        )
+        row["source_pmid"] = _join_nonempty(physical.get("source_pmid", pd.Series(dtype=object)))
         row["source_type"] = "pooled"
-        row["source_unit"] = _first_nonempty(group.get("source_unit", pd.Series(dtype=object)))
+        row["source_unit"] = _first_nonempty(physical.get("source_unit", pd.Series(dtype=object)))
         scale_classes = {
             str(v)
-            for v in group.get("source_scale_class", pd.Series(dtype=object))
+            for v in physical.get("source_scale_class", pd.Series(dtype=object))
             if pd.notna(v) and str(v)
         }
         row["source_scale_class"] = scale_classes.pop() if len(scale_classes) == 1 else "mixed"
-        comparable = group.get("linear_tpm_comparable", pd.Series(False, index=group.index))
+        comparable = physical.get("linear_tpm_comparable", pd.Series(False, index=physical.index))
         row["linear_tpm_comparable"] = bool(pd.Series(comparable).fillna(False).all())
-        row["tumor_origin"] = _join_nonempty(group.get("tumor_origin", pd.Series(dtype=object)))
+        row["tumor_origin"] = _join_nonempty(physical.get("tumor_origin", pd.Series(dtype=object)))
         row["metastasis_site"] = _join_nonempty(
-            group.get("metastasis_site", pd.Series(dtype=object))
+            physical.get("metastasis_site", pd.Series(dtype=object))
         )
         row["n_reference_genes"] = 1
         row["n_reference_samples"] = pooled_n
         row["n_samples"] = pooled_n
-        if "n_detected" in group.columns:
-            row["n_detected"] = float(pd.to_numeric(group["n_detected"], errors="coerce").sum())
+        if "n_detected" in physical.columns:
+            row["n_detected"] = float(pd.to_numeric(physical["n_detected"], errors="coerce").sum())
         else:
             row["n_detected"] = np.nan
         row["processing_pipeline"] = "pooled_n_weighted"
-        row["notes"] = _join_nonempty(group.get("notes", pd.Series(dtype=object)))
+        row["notes"] = _join_nonempty(physical.get("notes", pd.Series(dtype=object)))
         row["reference_method"] = "pooled_source_summary_rows"
-        row["sample_qc"] = _first_nonempty(group.get("sample_qc", pd.Series(dtype=object)))
+        row["sample_qc"] = _first_nonempty(physical.get("sample_qc", pd.Series(dtype=object)))
         row["sample_qc_effective"] = _first_nonempty(
-            group.get("sample_qc_effective", pd.Series(dtype=object))
+            physical.get("sample_qc_effective", pd.Series(dtype=object))
         )
         row["data_version"] = DATA_VERSION
         row["source_matrix_version"] = SOURCE_MATRIX_VERSION
@@ -4924,6 +5042,7 @@ def _unavailable_reference_summary_metadata() -> dict[str, str | bool | int | fl
         "source_cohort": None,
         "source_project": None,
         "source_version": None,
+        "source_pmid": None,
         "source_type": None,
         "unit": None,
         "source_scale_class": "unknown",
@@ -4966,10 +5085,29 @@ def _reference_summary_metadata_from_row(
     code: str, source: dict
 ) -> dict[str, str | bool | int | float | None]:
     """Combine one compact summary-source row with the source registry."""
-    meta = _selected_expression_source_metadata(code, source_cohort=str(source["source_cohort"]))
+    meta = cancer_reference_expression_source_metadata(
+        code, source_cohort=str(source["source_cohort"])
+    )
+    manifest_pmid = source.get("source_pmid")
+    if pd.isna(manifest_pmid) or not str(manifest_pmid):
+        manifest_pmid = meta.get("source_pmid")
+    manifest_type = source.get("source_type")
+    if pd.isna(manifest_type) or not str(manifest_type):
+        manifest_type = meta.get("source_type")
+    manifest_scale = source.get("source_scale_class")
+    if pd.isna(manifest_scale) or not str(manifest_scale):
+        manifest_scale = meta.get("source_scale_class")
+    manifest_comparable = source.get("linear_tpm_comparable")
+    if pd.isna(manifest_comparable):
+        manifest_comparable = meta.get("linear_tpm_comparable")
     text = " ".join(
-        str(source.get(c) or "")
-        for c in ("source_cohort", "source_project", "source_version", "tumor_origin")
+        str(value) if pd.notna(value) else ""
+        for value in (
+            source.get("source_cohort"),
+            source.get("source_project"),
+            source.get("source_version"),
+            source.get("tumor_origin"),
+        )
     ).lower()
     tpm_proxy = bool(meta.get("tpm_proxy")) or "microarray" in text or "tpm-proxy" in text
     meta.update(
@@ -4977,7 +5115,8 @@ def _reference_summary_metadata_from_row(
             "source_cohort": source.get("source_cohort"),
             "source_project": source.get("source_project"),
             "source_version": source.get("source_version"),
-            "source_type": meta.get("source_type")
+            "source_pmid": manifest_pmid,
+            "source_type": manifest_type
             or _source_cohort_kind_map().get(str(source.get("source_cohort"))),
             "tumor_origin": source.get("tumor_origin"),
             "metastasis_site": source.get("metastasis_site"),
@@ -4986,11 +5125,9 @@ def _reference_summary_metadata_from_row(
             "processing_pipeline": source.get("processing_pipeline"),
             "notes": source.get("notes"),
             "unit": meta.get("unit") or "TPM",
-            "source_scale_class": meta.get("source_scale_class")
+            "source_scale_class": manifest_scale
             or ("microarray_tpm_proxy" if tpm_proxy else "linear_rnaseq_tpm"),
-            "linear_tpm_comparable": False
-            if tpm_proxy
-            else bool(meta.get("linear_tpm_comparable", True)),
+            "linear_tpm_comparable": False if tpm_proxy else bool(manifest_comparable),
             "tpm_proxy": tpm_proxy,
         }
     )
@@ -5019,16 +5156,17 @@ def _reference_expression_provenance(
             or _unavailable_reference_summary_metadata()
         )
     elif method == _REFERENCE_SUMMARY_METHOD:
-        meta = _reference_summary_source_metadata(code) or _selected_expression_source_metadata(
+        meta = _reference_summary_source_metadata(
             code
-        )
+        ) or cancer_reference_expression_source_metadata(code)
     else:
-        meta = _selected_expression_source_metadata(code)
+        meta = cancer_reference_expression_source_metadata(code)
     return {
         "source_cohort": meta["source_cohort"]
         or (None if method == _REFERENCE_SUMMARY_ALL_METHOD else code),
         "source_project": meta.get("source_project"),
         "source_version": meta.get("source_version"),
+        "source_pmid": meta.get("source_pmid"),
         "source_type": meta.get("source_type"),
         "source_unit": meta.get("unit"),
         "source_scale_class": meta.get("source_scale_class"),

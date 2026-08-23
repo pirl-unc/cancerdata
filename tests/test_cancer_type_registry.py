@@ -17,6 +17,7 @@ import pandas as pd
 
 from oncoref import (
     cancer_reference_expression_availability,
+    cancer_type_info,
     cancer_type_lineage,
     cancer_type_records,
     cancer_type_registry,
@@ -91,6 +92,22 @@ def test_cmn_is_canonical_and_ifs_remains_a_classification_target():
     assert bool(public.loc["CMN", "is_classification_target"]) is False
     assert raw.loc["SARC_IFS", "is_classification_target"] == "True"
     assert bool(public.loc["SARC_IFS", "is_classification_target"]) is True
+
+
+def test_exact_sarcoma_children_publish_stable_subtype_keys():
+    expected = {
+        "SARC_GIST": "gist",
+        "SARC_IMT": "imt",
+        "SARC_DFSP": "dfsp",
+        "SARC_PEC": "pecoma",
+    }
+    registry = cancer_type_registry().set_index("code")
+    records = cancer_type_records(expected).set_index("code")
+
+    assert registry.loc[list(expected), "subtype_key"].to_dict() == expected
+    assert records.loc[list(expected), "subtype_key"].to_dict() == expected
+    for code, subtype_key in expected.items():
+        assert cancer_type_info(code)["subtype_key"] == subtype_key
 
 
 def test_computed_expression_sources_have_members():
