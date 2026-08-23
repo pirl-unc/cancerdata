@@ -4975,7 +4975,7 @@ def _pool_reference_expression_rows(long: pd.DataFrame) -> pd.DataFrame:
             if column not in group.columns:
                 continue
             if column in {"is_filterable_extra", "is_technical_extra", "is_missing_biological"}:
-                row[column] = bool(group[column].fillna(False).any())
+                row[column] = any(_optional_bool(value) is True for value in group[column])
             else:
                 row[column] = _join_nonempty(group[column])
 
@@ -5109,7 +5109,13 @@ def _reference_summary_metadata_from_row(
             source.get("tumor_origin"),
         )
     ).lower()
-    tpm_proxy = bool(meta.get("tpm_proxy")) or "microarray" in text or "tpm-proxy" in text
+    scale_text = str(manifest_scale or "").lower()
+    tpm_proxy = (
+        bool(meta.get("tpm_proxy"))
+        or "proxy" in scale_text
+        or "microarray" in text
+        or "tpm-proxy" in text
+    )
     meta.update(
         {
             "source_cohort": source.get("source_cohort"),
@@ -5127,7 +5133,9 @@ def _reference_summary_metadata_from_row(
             "unit": meta.get("unit") or "TPM",
             "source_scale_class": manifest_scale
             or ("microarray_tpm_proxy" if tpm_proxy else "linear_rnaseq_tpm"),
-            "linear_tpm_comparable": False if tpm_proxy else bool(manifest_comparable),
+            "linear_tpm_comparable": False
+            if tpm_proxy
+            else _optional_bool(manifest_comparable) is True,
             "tpm_proxy": tpm_proxy,
         }
     )
