@@ -218,6 +218,11 @@ nTPM proxy remains `reference_only` and has no `classification_reference_code`.
 EPN follows the same consumer contract: its 11 diagnosis-stage, patient-level
 malignant-cell mean-TPM pseudobulks are direct reference-only profiles, not
 bulk-TPM-comparable classifier targets.
+CRANIO is likewise reference-only: OpenPBTA release v23 contributes 29
+independent pediatric primary tumors from its stranded RSEM-TPM matrix, including
+20 harmonized adamantinomatous tumors and nine tumors not molecularly classified.
+The cohort contains no papillary tumors, so oncoref does not infer CTNNB1, BRAF,
+or papillary status and does not treat it as independently classification-ready.
 The table intentionally does not
 synthesize marker-program or discriminator fallbacks; those remain consumer-layer
 choices in packages such as trufflepig.
@@ -615,10 +620,16 @@ unsuitable for absolute comparison with bulk RNA-seq TPM.
   checksum-pinned Zenodo 14917813 HCL T0 donor pseudobulks, checksum-pinned
   GSE141460 EPN diagnosis-stage malignant-cell mean-TPM pseudobulks, checksum-pinned
   GSE125285 BCC/cSCC tumor routing, and checksum-pinned GSE139682 GBC tumor
-  routing. The GSE125285 adapter retains all matched normals as exclusions and
-  labels its inverse-transformed author CPM as an nCPM proxy; the GSE139682
-  adapter retains its matched normals as exclusions and renormalizes tumor
-  RPKM to TPM. Both emit stable GSM sample IDs and complete sample manifests.
+  routing, plus checksum-pinned OpenPBTA release-v23 primary CRANIO routing. The
+  OpenPBTA adapter exposes `openpbta_cranio_matrix(...)` as the public data-frame
+  transform and `build_openpbta_cranio_source_matrices(...)` as the public
+  canonical builder; only the upstream RDS deserializer remains private. It
+  retains three recurrent and four progressive craniopharyngiomas as explicit
+  exclusions and routes 29 independent primary donors. The GSE125285 adapter
+  retains all matched normals as exclusions and labels its inverse-transformed
+  author CPM as an nCPM proxy; the GSE139682 adapter retains its matched normals
+  as exclusions and renormalizes tumor RPKM to TPM. Both emit stable GSM sample
+  IDs and complete sample manifests.
   The HCL adapter
   renames artifact-local columns to stable donor IDs, retains the sixth study
   donor as an explicit no-T0 exclusion, requires positive ANXA1/MS4A1/CD22/

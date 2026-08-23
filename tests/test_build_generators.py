@@ -2125,6 +2125,121 @@ def test_build_nci_gap_geo_references_route_tumors_and_audit_controls(
         assert not result.sample_qc["tpm_proxy"].any()
 
 
+def _openpbta_cranio_fixture() -> tuple[pd.DataFrame, pd.DataFrame]:
+    rows = []
+    samples = []
+    for index in range(36):
+        biospecimen = f"BS_CRANIO_{index:02d}"
+        samples.append(biospecimen)
+        if index < 29:
+            descriptor = "Initial CNS Tumor"
+        elif index < 32:
+            descriptor = "Recurrence"
+        else:
+            descriptor = "Progressive"
+        adamantinomatous = index < 20 or 29 <= index < 32
+        rows.append(
+            {
+                "Kids_First_Biospecimen_ID": biospecimen,
+                "Kids_First_Participant_ID": f"PT_CRANIO_{index:02d}",
+                "sample_id": f"7316-{index}",
+                "experimental_strategy": "RNA-Seq",
+                "sample_type": "Tumor",
+                "composition": "Solid Tissue",
+                "tumor_descriptor": descriptor,
+                "primary_site": "Suprasellar/Hypothalamic/Pituitary",
+                "age_at_diagnosis_days": str(1000 + index),
+                "pathology_diagnosis": "Craniopharyngioma",
+                "RNA_library": "stranded",
+                "cohort": "CBTN",
+                "molecular_subtype": (
+                    "CRANIO, ADAM" if adamantinomatous else "CRANIO, To be classified"
+                ),
+                "integrated_diagnosis": "",
+                "harmonized_diagnosis": (
+                    "Adamantinomatous craniopharyngioma"
+                    if adamantinomatous
+                    else "Craniopharyngioma"
+                ),
+                "short_histology": "Craniopharyngioma",
+            }
+        )
+    expression = pd.DataFrame(
+        {
+            "gene_id": ["ENSG00000141510.18_TP53", "ENSG00000146648.22_EGFR"],
+            **{sample: [20.0 + index, 30.0 + index] for index, sample in enumerate(samples)},
+        }
+    )
+    return expression, pd.DataFrame(rows)
+
+
+def test_openpbta_cranio_matrix_routes_independent_initial_tumors_and_audits_relapses():
+    expression, histologies = _openpbta_cranio_fixture()
+
+    matrix, routed, manifest = expression_source_adapters.openpbta_cranio_matrix(
+        expression, histologies
+    )
+
+    assert len(routed["CRANIO"]) == 29
+    assert matrix.columns.tolist() == ["source_gene_id", "source_symbol", *routed["CRANIO"]]
+    assert len(manifest) == 36
+    assert int(manifest["included"].sum()) == 29
+    assert manifest.loc[~manifest["included"], "exclusion_reason"].value_counts().to_dict() == {
+        "non_initial_cns_tumor": 7
+    }
+    selected = manifest[manifest["included"]]
+    assert selected["donor_id"].nunique() == 29
+    assert selected["molecular_subtype"].value_counts().to_dict() == {
+        "CRANIO, ADAM": 20,
+        "CRANIO, To be classified": 9,
+    }
+
+
+def test_build_openpbta_cranio_source_matrices_writes_direct_reference(
+    monkeypatch,
+    tmp_path,
+):
+    expression, histologies = _openpbta_cranio_fixture()
+    expression_path = tmp_path / "pbta-gene-expression-rsem-tpm.stranded.rds"
+    histologies_path = tmp_path / "pbta-histologies.tsv"
+    expression_path.write_bytes(b"synthetic OpenPBTA RDS fixture")
+    histologies.to_csv(histologies_path, sep="\t", index=False)
+    entry = {
+        "id": "openpbta-v23-cranio",
+        "source_cohort": "OPENPBTA_V23_CBTN_CRANIO",
+        "source_project": "OpenPBTA",
+        "citation": "synthetic OpenPBTA fixture",
+        "expression_file_md5": hashlib.md5(expression_path.read_bytes()).hexdigest(),
+        "expression_file_bytes": expression_path.stat().st_size,
+        "histologies_file_md5": hashlib.md5(histologies_path.read_bytes()).hexdigest(),
+        "histologies_file_bytes": histologies_path.stat().st_size,
+    }
+    monkeypatch.setattr(expression_source_adapters, "_registry_entry", lambda _id: entry)
+
+    def read_fixture(_path, sample_ids):
+        assert set(sample_ids) == set(expression.columns[1:])
+        return expression
+
+    monkeypatch.setattr(expression_source_adapters, "_read_openpbta_rds", read_fixture)
+
+    result = expression_source_adapters.build_openpbta_cranio_source_matrices(
+        cache_dir=tmp_path / "cache",
+        output_dir=tmp_path / "derived",
+        expression_path=expression_path,
+        histologies_path=histologies_path,
+    )
+
+    assert len(expression_builders.sample_columns(result.matrices["CRANIO"])) == 29
+    assert result.matrix_paths["CRANIO"].exists()
+    assert set(result.summary_rows["n_samples"]) == {29}
+    assert set(result.sample_qc["source_scale_class"]) == {"linear_rnaseq_tpm"}
+    assert result.sample_qc["linear_tpm_comparable"].all()
+    assert not result.sample_qc["tpm_proxy"].any()
+    manifest = pd.read_csv(result.sidecar_paths["sample_manifest"], keep_default_na=False)
+    assert len(manifest) == 36
+    assert int(manifest["included"].sum()) == 29
+
+
 def test_geo_soft_parser_rejects_duplicate_sample_titles(tmp_path):
     soft_path = tmp_path / "duplicate.soft.gz"
     with gzip.open(soft_path, "wt") as handle:

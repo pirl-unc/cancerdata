@@ -20,7 +20,9 @@ import io
 import json
 import re
 import shutil
+import subprocess
 import tarfile
+import tempfile
 import urllib.request
 import zipfile
 from collections import defaultdict
@@ -170,6 +172,23 @@ GSE139682_SOFT_URL = (
 )
 GSE139682_SOFT_MD5 = "e42ec1ed94481c6b251504a601fa50f2"
 GSE139682_SOFT_BYTES = 2_865
+OPENPBTA_V23_BASE_URL = (
+    "https://s3.amazonaws.com/d3b-openaccess-us-east-1-prd-pbta/data/release-v23-20230115"
+)
+OPENPBTA_V23_CRANIO_EXPRESSION_NAME = "pbta-gene-expression-rsem-tpm.stranded.rds"
+OPENPBTA_V23_CRANIO_EXPRESSION_URL = (
+    f"{OPENPBTA_V23_BASE_URL}/{OPENPBTA_V23_CRANIO_EXPRESSION_NAME}"
+)
+OPENPBTA_V23_CRANIO_EXPRESSION_MD5 = "1f3c8bfa55ba38db2edde1a206f90bf1"
+OPENPBTA_V23_CRANIO_EXPRESSION_BYTES = 77_863_728
+OPENPBTA_V23_HISTOLOGIES_NAME = "pbta-histologies.tsv"
+OPENPBTA_V23_HISTOLOGIES_URL = f"{OPENPBTA_V23_BASE_URL}/{OPENPBTA_V23_HISTOLOGIES_NAME}"
+OPENPBTA_V23_HISTOLOGIES_MD5 = "954c536c308f30c1214f0aa632908c96"
+OPENPBTA_V23_HISTOLOGIES_BYTES = 1_222_838
+OPENPBTA_V23_CRANIO_COHORT = "OPENPBTA_V23_CBTN_CRANIO"
+OPENPBTA_V23_CRANIO_PIPELINE = (
+    "openpbta_v23_primary_cranio_stranded_rsem_tpm_ensembl112_clean_tpm_16_9_75"
+)
 
 
 @dataclass(frozen=True)
@@ -2064,6 +2083,289 @@ def gse139682_gbc_matrix(
         pd.concat([pd.DataFrame({"source_symbol": symbols}), tpm], axis=1),
         {"GBC": tumor_ids},
         pd.DataFrame(manifest_rows),
+    )
+
+
+def openpbta_cranio_matrix(
+    expression: pd.DataFrame,
+    histologies: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict[str, list[str]], pd.DataFrame]:
+    """Select the 29 independent primary CRANIO tumors in OpenPBTA release v23.
+
+    ``expression`` is the stranded RSEM-TPM table represented as an ordinary
+    data frame. ``histologies`` is the matching release-v23 histology table.
+    The returned manifest preserves all 36 RNA-sequenced craniopharyngioma
+    specimens and records recurrent/progressive tumors as explicit exclusions.
+    """
+    required = {
+        "Kids_First_Biospecimen_ID",
+        "Kids_First_Participant_ID",
+        "sample_id",
+        "experimental_strategy",
+        "sample_type",
+        "composition",
+        "tumor_descriptor",
+        "primary_site",
+        "age_at_diagnosis_days",
+        "pathology_diagnosis",
+        "RNA_library",
+        "cohort",
+        "molecular_subtype",
+        "integrated_diagnosis",
+        "harmonized_diagnosis",
+        "short_histology",
+    }
+    missing = sorted(required - set(histologies.columns))
+    if missing:
+        raise ValueError(f"OpenPBTA histologies table lacks columns: {missing}")
+    if "gene_id" not in expression.columns:
+        raise ValueError("OpenPBTA expression matrix lacks gene_id")
+
+    source_rows = histologies[
+        histologies["experimental_strategy"].eq("RNA-Seq")
+        & histologies["short_histology"].eq("Craniopharyngioma")
+    ].copy()
+    if len(source_rows) != 36:
+        raise ValueError(f"OpenPBTA v23 CRANIO source routing changed: n={len(source_rows)}")
+    if source_rows["Kids_First_Biospecimen_ID"].duplicated().any():
+        raise ValueError("OpenPBTA v23 CRANIO metadata contains duplicate biospecimens")
+    if source_rows["Kids_First_Participant_ID"].duplicated().any():
+        raise ValueError("OpenPBTA v23 CRANIO metadata contains repeated donors")
+    observed_libraries = set(source_rows["RNA_library"].astype(str))
+    observed_cohorts = set(source_rows["cohort"].astype(str))
+    if observed_libraries != {"stranded"} or observed_cohorts != {"CBTN"}:
+        raise ValueError(
+            "OpenPBTA v23 CRANIO source metadata changed: "
+            f"RNA_library={sorted(observed_libraries)}, cohort={sorted(observed_cohorts)}"
+        )
+
+    included = source_rows["composition"].eq("Solid Tissue") & source_rows["tumor_descriptor"].eq(
+        "Initial CNS Tumor"
+    )
+    selected = source_rows.loc[included].copy()
+    if len(selected) != 29:
+        raise ValueError(f"OpenPBTA v23 primary CRANIO routing changed: n={len(selected)}")
+    sample_ids = selected["Kids_First_Biospecimen_ID"].astype(str).tolist()
+    all_source_ids = source_rows["Kids_First_Biospecimen_ID"].astype(str).tolist()
+    missing_expression = sorted(set(all_source_ids) - set(expression.columns))
+    if missing_expression:
+        raise ValueError(
+            "OpenPBTA v23 CRANIO biospecimens are absent from stranded expression: "
+            f"{missing_expression}"
+        )
+
+    genes = (
+        expression["gene_id"]
+        .astype(str)
+        .str.extract(r"^(?P<source_gene_id>ENSG\d+\.\d+)_(?P<source_symbol>.+)$")
+    )
+    if genes.isna().any(axis=None):
+        bad = expression.loc[genes.isna().any(axis=1), "gene_id"].astype(str).head(5).tolist()
+        raise ValueError(f"OpenPBTA v23 expression has malformed gene IDs: {bad}")
+    values = _validate_nonnegative_numeric_values(
+        expression[sample_ids],
+        label="OpenPBTA v23 CRANIO RSEM TPM matrix",
+    )
+    matrix = pd.concat([genes.reset_index(drop=True), values.reset_index(drop=True)], axis=1)
+
+    manifest_rows = []
+    for row in source_rows.itertuples(index=False):
+        biospecimen = str(row.Kids_First_Biospecimen_ID)
+        is_included = biospecimen in sample_ids
+        age_days = str(row.age_at_diagnosis_days).strip()
+        subtype = str(row.molecular_subtype).strip()
+        manifest_rows.append(
+            {
+                "cancer_code": "CRANIO",
+                "source_cohort": OPENPBTA_V23_CRANIO_COHORT,
+                "source_project": "OpenPBTA",
+                "case_id": str(row.Kids_First_Participant_ID),
+                "sample_id": biospecimen,
+                "source_file_id": biospecimen,
+                "source_file_name": OPENPBTA_V23_CRANIO_EXPRESSION_NAME,
+                "source_project_id": "release-v23-20230115",
+                "sample_type": str(row.tumor_descriptor),
+                "primary_diagnosis": str(row.harmonized_diagnosis),
+                "md5sum": OPENPBTA_V23_CRANIO_EXPRESSION_MD5,
+                "file_size": OPENPBTA_V23_CRANIO_EXPRESSION_BYTES,
+                "workflow_type": "OpenPBTA RSEM gene-level TPM",
+                "raw_unit": "RSEM TPM",
+                "processing_pipeline": OPENPBTA_V23_CRANIO_PIPELINE,
+                "source_url": OPENPBTA_V23_CRANIO_EXPRESSION_URL,
+                "lineage_evidence_source": (
+                    f"OpenPBTA v23 short_histology={row.short_histology}; "
+                    f"harmonized_diagnosis={row.harmonized_diagnosis}; "
+                    f"molecular_subtype={subtype}; tumor_descriptor={row.tumor_descriptor}"
+                ),
+                "included": is_included,
+                "exclusion_reason": "" if is_included else "non_initial_cns_tumor",
+                "lineage_label": "CRANIO" if is_included else "",
+                "source_matrix_column": biospecimen,
+                "source_record": str(row.sample_id),
+                "donor_id": str(row.Kids_First_Participant_ID),
+                "anatomic_site": str(row.primary_site),
+                "age_at_diagnosis": f"{age_days} days" if age_days else "",
+                "molecular_subtype": subtype,
+                "integrated_diagnosis": str(row.integrated_diagnosis),
+                "pathology_diagnosis": str(row.pathology_diagnosis),
+            }
+        )
+    return matrix, {"CRANIO": sample_ids}, pd.DataFrame(manifest_rows)
+
+
+def _read_openpbta_rds(path: Path, sample_ids: Iterable[str]) -> pd.DataFrame:
+    """Read selected columns from one OpenPBTA RDS via its native R serializer."""
+    selected = [str(sample_id) for sample_id in sample_ids]
+    if not selected or len(selected) != len(set(selected)):
+        raise ValueError("OpenPBTA RDS selection requires unique sample IDs")
+    script = """
+args <- commandArgs(trailingOnly = TRUE)
+input <- args[[1]]
+output <- args[[2]]
+samples <- args[-c(1, 2)]
+frame <- readRDS(input)
+required <- c("gene_id", samples)
+missing <- setdiff(required, names(frame))
+if (length(missing) > 0) stop(paste("RDS lacks columns:", paste(missing, collapse=", ")))
+connection <- gzfile(output, open="wt")
+write.table(frame[, required, drop=FALSE], file=connection, sep="\\t", row.names=FALSE, quote=FALSE)
+close(connection)
+"""
+    with tempfile.TemporaryDirectory(prefix="oncoref-openpbta-") as temporary:
+        table_path = Path(temporary) / "selected.tsv.gz"
+        try:
+            subprocess.run(
+                ["Rscript", "-e", script, str(path), str(table_path), *selected],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError as error:
+            raise RuntimeError(
+                "Rscript is required to read the checksum-pinned OpenPBTA RDS source"
+            ) from error
+        except subprocess.CalledProcessError as error:
+            detail = error.stderr.strip() or error.stdout.strip() or str(error)
+            raise RuntimeError(f"failed to read OpenPBTA RDS: {detail}") from error
+        return pd.read_csv(table_path, sep="\t", low_memory=False)
+
+
+def build_openpbta_cranio_source_matrices(
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    expression_path: str | Path | None = None,
+    histologies_path: str | Path | None = None,
+    force_download: bool = False,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build the 29-donor direct primary CRANIO reference from OpenPBTA v23."""
+    entry = _registry_entry("openpbta-v23-cranio")
+    cache = Path(cache_dir)
+    expression_file = (
+        Path(expression_path)
+        if expression_path is not None
+        else _download(
+            str(entry.get("expression_file_url") or OPENPBTA_V23_CRANIO_EXPRESSION_URL),
+            cache / str(entry.get("expression_file_name") or OPENPBTA_V23_CRANIO_EXPRESSION_NAME),
+            force=force_download,
+        )
+    )
+    histologies_file = (
+        Path(histologies_path)
+        if histologies_path is not None
+        else _download(
+            str(entry.get("histologies_file_url") or OPENPBTA_V23_HISTOLOGIES_URL),
+            cache / str(entry.get("histologies_file_name") or OPENPBTA_V23_HISTOLOGIES_NAME),
+            force=force_download,
+        )
+    )
+    _verify_public_source_file(
+        expression_file,
+        label="OpenPBTA v23 stranded RSEM TPM",
+        expected_bytes=int(
+            entry.get("expression_file_bytes") or OPENPBTA_V23_CRANIO_EXPRESSION_BYTES
+        ),
+        expected_md5=str(entry.get("expression_file_md5") or OPENPBTA_V23_CRANIO_EXPRESSION_MD5),
+    )
+    _verify_public_source_file(
+        histologies_file,
+        label="OpenPBTA v23 histologies",
+        expected_bytes=int(entry.get("histologies_file_bytes") or OPENPBTA_V23_HISTOLOGIES_BYTES),
+        expected_md5=str(entry.get("histologies_file_md5") or OPENPBTA_V23_HISTOLOGIES_MD5),
+    )
+
+    histologies = pd.read_csv(histologies_file, sep="\t", dtype=str, keep_default_na=False)
+    source_rows = histologies[
+        histologies.get("experimental_strategy", pd.Series(dtype=str)).eq("RNA-Seq")
+        & histologies.get("short_histology", pd.Series(dtype=str)).eq("Craniopharyngioma")
+    ]
+    source_ids = source_rows.get("Kids_First_Biospecimen_ID", pd.Series(dtype=str)).astype(str)
+    expression = _read_openpbta_rds(expression_file, source_ids)
+    raw, routed, manifest = openpbta_cranio_matrix(expression, histologies)
+
+    value_cols = [
+        column for column in raw.columns if column not in {"source_gene_id", "source_symbol"}
+    ]
+    _, diagnostics = coerce_source_expression_values(
+        raw,
+        value_cols=value_cols,
+        row_id_col="source_gene_id",
+        symbol_col="source_symbol",
+    )
+    canonical, audit = canonicalize_source_gene_matrix(
+        raw,
+        row_id_col="source_gene_id",
+        symbol_col="source_symbol",
+        value_cols=value_cols,
+        high_expression_threshold=high_expression_threshold,
+    )
+    source = GeoMatrixSource(
+        cancer_code="CRANIO",
+        source_cohort=str(entry.get("source_cohort") or OPENPBTA_V23_CRANIO_COHORT),
+        source_project=str(entry.get("source_project") or "OpenPBTA"),
+        citation=str(entry.get("citation") or ""),
+        file_name=expression_file.name,
+        unit="TPM",
+        expected_source_samples=36,
+        expected_samples_by_code={"CRANIO": 29},
+        source_scale_class="linear_rnaseq_tpm",
+        linear_tpm_comparable=True,
+        tpm_proxy=False,
+        native_unit="RSEM TPM",
+        notes=(
+            "OpenPBTA release v23 CBTN craniopharyngiomas: select 29 independent "
+            "initial solid tumors from stranded RNA-seq and retain seven recurrent or "
+            "progressive tumors as explicit exclusions. Twenty selected tumors are "
+            "adamantinomatous and nine are not molecularly classified; no papillary "
+            "tumors are represented. The direct pediatric cohort remains reference-only."
+        ),
+        processing_pipeline=OPENPBTA_V23_CRANIO_PIPELINE,
+        tumor_origin="primary",
+        source_type="openpbta-rnaseq-rsem",
+    )
+    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
+    result = build_canonical_source_matrices(
+        source,
+        canonical,
+        routed_samples=routed,
+        output_dir=out_dir,
+        mapping_audit=audit,
+        parse_diagnostics=diagnostics,
+    )
+    manifest_path = out_dir / "openpbta_v23_cranio_sample_manifest.csv"
+    manifest_temp = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
+    manifest.to_csv(manifest_temp, index=False)
+    manifest_temp.replace(manifest_path)
+    return SourceMatrixBuildResult(
+        source=result.source,
+        matrices=result.matrices,
+        matrix_paths=result.matrix_paths,
+        summary_rows=result.summary_rows,
+        mapping_audit=result.mapping_audit,
+        parse_diagnostics=result.parse_diagnostics,
+        sample_qc=result.sample_qc,
+        sidecar_paths={**result.sidecar_paths, "sample_manifest": manifest_path},
     )
 
 

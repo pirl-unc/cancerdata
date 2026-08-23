@@ -725,6 +725,7 @@ def test_reference_source_and_review_policy_drive_classification_targets():
     assert set(reference_backed_codes) - set(cancer_types.classification_target_codes()) == {
         "BCC",
         "CMN",
+        "CRANIO",
         "EPN",
         "GBC",
         "HCL",
