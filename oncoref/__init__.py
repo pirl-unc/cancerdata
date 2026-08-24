@@ -180,6 +180,7 @@ from .expression import (
     available_within_sample_cohorts,
     cancer_reference_expression,
     cancer_reference_expression_availability,
+    cancer_reference_expression_source_metadata,
     cohort_gene_percentiles,
     cohort_mean_expression,
     cohort_stats,
@@ -487,6 +488,7 @@ __all__ = [
     "cancer_ontology",
     "cancer_reference_expression",
     "cancer_reference_expression_availability",
+    "cancer_reference_expression_source_metadata",
     "cancer_subtype_group",
     "cancer_subtype_groupings",
     # TMB

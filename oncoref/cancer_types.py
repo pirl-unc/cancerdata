@@ -1108,6 +1108,7 @@ _CANCER_TYPE_RECORD_COLUMNS = [
     "reference_source",
     "classification_reference_code",
     "is_classification_target",
+    "subtype_key",
     "primary_tissue",
     "normal_tissue_code",
     "normal_tissue_name",
@@ -1239,7 +1240,8 @@ def cancer_type_records(
     ``ontology_kind``), WHO histogenesis and behavior fields
     (``who_category`` / ``who_behavior``), expression/classification backing
     (``reference_source`` / ``classification_reference_code``), a derived
-    sample-classification target flag (``is_classification_target``),
+    sample-classification target flag (``is_classification_target``), the stable
+    downstream routing key (``subtype_key``),
     cross-cutting molecular groupings (``subtype_groups`` / ``subtype_axes``),
     sparse differentiation and grade axes (``differentiation`` /
     ``grade_tier``), explicit MMR/MSI classifier-axis fields

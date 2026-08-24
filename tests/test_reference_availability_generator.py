@@ -39,6 +39,21 @@ def test_build_reference_availability_uses_declared_source_not_richest(tmp_path)
     assert x.loc["SMALL", "notes"] == "line one line two"
 
 
+def test_build_reference_availability_adds_structured_registry_provenance(tmp_path):
+    cohort = "GSE328026_PECOMA_2026"
+    _write_shard(tmp_path / "pecoma.csv", "SARC_PEC", cohort, ["E1"], 66)
+
+    row = build_reference_availability(
+        tmp_path,
+        selected_sources={"SARC_PEC": cohort},
+    ).iloc[0]
+
+    assert row["source_pmid"] == "PMID:42331846"
+    assert row["source_type"] == "geo-matrix"
+    assert row["source_scale_class"] == "linear_rnaseq_tpm"
+    assert bool(row["linear_tpm_comparable"])
+
+
 def test_build_reference_availability_rejects_split_source_identity(tmp_path):
     _write_shard(tmp_path / "one.csv", "X", "SAME", ["E1"], 1)
     _write_shard(tmp_path / "two.csv", "X", "SAME", ["E2"], 1)

@@ -17,6 +17,7 @@ from oncoref._reference_sources import (
     TREEHOUSE_TCGA_SARC_HISTOLOGY_CODES,
     TREEHOUSE_TCGA_SARC_HISTOLOGY_COHORT,
 )
+from oncoref.expression import cancer_reference_expression_source_metadata
 from oncoref.source_matrices import registry as source_matrix_registry
 
 SOURCE_COLUMNS = [
@@ -24,6 +25,10 @@ SOURCE_COLUMNS = [
     "source_cohort",
     "source_project",
     "source_version",
+    "source_pmid",
+    "source_type",
+    "source_scale_class",
+    "linear_tpm_comparable",
     "tumor_origin",
     "metastasis_site",
     "processing_pipeline",
@@ -127,6 +132,20 @@ def build_reference_availability(
                 raise ValueError(f"source identity {key!r} is split across multiple shards")
             seen.add(key)
             records.append(record)
+
+    for record in records:
+        metadata = cancer_reference_expression_source_metadata(
+            record["cancer_code"], source_cohort=record["source_cohort"]
+        )
+        for column in (
+            "source_pmid",
+            "source_type",
+            "source_scale_class",
+            "linear_tpm_comparable",
+        ):
+            value = record.get(column)
+            if pd.isna(value) or not str(value):
+                record[column] = metadata.get(column)
 
     table = pd.DataFrame.from_records(records)
     selected_sources = _selected_sources() if selected_sources is None else selected_sources

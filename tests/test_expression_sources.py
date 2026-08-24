@@ -242,6 +242,27 @@ def test_structured_geo_source_pmids_match_selected_registry_provenance():
     assert ("gse328026-sarc-pec", "SARC_PEC") in checked
 
 
+def test_pecoma_summary_availability_preserves_structured_pmid():
+    source = es.expression_source("gse328026-sarc-pec")
+    assert source is not None
+
+    rows = oncoref.cancer_reference_expression_availability(
+        cancer_types=["SARC_PEC"],
+        normalize="tpm_clean",
+        sample_qc="all",
+        reference_source="summary_rows_all",
+        all_sources=True,
+    ).set_index("source_cohort")
+
+    assert rows.loc[source.source_cohort, "source_pmid"] == "PMID:42331846"
+    assert (
+        oncoref.cancer_reference_expression_source_metadata(
+            "SARC_PEC", source_cohort=source.source_cohort
+        )["source_pmid"]
+        == "PMID:42331846"
+    )
+
+
 def test_sclc_subtype_registry_sources_roundtrip_into_reference_filters():
     codes = ["SCLC_ASCL1", "SCLC_NEUROD1", "SCLC_POU2F3", "SCLC_YAP1"]
     registry = oncoref.cancer_type_registry().set_index("code")

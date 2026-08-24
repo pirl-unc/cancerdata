@@ -1802,7 +1802,9 @@ def test_housekeeping_cancer_expression_coverage_threads_sample_qc_and_source_sc
         }
 
     monkeypatch.setattr(expression, "per_sample_expression", fake_per_sample_expression)
-    monkeypatch.setattr(expression, "_selected_expression_source_metadata", fake_source_metadata)
+    monkeypatch.setattr(
+        expression, "cancer_reference_expression_source_metadata", fake_source_metadata
+    )
 
     out = expression.housekeeping_cancer_expression_coverage(
         ["LUAD", "MTC"],
@@ -2014,7 +2016,7 @@ def test_housekeeping_cancer_expression_coverage_summary_rejects_known_partial_a
     monkeypatch.setattr(expression, "per_sample_expression", fake_per_sample_expression)
     monkeypatch.setattr(
         expression,
-        "_selected_expression_source_metadata",
+        "cancer_reference_expression_source_metadata",
         lambda code: {
             "source_cohort": f"{code}_SOURCE",
             "source_type": "bulk RNA-seq",
@@ -2319,6 +2321,7 @@ def test_cancer_reference_expression_long_and_wide(monkeypatch):
         "source_cohort",
         "source_project",
         "source_version",
+        "source_pmid",
         "source_type",
         "source_unit",
         "source_scale_class",
@@ -2688,6 +2691,7 @@ def test_cancer_reference_expression_availability_reports_missing(monkeypatch):
         "source_cohort",
         "source_project",
         "source_version",
+        "source_pmid",
         "source_type",
         "source_unit",
         "source_scale_class",
@@ -2793,6 +2797,7 @@ def test_cancer_reference_expression_missing_empty_and_raise(monkeypatch):
         "source_cohort",
         "source_project",
         "source_version",
+        "source_pmid",
         "source_type",
         "source_unit",
         "source_scale_class",
@@ -2899,7 +2904,7 @@ def test_cancer_reference_expression_raw_tpm_uses_source_stats(monkeypatch):
     )
     monkeypatch.setattr(
         expression,
-        "_selected_expression_source_metadata",
+        "cancer_reference_expression_source_metadata",
         lambda code: {
             "source_cohort": "SRC_X",
             "source_type": "gdc",
@@ -2993,7 +2998,7 @@ def test_cancer_reference_expression_uses_per_code_artifact_qc_for_raw_tpm(monke
     )
     monkeypatch.setattr(
         expression,
-        "_selected_expression_source_metadata",
+        "cancer_reference_expression_source_metadata",
         lambda code: {
             "source_cohort": f"SRC_{code}",
             "source_type": "gdc",
@@ -3303,14 +3308,21 @@ def test_cancer_reference_expression_summary_rows_all_preserves_sources_and_filt
             "source_cohort": ["GEO_X", "TREE_X", "GEO_Y"],
             "source_project": ["GEO", "Treehouse", "GEO"],
             "source_version": ["v1", "v2", "v1"],
+            "source_type": ["geo-microarray", "treehouse-compendium", "geo-microarray"],
+            "source_scale_class": [
+                "microarray_tpm_proxy",
+                "linear_rnaseq_tpm",
+                "microarray_tpm_proxy",
+            ],
+            "linear_tpm_comparable": [False, True, False],
             "tumor_origin": ["primary", "mixed", "primary"],
             "metastasis_site": [pd.NA, pd.NA, pd.NA],
             "n_reference_genes": [1, 2, 1],
             "n_reference_samples": [4, 8, 3],
             "processing_pipeline": [
-                "geo_microarray_tpm_proxy_clean_tpm_16_9_75",
+                "gse_x_normalized_clean_tpm_16_9_75",
                 "treehouse_polya_tpm_clean_tpm_16_9_75",
-                "geo_microarray_tpm_proxy_clean_tpm_16_9_75",
+                "gse_y_normalized_clean_tpm_16_9_75",
             ],
             "notes": ["geo notes", "tree notes", "geo y notes"],
             "selected": [False, True, True],
@@ -3535,7 +3547,7 @@ def test_summary_provenance_uses_only_observed_source_categories(monkeypatch):
     )
     monkeypatch.setattr(
         expression,
-        "_selected_expression_source_metadata",
+        "cancer_reference_expression_source_metadata",
         lambda code, *, source_cohort=None: {
             "source_type": "geo",
             "unit": "TPM",
@@ -3594,7 +3606,7 @@ def test_reference_availability_all_sources_uses_compact_manifest(monkeypatch):
     )
     monkeypatch.setattr(
         expression,
-        "_selected_expression_source_metadata",
+        "cancer_reference_expression_source_metadata",
         lambda code, *, source_cohort=None: {
             "source_cohort": source_cohort,
             "source_type": "geo",
@@ -3656,7 +3668,7 @@ def test_reference_availability_all_sources_preserves_aggregate_requests(monkeyp
     monkeypatch.setattr(expression, "cancer_type_reference_source", lambda code: "member_union")
     monkeypatch.setattr(
         expression,
-        "_selected_expression_source_metadata",
+        "cancer_reference_expression_source_metadata",
         lambda code, *, source_cohort=None: {
             "source_cohort": source_cohort,
             "unit": "TPM",
@@ -3866,7 +3878,7 @@ def test_explicit_source_metadata_does_not_fall_back_to_another_source(monkeypat
         ],
     )
 
-    metadata = expression._selected_expression_source_metadata(
+    metadata = expression.cancer_reference_expression_source_metadata(
         "X", source_cohort="EXPLICIT_OTHER_SOURCE"
     )
 
@@ -3925,7 +3937,7 @@ def test_cancer_reference_expression_summary_rows_all_pool(monkeypatch):
     summary = pd.DataFrame(
         {
             "Ensembl_Gene_ID": ["E1", "E1"],
-            "Symbol": ["A", "A"],
+            "Symbol": ["A", "LEGACY_A"],
             "cancer_code": pd.Categorical(["X", "X"], categories=["X", "UNUSED_CODE"]),
             "source_cohort": pd.Categorical(
                 ["SRC1", "SRC2"], categories=["SRC1", "SRC2", "UNUSED_SOURCE"]
@@ -3978,6 +3990,7 @@ def test_cancer_reference_expression_summary_rows_all_pool(monkeypatch):
 
     assert len(pooled) == 1
     row = pooled.iloc[0]
+    assert row["Symbol"] == "A"
     assert row["source_cohort"] == "POOLED"
     assert row["expression"] == pytest.approx((10.0 * 2 + 20.0 * 6) / 8)
     assert pd.isna(row["q1"]) and pd.isna(row["q3"])
@@ -4048,7 +4061,7 @@ def test_cancer_reference_expression_summary_rows_qc_filtered_recomputes(monkeyp
     )
     monkeypatch.setattr(
         expression,
-        "_selected_expression_source_metadata",
+        "cancer_reference_expression_source_metadata",
         lambda code: {
             "source_cohort": "SRC_X",
             "source_project": "TCGA",

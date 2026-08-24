@@ -768,11 +768,16 @@ return one or more normalization modes in one call:
   through `cohort_stats`.
 
 Long output includes source/provenance columns by default, including source
-cohort, source project/version, tumor origin, source type/unit, source scale
+cohort, source project/version/PMID, tumor origin, source type/unit, source scale
 class, reference method, selected source gene/sample counts, `DATA_VERSION`, and
-`SOURCE_MATRIX_VERSION`. This accessor is the compatibility surface for
-reference-expression reads; expression artifact row-set/value parity is tracked
-separately in the upstream parity issues.
+`SOURCE_MATRIX_VERSION`. Use
+`expression.cancer_reference_expression_source_metadata(cancer_type,
+source_cohort=...)` for the same structured provenance without loading expression
+rows. Omitting `source_cohort` resolves the selected source; an explicit physical
+cohort never borrows metadata from another source registered for the cancer type.
+This accessor is the compatibility surface for reference-expression reads;
+expression artifact row-set/value parity is tracked separately in the upstream
+parity issues.
 
 `reference_source="artifact"` is the historical default: clean/log clean TPM
 comes from shipped percentile shards, and raw TPM is recomputed from source
@@ -799,7 +804,10 @@ identity. With provenance enabled, it also preserves sidecar fields such as
 explicit n-sample-weighted pooled view. Because these sidecars are all-sample
 artifacts, this source-union mode intentionally rejects `format="wide"`,
 `sample_qc="pass"`, and `sample_qc="pass_or_warn"`; QC-filtered all-source
-reference artifacts remain part of the expression-artifact rebuild work.
+reference artifacts remain part of the expression-artifact rebuild work. Pooling
+groups after the requested gene-ID projection by output `Ensembl_Gene_ID` (not
+display symbol), so each cancer/normalization result has one row per projected
+gene and each physical source contributes its sample count at most once.
 
 For compatibility with pirlygenes reference-expression consumers, the accessor
 also exposes the gene-to-proteoform bridge columns on every long-form row:
@@ -820,7 +828,9 @@ downstream reference-expression accessor that must distinguish unavailable
 oncoref artifacts from empty gene filters. It returns one row per requested
 code/mode with `requested_code`, expanded `cancer_code`, `request_kind`,
 `available`, `missing_reason`, provenance fields, and the reference-expression
-schema/data versions. `expression.cancer_reference_expression(...,
+schema/data versions. Provenance includes the structured `source_pmid`,
+`source_scale_class`, and `linear_tpm_comparable` fields; proxy exclusion uses
+those fields before compatibility fallbacks. `expression.cancer_reference_expression(...,
 on_missing="empty")` returns a schema-stable empty frame and stores the same
 missing rows in `df.attrs["missing_requests"]`; `on_missing="raise"` fails fast
 for required cohorts. `include_request_metadata=True` adds request/availability
