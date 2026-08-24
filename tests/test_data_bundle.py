@@ -672,7 +672,7 @@ def test_overlay_base_rejects_dependency_cycle(tmp_path):
         )
 
 
-def test_overlay_base_download_recursively_composes_overlay_chain(monkeypatch, tmp_path):
+def test_overlay_base_composes_chain_with_unversioned_nested_base(monkeypatch, tmp_path):
     root = tmp_path / f"v{DATA_VERSION}"
     full_version = "5.23.18"
     overlay_version = "5.23.19"
@@ -716,7 +716,6 @@ def test_overlay_base_download_recursively_composes_overlay_chain(monkeypatch, t
         "tarball": overlay_pin,
         "base_bundle": {
             "data_version": full_version,
-            "source_matrix_version": "5.22.10",
             "repo": data_bundle.GITHUB_REPO,
             "tarball": full_pin,
         },

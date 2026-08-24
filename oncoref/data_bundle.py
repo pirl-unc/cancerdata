@@ -1028,12 +1028,13 @@ def _ensure_overlay_base(
         ),
         "require_integrity": True,
     }
+    # Older overlay manifests omit this optional field from their base pin.
+    # Their version, size, and SHA-256 still identify the base unambiguously;
+    # do not silently substitute the current source-matrix generation.
     base_manifest = _fetch_release_manifest(
         base_source,
         expected_data_version=base_version,
-        expected_source_matrix_version=base_bundle.get(
-            "source_matrix_version", SOURCE_MATRIX_VERSION
-        ),
+        expected_source_matrix_version=base_bundle.get("source_matrix_version"),
     )
     if base_manifest is None:
         raise BundleIntegrityError(f"base release v{base_version} lacks integrity metadata")
