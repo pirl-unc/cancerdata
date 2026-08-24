@@ -24,9 +24,12 @@ one monolithic blob.
     pd.read_parquet(sm.ensure("LUAD"))
 
 A shipped registry (``source-matrices.csv``: cancer_code, source_cohort,
-n_samples) lists what's available without any download. Cache layout:
+n_samples, source_matrix_version) lists what's available without any download.
+Each cohort is pinned to the release that contains its exact matrix, so correcting
+one cohort does not require copying every unchanged multi-gigabyte asset into a
+new release. Cache layout:
 
-    ~/.cache/oncoref/source-matrices/v<SOURCE_MATRIX_VERSION>/<CODE>.parquet
+    ~/.cache/oncoref/source-matrices/v<cohort source_matrix_version>/<CODE>.parquet
 """
 
 from __future__ import annotations
@@ -46,9 +49,8 @@ from .cancer_types import resolve_cancer_type
 from .load_dataset import get_data
 from .version import SOURCE_MATRIX_VERSION
 
-#: Per-cohort matrices are release assets on a dedicated tag of oncoref's repo. Pinned to
-#: SOURCE_MATRIX_VERSION (the raw-input version), NOT the derived-bundle DATA_VERSION — a
-#: canonical-space bundle re-release must not repoint or orphan these unchanged raw matrices.
+#: The newest per-cohort source-matrix release. Individual cohorts remain pinned by
+#: ``source-matrices.csv`` to the release containing their exact matrix.
 GITHUB_REPO = "pirl-unc/oncoref"
 RELEASE_TAG = f"source-v{SOURCE_MATRIX_VERSION}"
 
@@ -126,7 +128,17 @@ def _resolve(code: str) -> str:
 
 def cohort_info(code: str) -> dict:
     """Registry row for a cohort (``source_cohort``, ``n_samples``)."""
-    return _registry_index()[_resolve(code)]
+    row = _registry_index()[_resolve(code)]
+    return {
+        "cancer_code": str(row["cancer_code"]),
+        "source_cohort": str(row["source_cohort"]),
+        "n_samples": int(row["n_samples"]),
+    }
+
+
+def source_matrix_version(code: str) -> str:
+    """Exact raw-matrix release version selected for ``code``."""
+    return str(_registry_index()[_resolve(code)]["source_matrix_version"])
 
 
 def _selected_matrices_for_codes(codes: tuple[str, ...]) -> tuple[SelectedSourceMatrix, ...]:
@@ -322,22 +334,23 @@ def source_sample_namespace(source_cohort: str) -> str:
     return source_cohort
 
 
-def cache_dir() -> Path:
-    """Per-cohort cache directory for this data version (created on demand)."""
+def cache_dir(*, version: str = SOURCE_MATRIX_VERSION) -> Path:
+    """Source-matrix cache directory for ``version`` (created on demand)."""
     override = os.environ.get(CACHE_DIR_ENV_VAR)
     base = (
         Path(override).expanduser()
         if override
         else (Path.home() / ".cache" / "oncoref" / "source-matrices")
     )
-    out = base / f"v{SOURCE_MATRIX_VERSION}"
+    out = base / f"v{version}"
     out.mkdir(parents=True, exist_ok=True)
     return out
 
 
 def local_path(code: str) -> Path:
     """Expected cache path for a cohort's matrix (may not exist yet)."""
-    return cache_dir() / f"{_resolve(code)}.parquet"
+    resolved = _resolve(code)
+    return cache_dir(version=source_matrix_version(resolved)) / f"{resolved}.parquet"
 
 
 def is_cached(code: str) -> bool:
@@ -346,9 +359,10 @@ def is_cached(code: str) -> bool:
 
 def release_url(code: str) -> str:
     resolved = _resolve(code)
+    release_tag = f"source-v{source_matrix_version(resolved)}"
     return (
         f"https://github.com/{GITHUB_REPO}/releases/download/"
-        f"{RELEASE_TAG}/{resolved}_per_sample_tpm.parquet"
+        f"{release_tag}/{resolved}_per_sample_tpm.parquet"
     )
 
 

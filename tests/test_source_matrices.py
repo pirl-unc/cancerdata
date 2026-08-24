@@ -199,9 +199,19 @@ def test_unknown_cohort_raises():
 def test_release_url_is_per_cohort():
     url = sm.release_url("LUAD")
     assert url.endswith("LUAD_per_sample_tpm.parquet")
-    # source matrices are pinned to SOURCE_MATRIX_VERSION (raw inputs), independent of the
-    # derived-bundle DATA_VERSION, so a canonical-space bundle bump can't repoint them.
-    assert f"source-v{sm.SOURCE_MATRIX_VERSION}" in url
+    assert f"source-v{sm.source_matrix_version('LUAD')}" in url
+
+
+def test_cohort_source_versions_avoid_republishing_unchanged_matrices(monkeypatch, tmp_path):
+    monkeypatch.setenv(sm.CACHE_DIR_ENV_VAR, str(tmp_path))
+
+    assert sm.source_matrix_version("LUAD") == "5.22.10"
+    assert sm.source_matrix_version("CRANIO") == sm.SOURCE_MATRIX_VERSION
+    assert sm.source_matrix_version("DIPG") == sm.SOURCE_MATRIX_VERSION
+    assert "/source-v5.22.10/" in sm.release_url("LUAD")
+    assert f"/source-v{sm.SOURCE_MATRIX_VERSION}/" in sm.release_url("DIPG")
+    assert sm.local_path("LUAD").parent.name == "v5.22.10"
+    assert sm.local_path("DIPG").parent.name == f"v{sm.SOURCE_MATRIX_VERSION}"
 
 
 def test_cache_and_fetch(monkeypatch, tmp_path):

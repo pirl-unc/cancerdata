@@ -134,8 +134,6 @@ def stage(
     if limit:
         rows = rows[:limit]
 
-    cache_out = sm.cache_dir()
-    cache_out.mkdir(parents=True, exist_ok=True)
     if release_dir is not None:
         release_dir.mkdir(parents=True, exist_ok=True)
 
@@ -174,12 +172,14 @@ def stage(
         raise FileNotFoundError(f"source matrices are missing for {len(missing)} cohort(s)")
 
     for code, chosen in selections:
-        shutil.copyfile(chosen, cache_out / f"{code}.parquet")
+        cache_path = sm.local_path(code)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(chosen, cache_path)
         if release_dir is not None:
             shutil.copyfile(chosen, release_dir / f"{code}_per_sample_tpm.parquet")
         print(f"  {code}: <- {chosen.parent.parent.name}/{chosen.name}", flush=True)
 
-    print(f"\nstaged {len(selections)}/{len(rows)} cohorts -> {cache_out}", flush=True)
+    print(f"\nstaged {len(selections)}/{len(rows)} cohorts into versioned caches", flush=True)
     if release_dir is not None:
         print(f"release assets -> {release_dir}", flush=True)
 

@@ -223,6 +223,12 @@ independent pediatric primary tumors from its stranded RSEM-TPM matrix, includin
 20 harmonized adamantinomatous tumors and nine tumors not molecularly classified.
 The cohort contains no papillary tumors, so oncoref does not infer CTNNB1, BRAF,
 or papillary status and does not treat it as independently classification-ready.
+DIPG adds 32 independent initial solid-tumor donors from the OpenPBTA poly-A and
+stranded RSEM-TPM matrices. Every included profile has both integrated and
+harmonized H3 K28-mutant source diagnoses—the OpenPBTA label corresponding to the
+canonical H3 K27-altered entity. Unannotated, H3-wild-type, IDH-mutant,
+non-initial, and duplicate-donor profiles remain explicit exclusions; the mixed
+library preparation keeps the cohort reference-only.
 The table intentionally does not
 synthesize marker-program or discriminator fallbacks; those remain consumer-layer
 choices in packages such as trufflepig.
@@ -620,10 +626,11 @@ unsuitable for absolute comparison with bulk RNA-seq TPM.
   checksum-pinned Zenodo 14917813 HCL T0 donor pseudobulks, checksum-pinned
   GSE141460 EPN diagnosis-stage malignant-cell mean-TPM pseudobulks, checksum-pinned
   GSE125285 BCC/cSCC tumor routing, and checksum-pinned GSE139682 GBC tumor
-  routing, plus checksum-pinned OpenPBTA release-v23 primary CRANIO routing. The
-  OpenPBTA adapter exposes `openpbta_cranio_matrix(...)` as the public data-frame
-  transform and `build_openpbta_cranio_source_matrices(...)` as the public
-  canonical builder; only the upstream RDS deserializer remains private. It
+  routing, plus checksum-pinned OpenPBTA release-v23 primary CRANIO and
+  H3 K27-altered DIPG routing. The OpenPBTA adapter exposes
+  `openpbta_cranio_matrix(...)` and `openpbta_dipg_matrix(...)` as public
+  data-frame transforms, with corresponding public canonical builders; only the
+  upstream RDS deserializer remains private. The CRANIO route
   retains three recurrent and four progressive craniopharyngiomas as explicit
   exclusions and routes 29 independent primary donors. The GSE125285 adapter
   retains all matched normals as exclusions and labels its inverse-transformed
@@ -674,6 +681,10 @@ unsuitable for absolute comparison with bulk RNA-seq TPM.
   `source_expression_nonzero_samples`, and
   `source_expression_sample_with_max`.
 - `oncoref.source_matrices` — raw per-cohort source-matrix cache/fetch helpers.
+  `source_matrix_version(code)` reports the exact release pinned for that cohort;
+  `release_url(code)` and `local_path(code)` use the same per-cohort pin. This
+  lets a corrected or newly added matrix move to a new release without copying
+  every unchanged source asset or invalidating its existing cache.
   `source_matrix_regeneration_audit()` matches each selected matrix by the exact
   `(cancer_code, source_cohort)` physical-source pair. A pair must have exactly
   one registry owner declaring either an existing repository-relative builder

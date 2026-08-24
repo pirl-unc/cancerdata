@@ -2240,6 +2240,200 @@ def test_build_openpbta_cranio_source_matrices_writes_direct_reference(
     assert int(manifest["included"].sum()) == 29
 
 
+def _openpbta_dipg_fixture() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    h3_diagnosis = "Diffuse midline glioma, H3 K28-mutant"
+    pathology = "Brainstem glioma- Diffuse intrinsic pontine glioma"
+    rows = []
+    selected_by_library = {"poly-A": [], "stranded": []}
+
+    def add_row(
+        index,
+        *,
+        donor,
+        library,
+        descriptor="Initial CNS Tumor",
+        integrated=h3_diagnosis,
+        harmonized=h3_diagnosis,
+    ):
+        biospecimen = f"BS_DIPG_{index:02d}"
+        rows.append(
+            {
+                "Kids_First_Biospecimen_ID": biospecimen,
+                "Kids_First_Participant_ID": f"PT_DIPG_{donor:02d}",
+                "sample_id": f"A{index:05d}",
+                "experimental_strategy": "RNA-Seq",
+                "sample_type": "Tumor",
+                "composition": "Solid Tissue",
+                "tumor_descriptor": descriptor,
+                "primary_site": "Pons/Brainstem",
+                "age_at_diagnosis_days": str(1000 + index),
+                "pathology_diagnosis": pathology,
+                "RNA_library": library,
+                "cohort": "PNOC" if library == "poly-A" else "CBTN",
+                "molecular_subtype": (
+                    "DMG, H3 K28, TP53 loss" if integrated == h3_diagnosis else "HGG"
+                ),
+                "integrated_diagnosis": integrated,
+                "harmonized_diagnosis": harmonized,
+                "short_histology": "HGAT",
+            }
+        )
+        return biospecimen
+
+    # 32 selected donors: 27 poly-A and five stranded.
+    for index in range(27):
+        selected_by_library["poly-A"].append(add_row(index, donor=index, library="poly-A"))
+    for index in range(27, 32):
+        selected_by_library["stranded"].append(add_row(index, donor=index, library="stranded"))
+
+    # Two later stranded libraries duplicate selected poly-A donors.
+    add_row(32, donor=0, library="stranded")
+    add_row(33, donor=1, library="stranded")
+
+    # Four H3-altered non-initial tumors.
+    add_row(34, donor=34, library="poly-A", descriptor="Progressive")
+    add_row(35, donor=35, library="poly-A", descriptor="Progressive")
+    add_row(36, donor=36, library="stranded", descriptor="Progressive")
+    add_row(37, donor=37, library="stranded", descriptor="Progressive")
+
+    # Thirteen pathology-matched tumors without the canonical molecular diagnosis.
+    non_h3 = [
+        (38, "poly-A", "High-grade glioma/astrocytoma, H3 wildtype"),
+        (39, "poly-A", "High-grade glioma/astrocytoma, H3 wildtype"),
+        (40, "poly-A", "High-grade glioma/astrocytoma, IDH-mutant"),
+        *[(index, "stranded", "") for index in range(41, 51)],
+    ]
+    for index, library, diagnosis in non_h3:
+        add_row(
+            index,
+            donor=index,
+            library=library,
+            descriptor="Progressive" if index >= 44 else "Initial CNS Tumor",
+            integrated=diagnosis,
+            harmonized=diagnosis or pathology,
+        )
+
+    gene_ids = ["ENSG00000141510.18_TP53", "ENSG00000146648.22_EGFR"]
+    expressions = {}
+    for library, samples in selected_by_library.items():
+        expressions[library] = pd.DataFrame(
+            {
+                "gene_id": gene_ids,
+                **{sample: [20.0 + index, 30.0 + index] for index, sample in enumerate(samples)},
+            }
+        )
+    return expressions["poly-A"], expressions["stranded"], pd.DataFrame(rows)
+
+
+def test_openpbta_dipg_matrix_requires_direct_h3_evidence_and_deduplicates_libraries():
+    polya, stranded, histologies = _openpbta_dipg_fixture()
+
+    matrix, routed, manifest = expression_source_adapters.openpbta_dipg_matrix(
+        polya, stranded, histologies
+    )
+
+    assert len(routed["DIPG"]) == 32
+    assert matrix.columns.tolist() == ["source_gene_id", "source_symbol", *routed["DIPG"]]
+    assert len(manifest) == 51
+    assert int(manifest["included"].sum()) == 32
+    assert manifest.loc[~manifest["included"], "exclusion_reason"].value_counts().to_dict() == {
+        "not_h3_k27_altered": 13,
+        "non_initial_cns_tumor": 4,
+        "duplicate_donor_library": 2,
+    }
+    selected = manifest[manifest["included"]]
+    assert selected["donor_id"].nunique() == 32
+    assert selected["RNA_library"].value_counts().to_dict() == {
+        "poly-A": 27,
+        "stranded": 5,
+    }
+    assert set(selected["integrated_diagnosis"]) == {"Diffuse midline glioma, H3 K28-mutant"}
+    assert set(selected["primary_diagnosis"]) == {"Diffuse midline glioma, H3 K28-mutant"}
+
+
+def test_openpbta_dipg_matrix_rejects_different_library_gene_rows():
+    polya, stranded, histologies = _openpbta_dipg_fixture()
+    stranded = stranded.copy()
+    stranded.loc[0, "gene_id"] = "ENSG00000157764.15_BRAF"
+
+    with pytest.raises(ValueError, match="gene rows differ"):
+        expression_source_adapters.openpbta_dipg_matrix(polya, stranded, histologies)
+
+
+def test_build_openpbta_dipg_source_matrices_writes_direct_reference(
+    monkeypatch,
+    tmp_path,
+):
+    polya, stranded, histologies = _openpbta_dipg_fixture()
+    polya_path = tmp_path / "pbta-gene-expression-rsem-tpm.polya.rds"
+    stranded_path = tmp_path / "pbta-gene-expression-rsem-tpm.stranded.rds"
+    histologies_path = tmp_path / "pbta-histologies.tsv"
+    polya_path.write_bytes(b"synthetic OpenPBTA poly-A RDS fixture")
+    stranded_path.write_bytes(b"synthetic OpenPBTA stranded RDS fixture")
+    histologies.to_csv(histologies_path, sep="\t", index=False)
+    entry = {
+        "id": "openpbta-v23-dipg-h3k27",
+        "source_cohort": "OPENPBTA_V23_DIPG_H3K27",
+        "source_project": "OpenPBTA",
+        "citation": "synthetic OpenPBTA DIPG fixture",
+        "polya_expression_file_md5": hashlib.md5(polya_path.read_bytes()).hexdigest(),
+        "polya_expression_file_bytes": polya_path.stat().st_size,
+        "stranded_expression_file_md5": hashlib.md5(stranded_path.read_bytes()).hexdigest(),
+        "stranded_expression_file_bytes": stranded_path.stat().st_size,
+        "histologies_file_md5": hashlib.md5(histologies_path.read_bytes()).hexdigest(),
+        "histologies_file_bytes": histologies_path.stat().st_size,
+    }
+    monkeypatch.setattr(expression_source_adapters, "_registry_entry", lambda _id: entry)
+
+    def read_fixture(path, sample_ids):
+        expected = polya if path == polya_path else stranded
+        assert set(sample_ids) == set(expected.columns[1:])
+        return expected
+
+    monkeypatch.setattr(expression_source_adapters, "_read_openpbta_rds", read_fixture)
+
+    result = expression_source_adapters.build_openpbta_dipg_source_matrices(
+        cache_dir=tmp_path / "cache",
+        output_dir=tmp_path / "derived",
+        polya_expression_path=polya_path,
+        stranded_expression_path=stranded_path,
+        histologies_path=histologies_path,
+    )
+
+    assert len(expression_builders.sample_columns(result.matrices["DIPG"])) == 32
+    assert result.matrix_paths["DIPG"].exists()
+    assert set(result.summary_rows["n_samples"]) == {32}
+    assert set(result.sample_qc["source_scale_class"]) == {"linear_rnaseq_tpm"}
+    assert result.sample_qc["linear_tpm_comparable"].all()
+    assert not result.sample_qc["tpm_proxy"].any()
+    manifest = pd.read_csv(result.sidecar_paths["sample_manifest"], keep_default_na=False)
+    assert len(manifest) == 51
+    assert int(manifest["included"].sum()) == 32
+
+
+def test_openpbta_dipg_molecular_provenance_uses_only_direct_h3_evidence():
+    script = _load_script("import_openpbta_dipg_molecular_provenance")
+    polya, stranded, histologies = _openpbta_dipg_fixture()
+    _, _, manifest = expression_source_adapters.openpbta_dipg_matrix(polya, stranded, histologies)
+
+    provenance = script.molecular_provenance(manifest)
+
+    assert len(provenance) == 51
+    assert provenance["expression_available"].sum() == 32
+    assert provenance["orthogonal_confirmed"].sum() == 38
+    assert (
+        provenance.loc[provenance["expression_available"], "molecular_status"]
+        .eq("h3_k27_altered")
+        .all()
+    )
+    assert provenance["molecular_status"].value_counts().to_dict() == {
+        "h3_k27_altered": 38,
+        "not_molecularly_classified": 10,
+        "h3_wild_type": 2,
+        "idh_mutant_not_h3_k27_altered": 1,
+    }
+
+
 def test_geo_soft_parser_rejects_duplicate_sample_titles(tmp_path):
     soft_path = tmp_path / "duplicate.soft.gz"
     with gzip.open(soft_path, "wt") as handle:
@@ -2445,7 +2639,7 @@ def test_stage_source_matrices_can_reuse_a_prior_version_cache(tmp_path, monkeyp
             }
         ),
     )
-    monkeypatch.setattr(script.sm, "cache_dir", lambda: active_cache)
+    monkeypatch.setattr(script.sm, "local_path", lambda code: active_cache / f"{code}.parquet")
 
     script.stage(
         builder_cache,
@@ -2483,7 +2677,7 @@ def test_stage_source_matrices_does_not_misroute_partial_shared_source(tmp_path,
             }
         ),
     )
-    monkeypatch.setattr(script.sm, "cache_dir", lambda: active_cache)
+    monkeypatch.setattr(script.sm, "local_path", lambda code: active_cache / f"{code}.parquet")
 
     script.stage(
         builder_cache,
@@ -2514,7 +2708,7 @@ def test_stage_source_matrices_rejects_missing_or_wrong_width_assets(tmp_path, m
     pd.DataFrame({"Ensembl_Gene_ID": ["E1"], "Symbol": ["G1"], "only_sample": [1.0]}).to_parquet(
         source_dir / "X_per_sample_tpm.parquet", index=False
     )
-    monkeypatch.setattr(script.sm, "cache_dir", lambda: active_cache)
+    monkeypatch.setattr(script.sm, "local_path", lambda code: active_cache / f"{code}.parquet")
 
     monkeypatch.setattr(
         script.sm,

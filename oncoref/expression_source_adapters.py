@@ -175,12 +175,16 @@ GSE139682_SOFT_BYTES = 2_865
 OPENPBTA_V23_BASE_URL = (
     "https://s3.amazonaws.com/d3b-openaccess-us-east-1-prd-pbta/data/release-v23-20230115"
 )
-OPENPBTA_V23_CRANIO_EXPRESSION_NAME = "pbta-gene-expression-rsem-tpm.stranded.rds"
-OPENPBTA_V23_CRANIO_EXPRESSION_URL = (
-    f"{OPENPBTA_V23_BASE_URL}/{OPENPBTA_V23_CRANIO_EXPRESSION_NAME}"
+OPENPBTA_V23_POLYA_EXPRESSION_NAME = "pbta-gene-expression-rsem-tpm.polya.rds"
+OPENPBTA_V23_POLYA_EXPRESSION_URL = f"{OPENPBTA_V23_BASE_URL}/{OPENPBTA_V23_POLYA_EXPRESSION_NAME}"
+OPENPBTA_V23_POLYA_EXPRESSION_MD5 = "f207a129a5442f4ed3c3b63a46ec9fde"
+OPENPBTA_V23_POLYA_EXPRESSION_BYTES = 5_572_947
+OPENPBTA_V23_STRANDED_EXPRESSION_NAME = "pbta-gene-expression-rsem-tpm.stranded.rds"
+OPENPBTA_V23_STRANDED_EXPRESSION_URL = (
+    f"{OPENPBTA_V23_BASE_URL}/{OPENPBTA_V23_STRANDED_EXPRESSION_NAME}"
 )
-OPENPBTA_V23_CRANIO_EXPRESSION_MD5 = "1f3c8bfa55ba38db2edde1a206f90bf1"
-OPENPBTA_V23_CRANIO_EXPRESSION_BYTES = 77_863_728
+OPENPBTA_V23_STRANDED_EXPRESSION_MD5 = "1f3c8bfa55ba38db2edde1a206f90bf1"
+OPENPBTA_V23_STRANDED_EXPRESSION_BYTES = 77_863_728
 OPENPBTA_V23_HISTOLOGIES_NAME = "pbta-histologies.tsv"
 OPENPBTA_V23_HISTOLOGIES_URL = f"{OPENPBTA_V23_BASE_URL}/{OPENPBTA_V23_HISTOLOGIES_NAME}"
 OPENPBTA_V23_HISTOLOGIES_MD5 = "954c536c308f30c1214f0aa632908c96"
@@ -188,6 +192,10 @@ OPENPBTA_V23_HISTOLOGIES_BYTES = 1_222_838
 OPENPBTA_V23_CRANIO_COHORT = "OPENPBTA_V23_CBTN_CRANIO"
 OPENPBTA_V23_CRANIO_PIPELINE = (
     "openpbta_v23_primary_cranio_stranded_rsem_tpm_ensembl112_clean_tpm_16_9_75"
+)
+OPENPBTA_V23_DIPG_COHORT = "OPENPBTA_V23_DIPG_H3K27"
+OPENPBTA_V23_DIPG_PIPELINE = (
+    "openpbta_v23_primary_dipg_h3k27_polya_stranded_rsem_tpm_ensembl112_clean_tpm_16_9_75"
 )
 
 
@@ -2154,14 +2162,7 @@ def openpbta_cranio_matrix(
             f"{missing_expression}"
         )
 
-    genes = (
-        expression["gene_id"]
-        .astype(str)
-        .str.extract(r"^(?P<source_gene_id>ENSG\d+\.\d+)_(?P<source_symbol>.+)$")
-    )
-    if genes.isna().any(axis=None):
-        bad = expression.loc[genes.isna().any(axis=1), "gene_id"].astype(str).head(5).tolist()
-        raise ValueError(f"OpenPBTA v23 expression has malformed gene IDs: {bad}")
+    genes = _openpbta_gene_table(expression, label="OpenPBTA v23 stranded RSEM TPM")
     values = _validate_nonnegative_numeric_values(
         expression[sample_ids],
         label="OpenPBTA v23 CRANIO RSEM TPM matrix",
@@ -2182,16 +2183,16 @@ def openpbta_cranio_matrix(
                 "case_id": str(row.Kids_First_Participant_ID),
                 "sample_id": biospecimen,
                 "source_file_id": biospecimen,
-                "source_file_name": OPENPBTA_V23_CRANIO_EXPRESSION_NAME,
+                "source_file_name": OPENPBTA_V23_STRANDED_EXPRESSION_NAME,
                 "source_project_id": "release-v23-20230115",
                 "sample_type": str(row.tumor_descriptor),
                 "primary_diagnosis": str(row.harmonized_diagnosis),
-                "md5sum": OPENPBTA_V23_CRANIO_EXPRESSION_MD5,
-                "file_size": OPENPBTA_V23_CRANIO_EXPRESSION_BYTES,
+                "md5sum": OPENPBTA_V23_STRANDED_EXPRESSION_MD5,
+                "file_size": OPENPBTA_V23_STRANDED_EXPRESSION_BYTES,
                 "workflow_type": "OpenPBTA RSEM gene-level TPM",
                 "raw_unit": "RSEM TPM",
                 "processing_pipeline": OPENPBTA_V23_CRANIO_PIPELINE,
-                "source_url": OPENPBTA_V23_CRANIO_EXPRESSION_URL,
+                "source_url": OPENPBTA_V23_STRANDED_EXPRESSION_URL,
                 "lineage_evidence_source": (
                     f"OpenPBTA v23 short_histology={row.short_histology}; "
                     f"harmonized_diagnosis={row.harmonized_diagnosis}; "
@@ -2266,8 +2267,8 @@ def build_openpbta_cranio_source_matrices(
         Path(expression_path)
         if expression_path is not None
         else _download(
-            str(entry.get("expression_file_url") or OPENPBTA_V23_CRANIO_EXPRESSION_URL),
-            cache / str(entry.get("expression_file_name") or OPENPBTA_V23_CRANIO_EXPRESSION_NAME),
+            str(entry.get("expression_file_url") or OPENPBTA_V23_STRANDED_EXPRESSION_URL),
+            cache / str(entry.get("expression_file_name") or OPENPBTA_V23_STRANDED_EXPRESSION_NAME),
             force=force_download,
         )
     )
@@ -2284,9 +2285,9 @@ def build_openpbta_cranio_source_matrices(
         expression_file,
         label="OpenPBTA v23 stranded RSEM TPM",
         expected_bytes=int(
-            entry.get("expression_file_bytes") or OPENPBTA_V23_CRANIO_EXPRESSION_BYTES
+            entry.get("expression_file_bytes") or OPENPBTA_V23_STRANDED_EXPRESSION_BYTES
         ),
-        expected_md5=str(entry.get("expression_file_md5") or OPENPBTA_V23_CRANIO_EXPRESSION_MD5),
+        expected_md5=str(entry.get("expression_file_md5") or OPENPBTA_V23_STRANDED_EXPRESSION_MD5),
     )
     _verify_public_source_file(
         histologies_file,
@@ -2354,6 +2355,357 @@ def build_openpbta_cranio_source_matrices(
         parse_diagnostics=diagnostics,
     )
     manifest_path = out_dir / "openpbta_v23_cranio_sample_manifest.csv"
+    manifest_temp = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
+    manifest.to_csv(manifest_temp, index=False)
+    manifest_temp.replace(manifest_path)
+    return SourceMatrixBuildResult(
+        source=result.source,
+        matrices=result.matrices,
+        matrix_paths=result.matrix_paths,
+        summary_rows=result.summary_rows,
+        mapping_audit=result.mapping_audit,
+        parse_diagnostics=result.parse_diagnostics,
+        sample_qc=result.sample_qc,
+        sidecar_paths={**result.sidecar_paths, "sample_manifest": manifest_path},
+    )
+
+
+_OPENPBTA_DIPG_PATHOLOGY = "Brainstem glioma- Diffuse intrinsic pontine glioma"
+_OPENPBTA_H3_K28_DIAGNOSIS = "Diffuse midline glioma, H3 K28-mutant"
+_OPENPBTA_LIBRARY_PRIORITY = {"poly-A": 0, "stranded": 1}
+_OPENPBTA_EXPRESSION_FILE_METADATA = {
+    "poly-A": {
+        "name": OPENPBTA_V23_POLYA_EXPRESSION_NAME,
+        "url": OPENPBTA_V23_POLYA_EXPRESSION_URL,
+        "md5": OPENPBTA_V23_POLYA_EXPRESSION_MD5,
+        "bytes": OPENPBTA_V23_POLYA_EXPRESSION_BYTES,
+    },
+    "stranded": {
+        "name": OPENPBTA_V23_STRANDED_EXPRESSION_NAME,
+        "url": OPENPBTA_V23_STRANDED_EXPRESSION_URL,
+        "md5": OPENPBTA_V23_STRANDED_EXPRESSION_MD5,
+        "bytes": OPENPBTA_V23_STRANDED_EXPRESSION_BYTES,
+    },
+}
+
+
+def _openpbta_dipg_selection(
+    histologies: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Return the pinned DIPG audit universe and one eligible row per donor."""
+    required = {
+        "Kids_First_Biospecimen_ID",
+        "Kids_First_Participant_ID",
+        "sample_id",
+        "experimental_strategy",
+        "sample_type",
+        "composition",
+        "tumor_descriptor",
+        "primary_site",
+        "age_at_diagnosis_days",
+        "pathology_diagnosis",
+        "RNA_library",
+        "cohort",
+        "molecular_subtype",
+        "integrated_diagnosis",
+        "harmonized_diagnosis",
+        "short_histology",
+    }
+    missing = sorted(required - set(histologies.columns))
+    if missing:
+        raise ValueError(f"OpenPBTA histologies table lacks columns: {missing}")
+
+    source_rows = histologies[
+        histologies["experimental_strategy"].eq("RNA-Seq")
+        & histologies["pathology_diagnosis"].eq(_OPENPBTA_DIPG_PATHOLOGY)
+    ].copy()
+    if len(source_rows) != 51:
+        raise ValueError(f"OpenPBTA v23 DIPG source routing changed: n={len(source_rows)}")
+    if source_rows["Kids_First_Biospecimen_ID"].duplicated().any():
+        raise ValueError("OpenPBTA v23 DIPG metadata contains duplicate biospecimens")
+    if source_rows["RNA_library"].value_counts().to_dict() != {
+        "poly-A": 32,
+        "stranded": 19,
+    }:
+        raise ValueError("OpenPBTA v23 DIPG RNA-library composition changed")
+    if set(source_rows["cohort"]) != {"CBTN", "PNOC"}:
+        raise ValueError("OpenPBTA v23 DIPG source cohorts changed")
+
+    h3_altered = source_rows["integrated_diagnosis"].eq(_OPENPBTA_H3_K28_DIAGNOSIS) & source_rows[
+        "harmonized_diagnosis"
+    ].eq(_OPENPBTA_H3_K28_DIAGNOSIS)
+    eligible = source_rows[
+        source_rows["composition"].eq("Solid Tissue")
+        & source_rows["tumor_descriptor"].eq("Initial CNS Tumor")
+        & h3_altered
+    ].copy()
+    if len(eligible) != 34:
+        raise ValueError(f"OpenPBTA v23 H3-altered initial DIPG routing changed: n={len(eligible)}")
+    eligible["_library_priority"] = eligible["RNA_library"].map(_OPENPBTA_LIBRARY_PRIORITY)
+    if eligible["_library_priority"].isna().any():
+        raise ValueError("OpenPBTA v23 DIPG includes an unsupported RNA library")
+    selected = (
+        eligible.sort_values(
+            [
+                "Kids_First_Participant_ID",
+                "_library_priority",
+                "Kids_First_Biospecimen_ID",
+            ]
+        )
+        .drop_duplicates("Kids_First_Participant_ID", keep="first")
+        .drop(columns="_library_priority")
+    )
+    if len(selected) != 32 or selected["Kids_First_Participant_ID"].nunique() != 32:
+        raise ValueError("OpenPBTA v23 DIPG donor de-duplication changed")
+    if selected["RNA_library"].value_counts().to_dict() != {
+        "poly-A": 27,
+        "stranded": 5,
+    }:
+        raise ValueError("OpenPBTA v23 selected DIPG RNA-library composition changed")
+    return source_rows, selected
+
+
+def _openpbta_gene_table(expression: pd.DataFrame, *, label: str) -> pd.DataFrame:
+    """Parse OpenPBTA's combined Ensembl-ID and symbol row labels."""
+    if "gene_id" not in expression.columns:
+        raise ValueError(f"{label} lacks gene_id")
+    genes = (
+        expression["gene_id"]
+        .astype(str)
+        .str.extract(r"^(?P<source_gene_id>ENSG\d+\.\d+)_(?P<source_symbol>.+)$")
+    )
+    if genes.isna().any(axis=None):
+        bad = expression.loc[genes.isna().any(axis=1), "gene_id"].astype(str).head(5).tolist()
+        raise ValueError(f"{label} has malformed gene IDs: {bad}")
+    return genes
+
+
+def openpbta_dipg_matrix(
+    polya_expression: pd.DataFrame,
+    stranded_expression: pd.DataFrame,
+    histologies: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict[str, list[str]], pd.DataFrame]:
+    """Select 32 independent, diagnosis-stage H3-altered DIPG tumors.
+
+    The source audit universe is every OpenPBTA v23 RNA-sequenced specimen whose
+    pathology diagnosis is diffuse intrinsic pontine glioma. Inclusion requires
+    the exact OpenPBTA integrated and harmonized H3 K28-mutant diagnosis, solid
+    initial-tumor material, and one library per donor. When both library types
+    exist for the same donor, the poly-A profile is retained by the pinned
+    selection priority and the stranded replicate remains an explicit exclusion.
+    """
+    source_rows, selected = _openpbta_dipg_selection(histologies)
+    expressions = {
+        "poly-A": polya_expression,
+        "stranded": stranded_expression,
+    }
+    gene_tables = {
+        library: _openpbta_gene_table(frame, label=f"OpenPBTA v23 {library} RSEM TPM")
+        for library, frame in expressions.items()
+    }
+    if not gene_tables["poly-A"].equals(gene_tables["stranded"]):
+        raise ValueError("OpenPBTA v23 poly-A and stranded RSEM TPM gene rows differ")
+
+    selected_ids = selected["Kids_First_Biospecimen_ID"].astype(str).tolist()
+    value_series = []
+    for row in selected.itertuples(index=False):
+        sample_id = str(row.Kids_First_Biospecimen_ID)
+        library = str(row.RNA_library)
+        frame = expressions[library]
+        if sample_id not in frame.columns:
+            raise ValueError(
+                f"OpenPBTA v23 {library} expression lacks selected DIPG sample {sample_id}"
+            )
+        value_series.append(frame[sample_id].rename(sample_id))
+    values = _validate_nonnegative_numeric_values(
+        pd.concat(value_series, axis=1),
+        label="OpenPBTA v23 DIPG RSEM TPM matrices",
+    )
+    matrix = pd.concat(
+        [gene_tables["poly-A"].reset_index(drop=True), values.reset_index(drop=True)],
+        axis=1,
+    )
+
+    selected_set = set(selected_ids)
+    manifest_rows = []
+    for row in source_rows.itertuples(index=False):
+        biospecimen = str(row.Kids_First_Biospecimen_ID)
+        library = str(row.RNA_library)
+        file_metadata = _OPENPBTA_EXPRESSION_FILE_METADATA[library]
+        has_h3_diagnosis = (
+            str(row.integrated_diagnosis) == _OPENPBTA_H3_K28_DIAGNOSIS
+            and str(row.harmonized_diagnosis) == _OPENPBTA_H3_K28_DIAGNOSIS
+        )
+        if not has_h3_diagnosis:
+            exclusion_reason = "not_h3_k27_altered"
+        elif str(row.composition) != "Solid Tissue":
+            exclusion_reason = "non_solid_tumor_material"
+        elif str(row.tumor_descriptor) != "Initial CNS Tumor":
+            exclusion_reason = "non_initial_cns_tumor"
+        elif biospecimen not in selected_set:
+            exclusion_reason = "duplicate_donor_library"
+        else:
+            exclusion_reason = ""
+        is_included = not exclusion_reason
+        age_days = str(row.age_at_diagnosis_days).strip()
+        manifest_rows.append(
+            {
+                "cancer_code": "DIPG",
+                "source_cohort": OPENPBTA_V23_DIPG_COHORT,
+                "source_project": "OpenPBTA",
+                "case_id": str(row.Kids_First_Participant_ID),
+                "sample_id": biospecimen,
+                "source_file_id": biospecimen,
+                "source_file_name": file_metadata["name"],
+                "source_project_id": "release-v23-20230115",
+                "sample_type": str(row.tumor_descriptor),
+                "primary_diagnosis": str(row.harmonized_diagnosis),
+                "md5sum": file_metadata["md5"],
+                "file_size": file_metadata["bytes"],
+                "workflow_type": f"OpenPBTA {library} RSEM gene-level TPM",
+                "raw_unit": "RSEM TPM",
+                "processing_pipeline": OPENPBTA_V23_DIPG_PIPELINE,
+                "source_url": file_metadata["url"],
+                "lineage_evidence_source": (
+                    f"OpenPBTA v23 pathology_diagnosis={row.pathology_diagnosis}; "
+                    f"integrated_diagnosis={row.integrated_diagnosis}; "
+                    f"harmonized_diagnosis={row.harmonized_diagnosis}; "
+                    f"molecular_subtype={row.molecular_subtype}; "
+                    f"RNA_library={library}; tumor_descriptor={row.tumor_descriptor}"
+                ),
+                "included": is_included,
+                "exclusion_reason": exclusion_reason,
+                "lineage_label": "DIPG" if is_included else "",
+                "source_matrix_column": biospecimen,
+                "source_record": str(row.sample_id),
+                "donor_id": str(row.Kids_First_Participant_ID),
+                "anatomic_site": str(row.primary_site),
+                "age_at_diagnosis": f"{age_days} days" if age_days else "",
+                "molecular_subtype": str(row.molecular_subtype),
+                "integrated_diagnosis": str(row.integrated_diagnosis),
+                "pathology_diagnosis": str(row.pathology_diagnosis),
+                "RNA_library": library,
+            }
+        )
+    return matrix, {"DIPG": selected_ids}, pd.DataFrame(manifest_rows)
+
+
+def build_openpbta_dipg_source_matrices(
+    *,
+    cache_dir: str | Path,
+    output_dir: str | Path | None = None,
+    polya_expression_path: str | Path | None = None,
+    stranded_expression_path: str | Path | None = None,
+    histologies_path: str | Path | None = None,
+    force_download: bool = False,
+    high_expression_threshold: float = 1.0,
+) -> SourceMatrixBuildResult:
+    """Build the 32-donor direct H3-altered DIPG reference from OpenPBTA v23."""
+    entry = _registry_entry("openpbta-v23-dipg-h3k27")
+    cache = Path(cache_dir)
+    provided_paths = {
+        "poly-A": polya_expression_path,
+        "stranded": stranded_expression_path,
+    }
+    registry_prefixes = {"poly-A": "polya", "stranded": "stranded"}
+    expression_files = {}
+    for library, metadata in _OPENPBTA_EXPRESSION_FILE_METADATA.items():
+        prefix = registry_prefixes[library]
+        expression_files[library] = (
+            Path(provided_paths[library])
+            if provided_paths[library] is not None
+            else _download(
+                str(entry.get(f"{prefix}_expression_file_url") or metadata["url"]),
+                cache / str(entry.get(f"{prefix}_expression_file_name") or metadata["name"]),
+                force=force_download,
+            )
+        )
+        _verify_public_source_file(
+            expression_files[library],
+            label=f"OpenPBTA v23 {library} RSEM TPM",
+            expected_bytes=int(entry.get(f"{prefix}_expression_file_bytes") or metadata["bytes"]),
+            expected_md5=str(entry.get(f"{prefix}_expression_file_md5") or metadata["md5"]),
+        )
+
+    histologies_file = (
+        Path(histologies_path)
+        if histologies_path is not None
+        else _download(
+            str(entry.get("histologies_file_url") or OPENPBTA_V23_HISTOLOGIES_URL),
+            cache / str(entry.get("histologies_file_name") or OPENPBTA_V23_HISTOLOGIES_NAME),
+            force=force_download,
+        )
+    )
+    _verify_public_source_file(
+        histologies_file,
+        label="OpenPBTA v23 histologies",
+        expected_bytes=int(entry.get("histologies_file_bytes") or OPENPBTA_V23_HISTOLOGIES_BYTES),
+        expected_md5=str(entry.get("histologies_file_md5") or OPENPBTA_V23_HISTOLOGIES_MD5),
+    )
+
+    histologies = pd.read_csv(histologies_file, sep="\t", dtype=str, keep_default_na=False)
+    _, selected = _openpbta_dipg_selection(histologies)
+    expressions = {}
+    for library, path in expression_files.items():
+        sample_ids = selected.loc[
+            selected["RNA_library"].eq(library), "Kids_First_Biospecimen_ID"
+        ].astype(str)
+        expressions[library] = _read_openpbta_rds(path, sample_ids)
+    raw, routed, manifest = openpbta_dipg_matrix(
+        expressions["poly-A"], expressions["stranded"], histologies
+    )
+
+    value_cols = [
+        column for column in raw.columns if column not in {"source_gene_id", "source_symbol"}
+    ]
+    _, diagnostics = coerce_source_expression_values(
+        raw,
+        value_cols=value_cols,
+        row_id_col="source_gene_id",
+        symbol_col="source_symbol",
+    )
+    canonical, audit = canonicalize_source_gene_matrix(
+        raw,
+        row_id_col="source_gene_id",
+        symbol_col="source_symbol",
+        value_cols=value_cols,
+        high_expression_threshold=high_expression_threshold,
+    )
+    source = GeoMatrixSource(
+        cancer_code="DIPG",
+        source_cohort=str(entry.get("source_cohort") or OPENPBTA_V23_DIPG_COHORT),
+        source_project=str(entry.get("source_project") or "OpenPBTA"),
+        citation=str(entry.get("citation") or ""),
+        file_name=";".join(path.name for path in expression_files.values()),
+        unit="TPM",
+        expected_source_samples=51,
+        expected_samples_by_code={"DIPG": 32},
+        source_scale_class="linear_rnaseq_tpm",
+        linear_tpm_comparable=True,
+        tpm_proxy=False,
+        native_unit="RSEM TPM",
+        notes=(
+            "OpenPBTA release v23 direct DIPG reference: select one initial solid-tumor "
+            "profile for each of 32 donors whose integrated and harmonized diagnoses are "
+            "H3 K28-mutant (the source label for the canonical H3 K27-altered entity). "
+            "Exclude every unannotated, H3-wild-type, IDH-mutant, non-initial, and "
+            "duplicate-library profile. The mixed poly-A/stranded cohort remains "
+            "reference-only rather than independently classification-ready."
+        ),
+        processing_pipeline=OPENPBTA_V23_DIPG_PIPELINE,
+        tumor_origin="primary",
+        source_type="openpbta-rnaseq-rsem",
+    )
+    out_dir = Path(output_dir) if output_dir is not None else cache / "derived"
+    result = build_canonical_source_matrices(
+        source,
+        canonical,
+        routed_samples=routed,
+        output_dir=out_dir,
+        mapping_audit=audit,
+        parse_diagnostics=diagnostics,
+    )
+    manifest_path = out_dir / "openpbta_v23_dipg_sample_manifest.csv"
     manifest_temp = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
     manifest.to_csv(manifest_temp, index=False)
     manifest_temp.replace(manifest_path)

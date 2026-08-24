@@ -13,7 +13,6 @@ from scripts.pypi_release_gate import (
 )
 
 from oncoref.data_bundle import DOWNLOADABLE_PATHS
-from oncoref.version import SOURCE_MATRIX_VERSION
 
 
 def test_build_backend_supports_declared_pep_639_license_metadata():
@@ -170,7 +169,7 @@ def test_data_overlay_contains_only_changed_files_and_pins_complete_base(tmp_pat
             {
                 "manifest_version": 1,
                 "data_version": "9.8.7",
-                "source_matrix_version": SOURCE_MATRIX_VERSION,
+                "source_matrix_version": "5.22.10",
                 "tarball": {
                     "filename": "oncoref-data-v9.8.7.tar.gz",
                     "bytes": 1234,
@@ -206,6 +205,7 @@ def test_data_overlay_contains_only_changed_files_and_pins_complete_base(tmp_pat
     assert manifest["bundle_layout"] == "overlay"
     assert manifest["package_version"] == package_version_from_source()
     assert manifest["base_bundle"]["data_version"] == "9.8.7"
+    assert manifest["base_bundle"]["source_matrix_version"] == "5.22.10"
     assert manifest["base_bundle"]["tarball"]["sha256"] == "b" * 64
     assert manifest["overlay"]["paths"] == [changed]
     assert manifest["overlay"]["deleted_paths"] == []

@@ -427,6 +427,53 @@ sources:
       status is never inferred. This direct pediatric cohort remains
       reference-only rather than independently classification-ready.
 
+  - id: openpbta-v23-dipg-h3k27
+    category: expression
+    cancer_codes: [DIPG]
+    source_type: openpbta-rnaseq-rsem
+    accession: OpenPBTA release-v23-20230115
+    url: https://github.com/AlexsLemonade/OpenPBTA-analysis
+    source_cohort: OPENPBTA_V23_DIPG_H3K27
+    source_project: OpenPBTA
+    source_version: release-v23-20230115
+    builder: scripts/build_openpbta_dipg_reference_expression.py
+    processing_pipeline: openpbta_v23_primary_dipg_h3k27_polya_stranded_rsem_tpm_ensembl112_clean_tpm_16_9_75
+    polya_expression_file_url: https://s3.amazonaws.com/d3b-openaccess-us-east-1-prd-pbta/data/release-v23-20230115/pbta-gene-expression-rsem-tpm.polya.rds
+    polya_expression_file_name: pbta-gene-expression-rsem-tpm.polya.rds
+    polya_expression_file_md5: f207a129a5442f4ed3c3b63a46ec9fde
+    polya_expression_file_bytes: 5572947
+    stranded_expression_file_url: https://s3.amazonaws.com/d3b-openaccess-us-east-1-prd-pbta/data/release-v23-20230115/pbta-gene-expression-rsem-tpm.stranded.rds
+    stranded_expression_file_name: pbta-gene-expression-rsem-tpm.stranded.rds
+    stranded_expression_file_md5: 1f3c8bfa55ba38db2edde1a206f90bf1
+    stranded_expression_file_bytes: 77863728
+    histologies_file_url: https://s3.amazonaws.com/d3b-openaccess-us-east-1-prd-pbta/data/release-v23-20230115/pbta-histologies.tsv
+    histologies_file_name: pbta-histologies.tsv
+    histologies_file_md5: 954c536c308f30c1214f0aa632908c96
+    histologies_file_bytes: 1222838
+    unit: RSEM TPM
+    expected_source_samples: 51
+    expected_samples_by_code: {DIPG: 32}
+    source_scale_class: linear_rnaseq_tpm
+    linear_tpm_comparable: true
+    tpm_proxy: false
+    tumor_origin: primary
+    library_prep: poly-A and stranded bulk RNA-seq
+    expected_size_gb: 0.080
+    citation: Shapiro et al. Cell Genomics 2023; PMID:37492101; DOI:10.1016/j.xgen.2023.100340
+    source_pmid: PMID:37492101
+    license: CC-BY-4.0
+    special_handling: >
+      Select one initial solid-tumor profile for each of 32 independent donors
+      whose pathology diagnosis is diffuse intrinsic pontine glioma and whose
+      OpenPBTA integrated and harmonized diagnoses are both H3 K28-mutant (the
+      source label for the canonical H3 K27-altered entity). Prefer the poly-A
+      profile when the same donor also has a stranded library. Retain all
+      51 RNA-sequenced DIPG-pathology specimens in the audit manifest, explicitly
+      excluding 13 without the canonical H3-altered diagnosis, four non-initial
+      H3-altered tumors, and two duplicate-library profiles. The mixed-library
+      direct cohort remains reference-only rather than independently
+      classification-ready.
+
   # ---- imported via scripts/import_cancer_specific_expression.py ----
   # These come from external neutral-summary tables, not per-sample
   # quantifications. Extended-stat columns (std/min/max/p5/p10/p90/p95)
