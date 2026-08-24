@@ -731,6 +731,7 @@ def test_reference_source_and_review_policy_drive_classification_targets():
         "GBC",
         "HCL",
         "SGC",
+        "VSCC",
         "cSCC",
     }
     assert cancer_types.reference_source_codes("member_union") == cancer_types.cancer_type_codes(

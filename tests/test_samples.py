@@ -193,3 +193,30 @@ def test_openpbta_dipg_molecular_provenance_preserves_direct_h3_evidence():
     included = rows[rows["expression_available"]]
     assert included["molecular_status"].eq("h3_k27_altered").all()
     assert included["driver_event"].eq("H3 K27 alteration").all()
+
+
+def test_vscc_manifest_and_molecular_provenance_preserve_direct_hpv_evidence():
+    manifest = samples_for_cancer_code("VSCC", included_only=False)
+    provenance = molecular_provenance_for_cancer_code("VSCC").set_index("sample_id")
+
+    assert len(manifest) == 9
+    assert manifest["included"].all()
+    assert manifest["case_id"].nunique() == 9
+    assert set(manifest["sample_type"]) == {
+        "Primary Tumor",
+        "Recurrence Tumor",
+        "Metastatic-site biopsy",
+    }
+    assert set(manifest["primary_diagnosis"]) == {"Invasive vulvar squamous cell carcinoma"}
+
+    assert len(provenance) == 13
+    assert provenance["expression_available"].sum() == 9
+    assert provenance["molecular_status"].value_counts().to_dict() == {
+        "hpv_dna_negative": 8,
+        "hpv16_integrated": 3,
+        "hpv_coinfection_no_integration": 2,
+    }
+    assert provenance["orthogonal_confirmed"].sum() == 5
+    assert provenance.loc["Tumor 2", "anatomic_site"] == "metastatic site (site not reported)"
+    assert provenance.loc["Tumor 2", "driver_event"] == ("HPV16 integration in NCKAP1 intron 1")
+    assert provenance.loc[["Tumor 10", "Tumor 13"], "driver_event"].isna().all()
