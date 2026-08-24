@@ -157,3 +157,39 @@ def test_openpbta_cranio_molecular_provenance_does_not_infer_drivers_or_papillar
     }
     unclassified = rows[rows["molecular_status"].eq("not_molecularly_classified")]
     assert unclassified["notes"].str.contains("no papillary or BRAF status inferred").all()
+
+
+def test_openpbta_dipg_manifest_requires_h3_evidence_and_one_profile_per_donor():
+    rows = samples_for_cancer_code("DIPG", included_only=False)
+
+    assert len(rows) == 51
+    assert rows["included"].sum() == 32
+    included = rows[rows["included"]]
+    assert included["case_id"].nunique() == 32
+    assert included["primary_diagnosis"].eq("Diffuse midline glioma, H3 K28-mutant").all()
+    assert rows.loc[~rows["included"], "exclusion_reason"].value_counts().to_dict() == {
+        "not_h3_k27_altered": 13,
+        "non_initial_cns_tumor": 4,
+        "duplicate_donor_library": 2,
+    }
+    assert set(rows["md5sum"]) == {
+        "f207a129a5442f4ed3c3b63a46ec9fde",
+        "1f3c8bfa55ba38db2edde1a206f90bf1",
+    }
+
+
+def test_openpbta_dipg_molecular_provenance_preserves_direct_h3_evidence():
+    rows = molecular_provenance_for_cancer_code("DIPG")
+
+    assert len(rows) == 51
+    assert rows["expression_available"].sum() == 32
+    assert rows["molecular_status"].value_counts().to_dict() == {
+        "h3_k27_altered": 38,
+        "not_molecularly_classified": 10,
+        "h3_wild_type": 2,
+        "idh_mutant_not_h3_k27_altered": 1,
+    }
+    assert rows["orthogonal_confirmed"].sum() == 38
+    included = rows[rows["expression_available"]]
+    assert included["molecular_status"].eq("h3_k27_altered").all()
+    assert included["driver_event"].eq("H3 K27 alteration").all()

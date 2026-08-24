@@ -726,6 +726,7 @@ def test_reference_source_and_review_policy_drive_classification_targets():
         "BCC",
         "CMN",
         "CRANIO",
+        "DIPG",
         "EPN",
         "GBC",
         "HCL",

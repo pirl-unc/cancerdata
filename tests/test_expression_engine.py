@@ -183,6 +183,52 @@ def test_map_source_gene_rows_folds_pseudoautosomal_ensembl_suffixes():
     assert row["s1"] == 5.0
 
 
+def test_canonicalize_source_gene_matrix_counts_identical_par_y_symbol_alias_once():
+    df = pd.DataFrame(
+        {
+            "gene_id": ["ENSG00000182162.11", "ENSG00000182162.11"],
+            "gene_symbol": ["P2RY8", "PAR_Y_P2RY8"],
+            "s1": [2.0, 2.0],
+            "s2": [3.0, 3.0],
+        }
+    )
+
+    matrix, audit = ee.canonicalize_source_gene_matrix(
+        df,
+        row_id_col="gene_id",
+        symbol_col="gene_symbol",
+        value_cols=["s1", "s2"],
+    )
+
+    row = matrix.set_index("Ensembl_Gene_ID").loc["ENSG00000182162"]
+    assert row["Symbol"] == "P2RY8"
+    assert row["s1"] == 2.0
+    assert row["s2"] == 3.0
+    assert audit["mapping_status"].tolist() == ["resolved", "resolved"]
+    assert audit["mapping_method"].tolist() == [
+        "ensembl_gene_id",
+        "ensembl_gene_id_par_y_symbol_alias",
+    ]
+
+
+def test_canonicalize_source_gene_matrix_rejects_unequal_par_y_symbol_alias():
+    df = pd.DataFrame(
+        {
+            "gene_id": ["ENSG00000182162.11", "ENSG00000182162.11"],
+            "gene_symbol": ["P2RY8", "PAR_Y_P2RY8"],
+            "s1": [2.0, 4.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="unequal values for pseudoautosomal symbol aliases"):
+        ee.canonicalize_source_gene_matrix(
+            df,
+            row_id_col="gene_id",
+            symbol_col="gene_symbol",
+            value_cols=["s1"],
+        )
+
+
 def test_map_source_gene_rows_resolves_leading_digit_ncrna_symbols():
     df = pd.DataFrame({"gene_id": ["7SL", "5_8S_rRNA", "45S"], "s1": [3.0, 4.0, 5.0]})
     audit = ee.map_source_gene_rows(df, row_id_col="gene_id", value_cols=["s1"])

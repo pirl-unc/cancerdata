@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gzip
 import hashlib
 import json
@@ -70,7 +71,7 @@ def inventory(root: Path, relative: str) -> dict:
     }
 
 
-def validate_base_manifest(payload: dict) -> tuple[str, dict]:
+def validate_base_manifest(payload: dict) -> tuple[str, str, dict]:
     base_version = str(payload.get("data_version") or "")
     if len(base_version.split(".")) != 3 or not all(
         part.isdigit() for part in base_version.split(".")
@@ -78,10 +79,12 @@ def validate_base_manifest(payload: dict) -> tuple[str, dict]:
         raise SystemExit(f"error: base manifest has invalid data_version {base_version!r}")
     if base_version == DATA_VERSION:
         raise SystemExit("error: overlay base version must differ from the release version")
-    if str(payload.get("source_matrix_version")) != SOURCE_MATRIX_VERSION:
+    base_source_matrix_version = str(payload.get("source_matrix_version") or "")
+    if len(base_source_matrix_version.split(".")) != 3 or not all(
+        part.isdigit() for part in base_source_matrix_version.split(".")
+    ):
         raise SystemExit(
-            "error: base and overlay must use the same source-matrix release; "
-            f"base={payload.get('source_matrix_version')!r}, current={SOURCE_MATRIX_VERSION!r}"
+            f"error: base manifest has invalid source_matrix_version {base_source_matrix_version!r}"
         )
     tarball = payload.get("tarball")
     if not isinstance(tarball, dict):
@@ -101,29 +104,35 @@ def validate_base_manifest(payload: dict) -> tuple[str, dict]:
         raise SystemExit("error: base manifest lacks a valid tarball byte size") from error
     if tuple(tarball.get("downloadable_paths") or ()) != DOWNLOADABLE_PATHS:
         raise SystemExit("error: base manifest downloadable paths do not match oncoref")
-    return base_version, {
-        "filename": expected_filename,
-        "bytes": size_bytes,
-        "sha256": checksum,
-        "downloadable_paths": list(DOWNLOADABLE_PATHS),
-    }
+    return (
+        base_version,
+        base_source_matrix_version,
+        {
+            "filename": expected_filename,
+            "bytes": size_bytes,
+            "sha256": checksum,
+            "downloadable_paths": list(DOWNLOADABLE_PATHS),
+        },
+    )
 
 
 def write_deterministic_archive(output: Path, files: dict[str, Path], paths: list[str]) -> None:
-    with output.open("wb") as raw:
-        with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed:
-            with tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as archive:
-                for relative in paths:
-                    source = files[relative]
-                    info = archive.gettarinfo(str(source), arcname=relative)
-                    info.uid = 0
-                    info.gid = 0
-                    info.uname = ""
-                    info.gname = ""
-                    info.mtime = 0
-                    info.mode = 0o644
-                    with source.open("rb") as handle:
-                        archive.addfile(info, handle)
+    with (
+        output.open("wb") as raw,
+        gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed,
+        tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as archive,
+    ):
+        for relative in paths:
+            source = files[relative]
+            info = archive.gettarinfo(str(source), arcname=relative)
+            info.uid = 0
+            info.gid = 0
+            info.uname = ""
+            info.gname = ""
+            info.mtime = 0
+            info.mode = 0o644
+            with source.open("rb") as handle:
+                archive.addfile(info, handle)
 
 
 def add_build_metadata(payload: dict, complete: Path) -> None:
@@ -165,7 +174,7 @@ def main() -> None:
     complete = args.complete_dir.resolve(strict=True)
     base = args.base_dir.resolve(strict=True)
     base_payload = json.loads(args.base_manifest.read_text())
-    base_version, base_tarball = validate_base_manifest(base_payload)
+    base_version, base_source_matrix_version, base_tarball = validate_base_manifest(base_payload)
     data_version = os.environ.get("ONCOREF_DATA_RELEASE_VERSION", DATA_VERSION)
     if len(data_version.split(".")) != 3 or not all(
         part.isdigit() for part in data_version.split(".")
@@ -190,16 +199,13 @@ def main() -> None:
     write_deterministic_archive(archive, complete_files, changed)
 
     builder_commit = None
-    try:
+    with contextlib.suppress(OSError, subprocess.CalledProcessError):
         builder_commit = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             check=True,
             capture_output=True,
             text=True,
         ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        pass
-
     payload = {
         "manifest_version": 2,
         "bundle_layout": "overlay",
@@ -211,6 +217,7 @@ def main() -> None:
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "base_bundle": {
             "data_version": base_version,
+            "source_matrix_version": base_source_matrix_version,
             "repo": "pirl-unc/oncoref",
             "tarball": base_tarball,
         },

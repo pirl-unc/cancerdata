@@ -609,7 +609,7 @@ def test_overlay_base_download_creates_version_cache_before_extract(monkeypatch,
     monkeypatch.setattr(
         data_bundle,
         "_fetch_release_manifest",
-        lambda _source, *, expected_data_version: {
+        lambda _source, *, expected_data_version, expected_source_matrix_version: {
             "manifest_version": 1,
             "data_version": expected_data_version,
             "bundle_layout": "full",
@@ -648,7 +648,7 @@ def test_overlay_base_rejects_release_checksum_that_disagrees_with_parent_pin(
     monkeypatch.setattr(
         data_bundle,
         "_fetch_release_manifest",
-        lambda _source, *, expected_data_version: {
+        lambda _source, *, expected_data_version, expected_source_matrix_version: {
             "data_version": expected_data_version,
             "bundle_layout": "full",
             "tarball": {**base_bundle["tarball"], "sha256": "c" * 64},
@@ -705,7 +705,7 @@ def test_overlay_base_download_recursively_composes_overlay_chain(monkeypatch, t
     full_manifest = {
         "manifest_version": 2,
         "data_version": full_version,
-        "source_matrix_version": SOURCE_MATRIX_VERSION,
+        "source_matrix_version": "5.22.10",
         "tarball": full_pin,
     }
     overlay_manifest = {
@@ -716,6 +716,7 @@ def test_overlay_base_download_recursively_composes_overlay_chain(monkeypatch, t
         "tarball": overlay_pin,
         "base_bundle": {
             "data_version": full_version,
+            "source_matrix_version": "5.22.10",
             "repo": data_bundle.GITHUB_REPO,
             "tarball": full_pin,
         },
@@ -751,6 +752,7 @@ def test_overlay_base_download_recursively_composes_overlay_chain(monkeypatch, t
         root,
         {
             "data_version": overlay_version,
+            "source_matrix_version": SOURCE_MATRIX_VERSION,
             "repo": data_bundle.GITHUB_REPO,
             "tarball": {
                 **overlay_pin,

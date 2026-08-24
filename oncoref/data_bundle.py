@@ -310,6 +310,15 @@ def _normalize_base_bundle(
         )
     if data_version == release_data_version:
         raise BundleIntegrityError(f"{manifest_url} overlay cannot use itself as its base")
+    source_matrix_version = base.get("source_matrix_version")
+    if source_matrix_version is not None:
+        source_matrix_version = str(source_matrix_version)
+        version_parts = source_matrix_version.split(".")
+        if len(version_parts) != 3 or not all(part.isdigit() for part in version_parts):
+            raise BundleIntegrityError(
+                f"{manifest_url} base_bundle has invalid source_matrix_version "
+                f"{source_matrix_version!r}"
+            )
     repo = str(base.get("repo") or GITHUB_REPO)
     if repo != GITHUB_REPO:
         raise BundleIntegrityError(
@@ -338,7 +347,7 @@ def _normalize_base_bundle(
         raise BundleIntegrityError(
             f"{manifest_url} base downloadable_paths do not match this oncoref build"
         )
-    return {
+    normalized = {
         "data_version": data_version,
         "repo": repo,
         "tarball": {
@@ -349,6 +358,9 @@ def _normalize_base_bundle(
             "downloadable_paths": list(DOWNLOADABLE_PATHS),
         },
     }
+    if source_matrix_version is not None:
+        normalized["source_matrix_version"] = source_matrix_version
+    return normalized
 
 
 def _normalize_overlay(overlay: Any, *, manifest_url: str) -> dict:
@@ -386,6 +398,7 @@ def _validate_release_manifest(
     *,
     manifest_url: str,
     expected_data_version: str = DATA_VERSION,
+    expected_source_matrix_version: str | None = SOURCE_MATRIX_VERSION,
 ) -> dict:
     if manifest.get("data_version") != expected_data_version:
         raise BundleIntegrityError(
@@ -413,12 +426,13 @@ def _validate_release_manifest(
         )
     manifest_source_matrix_version = manifest.get("source_matrix_version")
     if (
-        manifest_source_matrix_version is not None
-        and str(manifest_source_matrix_version) != SOURCE_MATRIX_VERSION
+        expected_source_matrix_version is not None
+        and manifest_source_matrix_version is not None
+        and str(manifest_source_matrix_version) != expected_source_matrix_version
     ):
         raise BundleIntegrityError(
             f"{manifest_url} is for source_matrix_version {manifest_source_matrix_version!r}, "
-            f"expected {SOURCE_MATRIX_VERSION!r}"
+            f"expected {expected_source_matrix_version!r}"
         )
     inventory = manifest.get("inventory")
     if inventory is not None:
@@ -489,6 +503,7 @@ def _fetch_release_manifest(
     source: dict,
     *,
     expected_data_version: str = DATA_VERSION,
+    expected_source_matrix_version: str | None = SOURCE_MATRIX_VERSION,
 ) -> dict | None:
     """Fetch and validate the release manifest/checksum for a bundle source.
 
@@ -505,6 +520,7 @@ def _fetch_release_manifest(
             source,
             manifest_url=manifest_url,
             expected_data_version=expected_data_version,
+            expected_source_matrix_version=expected_source_matrix_version,
         )
     except urllib.error.HTTPError as manifest_error:
         if manifest_error.code != 404:
@@ -524,6 +540,7 @@ def _fetch_release_manifest(
             source,
             manifest_url=checksum_url,
             expected_data_version=expected_data_version,
+            expected_source_matrix_version=expected_source_matrix_version,
         )
     except urllib.error.HTTPError as checksum_error:
         if checksum_error.code != 404:
@@ -1014,6 +1031,9 @@ def _ensure_overlay_base(
     base_manifest = _fetch_release_manifest(
         base_source,
         expected_data_version=base_version,
+        expected_source_matrix_version=base_bundle.get(
+            "source_matrix_version", SOURCE_MATRIX_VERSION
+        ),
     )
     if base_manifest is None:
         raise BundleIntegrityError(f"base release v{base_version} lacks integrity metadata")

@@ -490,6 +490,69 @@ def coerce_source_expression_values(
     return out, diagnostics
 
 
+def _pseudoautosomal_symbol_alias_positions(
+    df: pd.DataFrame,
+    *,
+    row_id_col: str,
+    symbol_col: str | None,
+    value_cols: list[str],
+) -> set[int]:
+    """Positions of redundant ``PAR_Y_<symbol>`` aliases for the same source ID.
+
+    This is distinct from a row ID ending in ``_PAR_Y``: that convention denotes
+    a separately quantified pseudoautosomal feature and must be summed into the
+    canonical gene. Some matrices instead repeat the exact same Ensembl ID and
+    values under both ``<symbol>`` and ``PAR_Y_<symbol>`` labels. Those are aliases,
+    so counting both would double expression.
+    """
+    if symbol_col is None:
+        return set()
+    positions_by_id: dict[str, list[int]] = {}
+    for position, value in enumerate(df[row_id_col]):
+        row_id = _nonempty_text(value)
+        if row_id is not None:
+            positions_by_id.setdefault(row_id.upper(), []).append(position)
+
+    aliases: set[int] = set()
+    for row_id, positions in positions_by_id.items():
+        if len(positions) < 2:
+            continue
+        symbols = {
+            position: _nonempty_text(df[symbol_col].iloc[position]) for position in positions
+        }
+        par_y = {
+            position: symbol
+            for position, symbol in symbols.items()
+            if symbol is not None and symbol.upper().startswith("PAR_Y_")
+        }
+        if not par_y:
+            continue
+        ordinary = {
+            position: symbol
+            for position, symbol in symbols.items()
+            if symbol is not None and not symbol.upper().startswith("PAR_Y_")
+        }
+        matches = [
+            (ordinary_position, par_y_position)
+            for par_y_position, par_y_symbol in par_y.items()
+            for ordinary_position, ordinary_symbol in ordinary.items()
+            if par_y_symbol.upper().removeprefix("PAR_Y_") == ordinary_symbol.upper()
+        ]
+        if len(positions) != 2 or len(matches) != 1:
+            raise ValueError(
+                "source expression has an unsupported pseudoautosomal symbol alias "
+                f"group for {row_id}"
+            )
+        ordinary_position, par_y_position = matches[0]
+        if not df[value_cols].iloc[ordinary_position].equals(df[value_cols].iloc[par_y_position]):
+            raise ValueError(
+                "source expression has unequal values for pseudoautosomal symbol aliases "
+                f"of {row_id}"
+            )
+        aliases.add(par_y_position)
+    return aliases
+
+
 def canonicalize_source_gene_matrix(
     df: pd.DataFrame,
     *,
@@ -498,7 +561,13 @@ def canonicalize_source_gene_matrix(
     value_cols=None,
     high_expression_threshold: float = 1.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Map source rows to canonical ENSG IDs and sum duplicate rows in linear space.
+    """Map source rows to canonical ENSG IDs and combine duplicates in linear space.
+
+    Separately quantified Ensembl ``_PAR_Y`` rows are folded into the base gene
+    and summed. A distinct upstream convention repeats the exact same Ensembl ID
+    and values under ``<symbol>`` and ``PAR_Y_<symbol>`` labels; the latter is a
+    redundant alias and is counted once. Unequal or structurally ambiguous
+    pseudoautosomal symbol aliases raise rather than being silently combined.
 
     Returns ``(matrix, audit)``. ``matrix`` has stable ``Ensembl_Gene_ID`` /
     ``Symbol`` columns plus the requested value columns. ``audit`` is the full
@@ -522,9 +591,25 @@ def canonicalize_source_gene_matrix(
         empty.attrs["source_value_parse_diagnostics"] = parse_diagnostics
         return empty, audit
 
-    work = coerced.loc[resolved.to_numpy(), cols].copy()
-    work.insert(0, "Symbol", audit.loc[resolved, "canonical_symbol"].to_numpy())
-    work.insert(0, "Ensembl_Gene_ID", audit.loc[resolved, "canonical_ensembl_gene_id"].to_numpy())
+    par_y_alias_positions = _pseudoautosomal_symbol_alias_positions(
+        coerced,
+        row_id_col=row_id_col,
+        symbol_col=symbol_col,
+        value_cols=cols,
+    )
+    alias_mask = pd.Series(
+        [position in par_y_alias_positions for position in range(len(coerced))],
+        index=audit.index,
+    )
+    audit.loc[alias_mask, "mapping_method"] = "ensembl_gene_id_par_y_symbol_alias"
+    retained = resolved & ~alias_mask
+    work = coerced.iloc[retained.to_numpy()][cols].copy()
+    work.insert(0, "Symbol", audit.loc[retained, "canonical_symbol"].to_numpy())
+    work.insert(
+        0,
+        "Ensembl_Gene_ID",
+        audit.loc[retained, "canonical_ensembl_gene_id"].to_numpy(),
+    )
     grouped = work.groupby("Ensembl_Gene_ID", sort=False)
     ids = grouped[["Symbol"]].first()
     values = grouped[cols].sum(min_count=1)
