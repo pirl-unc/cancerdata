@@ -1193,6 +1193,95 @@ def test_sra_ncbi_count_source_from_registry_loads_complete_mmnst_manifest():
     }
 
 
+def test_sra_ncbi_count_source_from_registry_loads_complete_vscc_manifest():
+    source = expression_builders.sra_ncbi_count_source_from_registry("prjna994918-vscc")
+
+    assert source.bioproject == "PRJNA994918"
+    assert source.sra_study == "SRP449588"
+    assert source.cancer_code == "VSCC"
+    assert source.expected_n == {"VSCC": 9}
+    assert source.tumor_origin == "mixed"
+    assert source.annotation_release == "GCF_000001405.40-RS_2025_08"
+    assert len(source.runs) == 9
+    assert [run.sample_title for run in source.runs] == [
+        "Tumor 1",
+        "Tumor 2",
+        "Tumor 3",
+        "Tumor 4",
+        "Tumor 5",
+        "Tumor 6",
+        "Tumor 7",
+        "Tumor 8",
+        "Tumor 9",
+    ]
+    assert {run.role for run in source.runs} == {"tumor"}
+    assert {run.cancer_code for run in source.runs} == {"VSCC"}
+
+    manifest = expression_builders.sra_ncbi_count_run_manifest(source)
+    assert manifest["included"].all()
+    assert manifest["exclusion_reason"].eq("").all()
+    assert set(manifest["analysis_accession"]) == {
+        "SRZ1276871",
+        "SRZ1277053",
+        "SRZ1277119",
+        "SRZ1277376",
+        "SRZ1277597",
+        "SRZ1278215",
+        "SRZ1610788",
+        "SRZ1611176",
+        "SRZ1611554",
+    }
+
+
+def test_prjna994918_vscc_provenance_preserves_clinical_and_direct_hpv_evidence():
+    script = _load_script("import_prjna994918_vscc_provenance")
+    clinical = script.vscc_clinical_audit().set_index("tumor_id")
+    samples = script.reference_sample_manifest()
+    provenance = script.molecular_provenance().set_index("sample_id")
+
+    assert len(clinical) == 13
+    assert clinical["expression_available"].sum() == 9
+    assert clinical["disease_status"].value_counts().to_dict() == {
+        "Primary": 7,
+        "Recurrence": 6,
+    }
+    assert clinical["prior_therapy"].sum() == 3
+    assert clinical.loc["Tumor 2", "metastatic_site_biopsy"]
+
+    assert len(samples) == 9
+    assert samples["sample_id"].tolist() == [
+        "SRR25281082",
+        "SRR25281081",
+        "SRR25281080",
+        "SRR25281079",
+        "SRR25281078",
+        "SRR25281077",
+        "SRR25281076",
+        "SRR25281074",
+        "SRR25281073",
+    ]
+    assert samples["included"].all()
+    assert set(samples["cancer_code"]) == {"VSCC"}
+    assert set(samples["lineage_label"]) == {"VSCC"}
+    assert samples.loc[samples["sample_id"].eq("SRR25281081"), "sample_type"].item() == (
+        "Metastatic-site biopsy"
+    )
+
+    assert len(provenance) == 13
+    assert provenance["expression_available"].sum() == 9
+    assert provenance["molecular_status"].value_counts().to_dict() == {
+        "hpv_dna_negative": 8,
+        "hpv16_integrated": 3,
+        "hpv_coinfection_no_integration": 2,
+    }
+    assert provenance["orthogonal_confirmed"].sum() == 5
+    assert provenance.loc["Tumor 2", "driver_event"] == "HPV16 integration in NCKAP1 intron 1"
+    assert provenance.loc["Tumor 4", "driver_event"] == "HPV16 integration in C5orf67 intron 2"
+    assert provenance.loc["Tumor 5", "driver_event"] == "HPV16 integration in LRP1B introns 8-11"
+    assert provenance.loc["Tumor 10", "driver_event"] == ""
+    assert provenance.loc["Tumor 13", "driver_event"] == ""
+
+
 def test_sra_ncbi_count_source_rejects_a_control_routed_to_tumor():
     entry = deepcopy(expression_builders.sra_ncbi_count_source_entries()[0])
     control = next(run for run in entry["runs"] if run["role"] == "normal_control")

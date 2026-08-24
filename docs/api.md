@@ -229,6 +229,13 @@ harmonized H3 K28-mutant source diagnoses—the OpenPBTA label corresponding to 
 canonical H3 K27-altered entity. Unannotated, H3-wild-type, IDH-mutant,
 non-initial, and duplicate-donor profiles remain explicit exclusions; the mixed
 library preparation keeps the cohort reference-only.
+VSCC contributes nine independent invasive tumors from PRJNA994918. The
+checksum-pinned NCBI Gene Feature counts are converted to length-normalized TPM,
+and all nine profiles pass QC. The cohort contains primary and recurrent disease
+plus one metastatic-site biopsy, so its small mixed-origin reference remains
+non-classifying. Sample-level provenance retains all 13 pathology-confirmed study
+tumors and only reports HPV status from the publication's direct
+hybridization-capture and PCR evidence.
 The table intentionally does not
 synthesize marker-program or discriminator fallbacks; those remain consumer-layer
 choices in packages such as trufflepig.
@@ -536,6 +543,12 @@ diagnosis-only Treehouse sample.
   confirmation status, expression availability, and access level.
 - `oncoref.samples.molecular_sample_counts(code)` reports libraries and distinct
   donors separately for each physical source cohort.
+
+For VSCC, the molecular-provenance table preserves the study's complete
+13-tumor HPV audit: three PCR-confirmed HPV16 integrations, two directly detected
+coinfections without a human-virus junction, and eight capture-negative tumors.
+Only the nine tumors with RIN-qualified RNA libraries have
+`expression_available=True`.
 
 Public Treehouse PolyA and RiboD cohorts remain separate even after clean TPM, and
 the GSE11482 CMN array cohort remains an explicitly non-comparable TPM proxy.

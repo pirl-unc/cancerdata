@@ -32,6 +32,31 @@ reports oligo(dT) mRNA enrichment, while the deposited INSDC records say
 `RANDOM`; the registry preserves this discrepancy instead of choosing one
 description silently.
 
+## VSCC Cohort
+
+`prjna994918-vscc` provides the direct `VSCC` reference from BioProject
+`PRJNA994918` / SRA study `SRP449588`. The paper reports 13
+pathology-confirmed invasive vulvar squamous cell carcinomas; nine tumors had
+RIN above 6 and received poly(A), paired-end bulk RNA sequencing. The selected
+RNA libraries represent six tumors reported as primary and three as recurrent,
+and the Tumor 2 specimen was taken from an unspecified metastatic site.
+
+Every NCBI analysis uses `scf_rnaseq_gene_counts` 0.5.6 against
+`GCF_000001405.40`, with paired RF libraries and reported alignment rates from
+55.21% to 70.15%. The registry pins all nine run/analysis pairs and count-file
+MD5 digests. All nine profiles pass the expression QC policy and map 95.7% to
+98.3% of source counts into the reference input. The resulting 44,446-gene
+matrix is a direct expression reference, but its small mixed-origin composition
+keeps `VSCC` non-classifying.
+
+The source's public molecular-provenance rows retain all 13 study tumors. They
+record direct hybridization-capture evidence for three PCR-confirmed HPV16
+integrations, two HPV coinfections without detected human-virus junctions, and
+eight HPV-DNA-negative tumors. HPV status is never inferred from diagnosis or
+expression. The cohort is described in
+[PMID 38898085](https://pubmed.ncbi.nlm.nih.gov/38898085/) and deposited under
+[PRJNA994918](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA994918).
+
 ## Processed-Count Contract
 
 NCBI publishes one unnormalized gene-level count table per SRA run in its
@@ -74,11 +99,13 @@ Run the processed-count builder:
 
 ```bash
 python scripts/build_sra_ncbi_counts_source.py prjna1083972-mmnst
+python scripts/build_sra_ncbi_counts_source.py prjna994918-vscc
 ```
 
 The default cache is
-`~/.cache/oncoref/expression/prjna1083972-mmnst/`. The download is approximately
-80 MB, dominated by the compressed RefSeq annotation.
+`~/.cache/oncoref/expression/<source-id>/`. Each build downloads approximately
+80 MB when the shared RefSeq annotation is not already cached; the count tables
+themselves are small.
 
 Reviewed local inputs can be supplied without network access:
 
@@ -110,6 +137,11 @@ The derived directory contains:
 This is an ultra-rare cohort (`n=3`). Its dispersion and tail percentiles are
 necessarily thin even though all three tumor samples pass the expression QC
 policy.
+
+For `prjna994918-vscc`, the analogous matrix and sidecars are named
+`VSCC_per_sample_tpm.parquet` and `SRP449588_VSCC_2024_*`. The matrix contains
+nine tumors, while the separate molecular-provenance API retains all 13 study
+tumors.
 
 ## Raw-Read Fallback
 

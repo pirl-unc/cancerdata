@@ -1739,6 +1739,117 @@ sources:
       Never route independent normal controls SRR28227821/22/23 into the tumor
       reference.
 
+  - id: prjna994918-vscc
+    category: expression
+    cancer_codes: [VSCC]
+    source_type: sra-ncbi-counts
+    builder: scripts/build_sra_ncbi_counts_source.py
+    accession: PRJNA994918
+    sra_study: SRP449588
+    source_cohort: SRP449588_VSCC_2024
+    source_project: NCBI SRA Gene Feature counts
+    expected_samples_by_code: {VSCC: 9}
+    expected_gene_rows: 59068
+    unit: NCBI Gene Feature count-derived TPM
+    library_prep: poly(A)-selected paired-end bulk RNA-seq
+    tumor_origin: mixed
+    source_scale_class: ncbi_gene_feature_count_tpm
+    linear_tpm_comparable: true
+    tpm_proxy: false
+    expected_size_gb: 0.01
+    citation: PMID:38898085; DOI:10.1038/s41525-024-00418-8; PRJNA994918
+    source_version: NCBI SRA Gene Feature analyses SRZ1277119/SRZ1610788/SRZ1611554/SRZ1278215/SRZ1276871/SRZ1277376/SRZ1277597/SRZ1277053/SRZ1611176 (scf_rnaseq_gene_counts 0.5.6); RefSeq GCF_000001405.40-RS_2025_08 length reference; harmonized to Ensembl release 112
+    processing_pipeline: ncbi_sra_gene_feature_counts_refseq2025_gene_length_tpm_oncoref_canonical_clean_tpm_16_9_75
+    pipeline_stem: srp449588_vscc_2024
+    counts_base_url: https://sra-rnaseq-analysis.s3.amazonaws.com
+    annotation:
+      release: GCF_000001405.40-RS_2025_08
+      url: https://ftp.ncbi.nlm.nih.gov/genomes/all/annotation_releases/9606/GCF_000001405.40-RS_2025_08/GCF_000001405.40_GRCh38.p14_genomic.gff.gz
+      sha256: 4920f0eae7e2197c50b67a201e06d657387137b49dd60f474b4f1d5b29334051
+      assembly_report_url: https://ftp.ncbi.nlm.nih.gov/genomes/all/annotation_releases/9606/GCF_000001405.40-RS_2025_08/GCF_000001405.40_GRCh38.p14_assembly_report.txt
+      assembly_report_sha256: 64318ddff470b69b261a667d813210044f60d4ce654253a547db80ff73638d38
+    runs:
+      - accession: SRR25281082
+        biosample: SAMN36452469
+        sample_title: Tumor 1
+        role: tumor
+        cancer_code: VSCC
+        analysis_accession: SRZ1277119
+        counts_md5: caa1e284733eb089ed6390e542f283c7
+      - accession: SRR25281081
+        biosample: SAMN36452470
+        sample_title: Tumor 2
+        role: tumor
+        cancer_code: VSCC
+        analysis_accession: SRZ1610788
+        counts_md5: 0f64820228edf129974196a316b91da6
+      - accession: SRR25281080
+        biosample: SAMN36452471
+        sample_title: Tumor 3
+        role: tumor
+        cancer_code: VSCC
+        analysis_accession: SRZ1611554
+        counts_md5: 5a10ca5ef7db29bbea71936862b010e7
+      - accession: SRR25281079
+        biosample: SAMN36452472
+        sample_title: Tumor 4
+        role: tumor
+        cancer_code: VSCC
+        analysis_accession: SRZ1278215
+        counts_md5: 33592acddc78f4ad63a9f34676b2f397
+      - accession: SRR25281078
+        biosample: SAMN36452473
+        sample_title: Tumor 5
+        role: tumor
+        cancer_code: VSCC
+        analysis_accession: SRZ1276871
+        counts_md5: e2e632e6a967df8b326885ddf1cb8bbc
+      - accession: SRR25281077
+        biosample: SAMN36452474
+        sample_title: Tumor 6
+        role: tumor
+        cancer_code: VSCC
+        analysis_accession: SRZ1277376
+        counts_md5: 89652601851e72b462ca0cae096ffa06
+      - accession: SRR25281076
+        biosample: SAMN36452475
+        sample_title: Tumor 7
+        role: tumor
+        cancer_code: VSCC
+        analysis_accession: SRZ1277597
+        counts_md5: 2bbdc59a3cae7a77879a21aa56489cad
+      - accession: SRR25281074
+        biosample: SAMN36452476
+        sample_title: Tumor 8
+        role: tumor
+        cancer_code: VSCC
+        analysis_accession: SRZ1277053
+        counts_md5: ca59de2d7553c63e2c05ec330b9c1f4c
+      - accession: SRR25281073
+        biosample: SAMN36452477
+        sample_title: Tumor 9
+        role: tumor
+        cancer_code: VSCC
+        analysis_accession: SRZ1611176
+        counts_md5: 9757a6f81a9e78e73face52bb0ffa23a
+    notes: >
+      Nine independent invasive vulvar squamous cell carcinomas with RIN above
+      6 were selected from the thirteen-tumor study and sequenced as poly(A),
+      paired-end bulk RNA-seq. Tumors 1-4, 6, and 9 were reported as primary;
+      Tumors 5, 7, and 8 as recurrent; and the Tumor 2 biopsy came from a
+      metastatic site. This mixed-origin n=9 cohort is a direct reference but
+      remains reference-only rather than independently classification-ready.
+      Direct per-tumor HPV evidence is preserved in the molecular-provenance
+      manifest and is never inferred from diagnosis or expression.
+    special_handling: >
+      Verify every NCBI Gene Feature count table and the RefSeq annotation by
+      its pinned checksum. All nine analyses use paired RF libraries,
+      scf_rnaseq_gene_counts 0.5.6, and assembly GCF_000001405.40; their
+      reported alignment rates span 55.21-70.15%. Convert counts to TPM using
+      primary-assembly exon-union lengths and harmonize uniquely to Ensembl
+      release 112. Keep the mixed primary, recurrent, and metastatic-site
+      composition explicit in all public reference metadata.
+
   - id: gse328026-sarc-pec
     category: expression
     cancer_codes: [SARC_PEC]

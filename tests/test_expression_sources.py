@@ -124,6 +124,22 @@ def test_mmnst_source_has_typed_ncbi_count_provenance():
     assert source.processing_pipeline
 
 
+def test_vscc_source_has_typed_ncbi_count_provenance():
+    source = es.expression_source("prjna994918-vscc")
+
+    assert source is not None
+    assert source.cancer_codes == ("VSCC",)
+    assert source.source_type == "sra-ncbi-counts"
+    assert source.accession == "PRJNA994918"
+    assert source.source_cohort == "SRP449588_VSCC_2024"
+    assert source.source_project == "NCBI SRA Gene Feature counts"
+    assert source.unit == "NCBI Gene Feature count-derived TPM"
+    assert source.tumor_origin == "mixed"
+    assert source.linear_tpm_comparable
+    assert not source.tpm_proxy
+    assert source.processing_pipeline
+
+
 def test_gse294016_source_uses_authoritative_histology_mapping():
     entries = es.expression_source_registry_entries()
     source = next(row for row in entries if row["id"] == "gse294016-salivary-histology")
@@ -460,6 +476,7 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
         "SCLC_NEUROD1",
         "SCLC_POU2F3",
         "SCLC_YAP1",
+        "VSCC",
         "cSCC",
     }
     assert set(direct.index) <= set(selected.index)
@@ -481,6 +498,7 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
     assert int(direct.loc["EPN", "estimated_samples"]) == 11
     assert int(direct.loc["CRANIO", "estimated_samples"]) == 29
     assert int(direct.loc["DIPG", "estimated_samples"]) == 32
+    assert int(direct.loc["VSCC", "estimated_samples"]) == 9
     assert direct.loc["EPN", "accession"] == "GSE141460"
     assert direct.loc["CRANIO", "accession"] == "OpenPBTA release-v23-20230115"
     assert direct.loc["DIPG", "accession"] == "OpenPBTA release-v23-20230115"
@@ -493,13 +511,14 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
     assert (divergent["source_cohort"] != selected.loc[divergent.index, "source_cohort"]).all()
 
 
-def test_nci_gap_direct_geo_references_have_explicit_scale_and_target_policy():
+def test_nci_gap_direct_references_have_explicit_scale_and_target_policy():
     expected = {
         "BCC": ("GSE125285_BCC_CSCC", "bulk_rnaseq_cpm_proxy", False, 25),
         "cSCC": ("GSE125285_BCC_CSCC", "bulk_rnaseq_cpm_proxy", False, 10),
         "GBC": ("GSE139682_GBC", "linear_rnaseq_tpm", True, 10),
         "CRANIO": ("OPENPBTA_V23_CBTN_CRANIO", "linear_rnaseq_tpm", True, 29),
         "DIPG": ("OPENPBTA_V23_DIPG_H3K27", "linear_rnaseq_tpm", True, 32),
+        "VSCC": ("SRP449588_VSCC_2024", "ncbi_gene_feature_count_tpm", True, 9),
         "EPN": (
             "GSE141460_GOJO_2020_EPN",
             "scrna_malignant_cell_mean_tpm_pseudobulk",
@@ -533,7 +552,6 @@ def test_nci_gap_direct_geo_references_have_explicit_scale_and_target_policy():
 
 def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
     expected_status = {
-        "VSCC": "bulk_candidate_needs_quantification",
         "VAGC": "deferred_no_dedicated_source",
         "FTC": "deferred_pooled_source_not_direct",
         "PPC": "deferred_pooled_source_not_direct",
