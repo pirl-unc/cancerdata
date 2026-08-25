@@ -1223,6 +1223,36 @@ order.
   same fields for every default-version HPA source; omit `verify_content` to
   avoid hashing large cached files.
 
+HPA RNA and IHC use different tissue vocabularies. Resolve safety groups for
+the source you will actually query instead of matching the conceptual
+`SAFETY_TISSUE_GROUPS` labels directly:
+
+```python
+from oncoref import hpa
+
+# Incomplete safety coverage fails closed by default.
+hpa.resolve_safety_tissue_group("brain")  # raises SafetyTissueResolutionError
+
+# Explicitly acknowledge and inspect HPA v23's partial brain coverage.
+brain = hpa.resolve_safety_tissue_group("brain", require_complete=False)
+brain.source_name, brain.source_version   # ("hpa_normal_tissue", "v23")
+brain.source_tissues                      # exact HPA IHC labels to match
+brain.partially_covered_tissues           # ("basal ganglia", "midbrain")
+brain.unavailable_tissues                 # conceptual labels absent from this source
+```
+
+Each immutable resolution includes the source URL, exact/equivalent/substructure
+mapping kind, reviewed references and notes, and an explicit `complete`,
+`partial`, or `unavailable` coverage state. `safety_tissue_mapping_table()`
+returns the underlying reviewed table as a defensive copy.
+
+Use `hpa_normal_tissue_labels(version)` or
+`resolve_hpa_normal_tissue_label(label, version=...)` to validate an individual
+IHC label. A recognized label may legitimately have no rows for a particular
+gene; an unavailable or unrecognized label raises instead of looking like an
+empty observation. Protein level and antibody-reliability policies remain the
+downstream caller's responsibility.
+
 ## Compatibility Modules
 
 These modules remain importable but are less discoverable than the organized

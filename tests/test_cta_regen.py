@@ -13,7 +13,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from oncoref import cta_regen, reference_data
+from oncoref import cta_regen, hpa, reference_data
 
 _CSV = Path(__file__).resolve().parents[1] / "oncoref" / "data" / "cancer-testis-antigens.csv"
 
@@ -61,6 +61,15 @@ def test_regeneration_preserves_identity_columns():
     regen = cta_regen.regenerate_cta_columns(old)
     for col in ("Symbol", "Ensembl_Gene_ID", "Aliases", "source_databases", "biotype"):
         pd.testing.assert_series_equal(regen[col], old[col], check_dtype=False)
+
+
+def test_hpa_v23_safety_tissue_mappings_use_native_ihc_labels():
+    _require_hpa_v23()
+    native_labels = set(hpa.hpa_normal_tissue("v23")["Tissue"].dropna().astype(str))
+    for group in ("brain", "heart", "liver", "lung", "pancreas"):
+        resolution = hpa.resolve_safety_tissue_group(group, require_complete=False)
+        assert resolution.source_version == "v23"
+        assert set(resolution.source_tissues) <= native_labels
 
 
 def test_rna_only_below_floor_confidence_is_capped():

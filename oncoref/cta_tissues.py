@@ -113,7 +113,9 @@ PROTEIN_DETECTED_LEVELS: frozenset[str] = frozenset({"Low", "Medium", "High"})
 #: retina, spinal cord. Four names (medulla oblongata, pons, thalamus, white
 #: matter) come from HPA's finer brain-specific dataset; they are absent from
 #: the consensus -- inert for the RNA flag -- but are kept for vocabulary parity
-#: with tsarina.
+#: with tsarina. These are conceptual/RNA safety labels, not an IHC selection
+#: vocabulary; use ``hpa.resolve_safety_tissue_group`` before matching an HPA
+#: normal-tissue source.
 SAFETY_TISSUE_GROUPS: dict[str, set[str]] = {
     "brain": {
         "amygdala",
