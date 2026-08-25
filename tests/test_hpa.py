@@ -22,7 +22,8 @@ def hpa_cache(monkeypatch, tmp_path):
     # clear lru_caches so each test sees its own fixture
     for fn in (
         hpa.hpa_rna_consensus,
-        hpa.hpa_normal_tissue,
+        hpa._hpa_normal_tissue_for_version,
+        hpa._hpa_normal_tissue_labels_for_version,
         hpa.hpa_single_cell,
         hpa.hpa_cell_type_expression,
     ):
@@ -58,7 +59,8 @@ def hpa_cache(monkeypatch, tmp_path):
     yield tmp_path
     for fn in (
         hpa.hpa_rna_consensus,
-        hpa.hpa_normal_tissue,
+        hpa._hpa_normal_tissue_for_version,
+        hpa._hpa_normal_tissue_labels_for_version,
         hpa.hpa_single_cell,
         hpa.hpa_cell_type_expression,
     ):
@@ -98,6 +100,133 @@ def test_hpa_cell_type_expression_wide(hpa_cache):
 def test_gene_protein_tissues_detected_only(hpa_cache):
     # "Not detected" liver row is excluded; testis High is kept.
     assert hpa.gene_protein_tissues("ENSG00000001") == {"testis"}
+
+
+def test_normal_tissue_cache_uses_one_concrete_version_key(monkeypatch):
+    import pandas as pd
+
+    calls = []
+    table = pd.DataFrame({"Tissue": ["liver"]})
+
+    def fake_read_hpa(name, version=None):
+        calls.append((name, version))
+        return table
+
+    hpa._hpa_normal_tissue_for_version.cache_clear()
+    hpa._hpa_normal_tissue_labels_for_version.cache_clear()
+    monkeypatch.setattr(hpa, "_read_hpa", fake_read_hpa)
+
+    frames = (
+        hpa.hpa_normal_tissue(),
+        hpa.hpa_normal_tissue(None),
+        hpa.hpa_normal_tissue("v23"),
+        hpa.hpa_normal_tissue(version="v23"),
+    )
+    assert all(frame is table for frame in frames)
+    label_sets = (
+        hpa.hpa_normal_tissue_labels(),
+        hpa.hpa_normal_tissue_labels(None),
+        hpa.hpa_normal_tissue_labels("v23"),
+        hpa.hpa_normal_tissue_labels(version="v23"),
+    )
+    assert label_sets[0] == ("liver",)
+    assert all(labels is label_sets[0] for labels in label_sets)
+    assert calls == [("hpa_normal_tissue", "v23")]
+    assert hpa._hpa_normal_tissue_for_version.cache_info().currsize == 1
+    assert hpa._hpa_normal_tissue_labels_for_version.cache_info().currsize == 1
+
+    hpa._hpa_normal_tissue_for_version.cache_clear()
+    hpa._hpa_normal_tissue_labels_for_version.cache_clear()
+
+
+def test_normal_tissue_label_resolution_distinguishes_empty_observation(hpa_cache):
+    assert hpa.resolve_hpa_normal_tissue_label(" LiVeR ") == "liver"
+    assert hpa.gene_protein_tissues("ENSG_DOES_NOT_EXIST") == set()
+    with pytest.raises(hpa.SafetyTissueResolutionError, match="not an HPA IHC tissue label"):
+        hpa.resolve_hpa_normal_tissue_label("thalamus")
+
+
+def test_hpa_v23_safety_tissue_resolution_is_explicit_and_deterministic():
+    brain = hpa.resolve_safety_tissue_group("brain", require_complete=False)
+    assert brain == hpa.resolve_safety_tissue_group(" BRAIN ", require_complete=False)
+    assert brain.source_name == "hpa_normal_tissue"
+    assert brain.source_version == "v23"
+    assert brain.source_url.startswith("https://")
+    assert brain.coverage_state == "partial"
+    assert brain.source_tissues == (
+        "caudate",
+        "cerebellum",
+        "cerebral cortex",
+        "choroid plexus",
+        "dorsal raphe",
+        "hippocampus",
+        "hypothalamus",
+        "retina",
+        "substantia nigra",
+    )
+    assert brain.fully_covered_tissues == (
+        "cerebellum",
+        "cerebral cortex",
+        "choroid plexus",
+        "hippocampal formation",
+        "hypothalamus",
+        "retina",
+    )
+    assert brain.partially_covered_tissues == ("basal ganglia", "midbrain")
+    assert brain.unavailable_tissues == (
+        "amygdala",
+        "medulla oblongata",
+        "pons",
+        "spinal cord",
+        "thalamus",
+        "white matter",
+    )
+
+    mappings = {mapping.requested_tissue: mapping for mapping in brain.mappings}
+    assert mappings["basal ganglia"].source_tissues == ("caudate",)
+    assert mappings["basal ganglia"].mapping_kind == "reviewed_substructure"
+    assert mappings["hippocampal formation"].source_tissues == ("hippocampus",)
+    assert mappings["hippocampal formation"].mapping_kind == "reviewed_equivalent"
+    assert mappings["midbrain"].source_tissues == ("dorsal raphe", "substantia nigra")
+    assert not mappings["thalamus"].available
+
+
+@pytest.mark.parametrize(
+    ("group", "source_tissues"),
+    [
+        ("heart", ("heart muscle",)),
+        ("liver", ("liver",)),
+        ("lung", ("lung",)),
+        ("pancreas", ("pancreas",)),
+    ],
+)
+def test_complete_hpa_v23_safety_tissue_groups(group, source_tissues):
+    resolution = hpa.resolve_safety_tissue_group(group)
+    assert resolution.complete
+    assert resolution.coverage_state == "complete"
+    assert resolution.source_tissues == source_tissues
+    assert resolution.unavailable_tissues == ()
+
+
+def test_safety_tissue_resolution_fails_closed_by_default():
+    with pytest.raises(hpa.SafetyTissueResolutionError, match=r"brain.*partial"):
+        hpa.resolve_safety_tissue_group("brain")
+
+
+def test_safety_tissue_resolution_rejects_unknown_inputs():
+    with pytest.raises(hpa.SafetyTissueResolutionError, match="unknown safety tissue group"):
+        hpa.resolve_safety_tissue_group("kidney")
+    with pytest.raises(hpa.SafetyTissueResolutionError, match="no safety-tissue mapping"):
+        hpa.resolve_safety_tissue_group("heart", source_name="hpa_rna_consensus")
+    with pytest.raises(hpa.SafetyTissueResolutionError, match="has no version"):
+        hpa.resolve_safety_tissue_group("heart", source_version="v999")
+
+
+def test_safety_tissue_mapping_table_is_a_defensive_copy():
+    first = hpa.safety_tissue_mapping_table()
+    first.loc[:, "source_version"] = "mutated"
+    second = hpa.safety_tissue_mapping_table()
+    assert set(second["source_version"]) == {"v23"}
 
 
 def test_cli_sources_list(hpa_cache, capsys):

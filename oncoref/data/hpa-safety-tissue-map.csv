@@ -1,0 +1,20 @@
+source_name,source_version,safety_group,requested_tissue,source_tissue,mapping_kind,coverage_level,mapping_reference,notes
+hpa_normal_tissue,v23,brain,amygdala,,unavailable,unavailable,https://v23.proteinatlas.org/humanproteome/brain/amygdala,HPA v23 normal_tissue has no source-native amygdala label.
+hpa_normal_tissue,v23,brain,basal ganglia,caudate,reviewed_substructure,partial,https://v23.proteinatlas.org/humanproteome/brain/basal+ganglia,HPA identifies caudate nucleus as one basal-ganglia subregion; it does not cover the whole conceptual region.
+hpa_normal_tissue,v23,brain,cerebellum,cerebellum,exact,complete,https://v23.proteinatlas.org/humanproteome/brain/cerebellum,Exact HPA v23 IHC tissue label.
+hpa_normal_tissue,v23,brain,cerebral cortex,cerebral cortex,exact,complete,https://v23.proteinatlas.org/humanproteome/brain/cerebral+cortex,Exact HPA v23 IHC tissue label.
+hpa_normal_tissue,v23,brain,choroid plexus,choroid plexus,exact,complete,https://v23.proteinatlas.org/humanproteome/brain/choroid+plexus,Exact HPA v23 IHC tissue label.
+hpa_normal_tissue,v23,brain,hippocampal formation,hippocampus,reviewed_equivalent,complete,https://v23.proteinatlas.org/humanproteome/brain/hippocampal+formation,HPA profiles hippocampus IHC within its hippocampal-formation region page.
+hpa_normal_tissue,v23,brain,hypothalamus,hypothalamus,exact,complete,https://v23.proteinatlas.org/humanproteome/brain/hypothalamus,Exact HPA v23 IHC tissue label.
+hpa_normal_tissue,v23,brain,medulla oblongata,,unavailable,unavailable,https://v23.proteinatlas.org/humanproteome/brain/medulla+oblongata,HPA v23 normal_tissue has no source-native medulla oblongata label.
+hpa_normal_tissue,v23,brain,midbrain,dorsal raphe,reviewed_substructure,partial,https://v23.proteinatlas.org/humanproteome/brain/midbrain,HPA identifies dorsal raphe as a midbrain nucleus; it does not cover the whole conceptual region.
+hpa_normal_tissue,v23,brain,midbrain,substantia nigra,reviewed_substructure,partial,https://v23.proteinatlas.org/humanproteome/brain/midbrain,HPA uses substantia nigra RNA to represent midbrain and profiles it as a source-native IHC tissue; it does not cover the whole conceptual region.
+hpa_normal_tissue,v23,brain,pons,,unavailable,unavailable,https://v23.proteinatlas.org/humanproteome/brain/pons,HPA v23 normal_tissue has no source-native pons label.
+hpa_normal_tissue,v23,brain,retina,retina,exact,complete,https://v23.proteinatlas.org/humanproteome/tissue/retina,Exact HPA v23 IHC tissue label retained in the configured brain safety group.
+hpa_normal_tissue,v23,brain,spinal cord,,unavailable,unavailable,https://v23.proteinatlas.org/humanproteome/brain/spinal+cord,HPA v23 normal_tissue has no source-native spinal cord label.
+hpa_normal_tissue,v23,brain,thalamus,,unavailable,unavailable,https://v23.proteinatlas.org/humanproteome/brain/thalamus,HPA v23 normal_tissue has no source-native thalamus label.
+hpa_normal_tissue,v23,brain,white matter,,unavailable,unavailable,https://v23.proteinatlas.org/humanproteome/brain/white+matter,HPA v23 normal_tissue has no source-native white matter label.
+hpa_normal_tissue,v23,heart,heart muscle,heart muscle,exact,complete,https://v23.proteinatlas.org/humanproteome/tissue/heart+muscle,Exact HPA v23 IHC tissue label.
+hpa_normal_tissue,v23,liver,liver,liver,exact,complete,https://v23.proteinatlas.org/humanproteome/tissue/liver,Exact HPA v23 IHC tissue label.
+hpa_normal_tissue,v23,lung,lung,lung,exact,complete,https://v23.proteinatlas.org/humanproteome/tissue/lung,Exact HPA v23 IHC tissue label.
+hpa_normal_tissue,v23,pancreas,pancreas,pancreas,exact,complete,https://v23.proteinatlas.org/humanproteome/tissue/pancreas,Exact HPA v23 IHC tissue label.
