@@ -162,9 +162,15 @@ def hpa_rna_consensus() -> pd.DataFrame:
 
 
 @cache
+def _hpa_normal_tissue_for_version(version: str) -> pd.DataFrame:
+    """Cache one HPA IHC table under its concrete source-version key."""
+    return _read_hpa("hpa_normal_tissue", version)
+
+
 def hpa_normal_tissue(version: str | None = None) -> pd.DataFrame:
     """HPA IHC protein detection per tissue/cell type for one source version."""
-    return _read_hpa("hpa_normal_tissue", version)
+    concrete_version = reference_data.resolve_version("hpa_normal_tissue", version)
+    return _hpa_normal_tissue_for_version(concrete_version)
 
 
 @lru_cache(maxsize=1)
@@ -357,14 +363,15 @@ def resolve_safety_tissue_group(
 
 
 @cache
+def _hpa_normal_tissue_labels_for_version(version: str) -> tuple[str, ...]:
+    labels = _hpa_normal_tissue_for_version(version)["Tissue"].dropna().astype(str)
+    return tuple(sorted({label.strip() for label in labels if label.strip()}))
+
+
 def hpa_normal_tissue_labels(version: str | None = None) -> tuple[str, ...]:
     """Exact HPA IHC tissue labels available in one concrete source version."""
     concrete_version = reference_data.resolve_version("hpa_normal_tissue", version)
-    cache_version = (
-        None if concrete_version == reference_data.DEFAULT_HPA_VERSION else concrete_version
-    )
-    labels = hpa_normal_tissue(cache_version)["Tissue"].dropna().astype(str)
-    return tuple(sorted({label.strip() for label in labels if label.strip()}))
+    return _hpa_normal_tissue_labels_for_version(concrete_version)
 
 
 def resolve_hpa_normal_tissue_label(label: str, *, version: str | None = None) -> str:

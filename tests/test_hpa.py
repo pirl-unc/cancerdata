@@ -22,8 +22,8 @@ def hpa_cache(monkeypatch, tmp_path):
     # clear lru_caches so each test sees its own fixture
     for fn in (
         hpa.hpa_rna_consensus,
-        hpa.hpa_normal_tissue,
-        hpa.hpa_normal_tissue_labels,
+        hpa._hpa_normal_tissue_for_version,
+        hpa._hpa_normal_tissue_labels_for_version,
         hpa.hpa_single_cell,
         hpa.hpa_cell_type_expression,
     ):
@@ -59,8 +59,8 @@ def hpa_cache(monkeypatch, tmp_path):
     yield tmp_path
     for fn in (
         hpa.hpa_rna_consensus,
-        hpa.hpa_normal_tissue,
-        hpa.hpa_normal_tissue_labels,
+        hpa._hpa_normal_tissue_for_version,
+        hpa._hpa_normal_tissue_labels_for_version,
         hpa.hpa_single_cell,
         hpa.hpa_cell_type_expression,
     ):
@@ -100,6 +100,43 @@ def test_hpa_cell_type_expression_wide(hpa_cache):
 def test_gene_protein_tissues_detected_only(hpa_cache):
     # "Not detected" liver row is excluded; testis High is kept.
     assert hpa.gene_protein_tissues("ENSG00000001") == {"testis"}
+
+
+def test_normal_tissue_cache_uses_one_concrete_version_key(monkeypatch):
+    import pandas as pd
+
+    calls = []
+    table = pd.DataFrame({"Tissue": ["liver"]})
+
+    def fake_read_hpa(name, version=None):
+        calls.append((name, version))
+        return table
+
+    hpa._hpa_normal_tissue_for_version.cache_clear()
+    hpa._hpa_normal_tissue_labels_for_version.cache_clear()
+    monkeypatch.setattr(hpa, "_read_hpa", fake_read_hpa)
+
+    frames = (
+        hpa.hpa_normal_tissue(),
+        hpa.hpa_normal_tissue(None),
+        hpa.hpa_normal_tissue("v23"),
+        hpa.hpa_normal_tissue(version="v23"),
+    )
+    assert all(frame is table for frame in frames)
+    label_sets = (
+        hpa.hpa_normal_tissue_labels(),
+        hpa.hpa_normal_tissue_labels(None),
+        hpa.hpa_normal_tissue_labels("v23"),
+        hpa.hpa_normal_tissue_labels(version="v23"),
+    )
+    assert label_sets[0] == ("liver",)
+    assert all(labels is label_sets[0] for labels in label_sets)
+    assert calls == [("hpa_normal_tissue", "v23")]
+    assert hpa._hpa_normal_tissue_for_version.cache_info().currsize == 1
+    assert hpa._hpa_normal_tissue_labels_for_version.cache_info().currsize == 1
+
+    hpa._hpa_normal_tissue_for_version.cache_clear()
+    hpa._hpa_normal_tissue_labels_for_version.cache_clear()
 
 
 def test_normal_tissue_label_resolution_distinguishes_empty_observation(hpa_cache):
