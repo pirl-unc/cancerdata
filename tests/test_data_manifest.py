@@ -105,16 +105,3 @@ def test_pirlygenes_migration_snapshot_has_exact_provenance():
         "data_path": "pirlygenes/data",
         "captured_at": "2026-06-12",
     }
-    assert data_manifest.PIRLYGENES_DATA is data_manifest.PIRLYGENES_MIGRATION_SNAPSHOT
-
-
-def test_current_owned_inventory_is_self_contained():
-    expected = (
-        set(data_manifest.WHEEL)
-        | set(data_manifest.BUNDLE)
-        | set(data_manifest.HPA)
-        | set(data_manifest.SOURCE)
-        | set(data_manifest.PLANNED)
-        | set(data_manifest.CANCERDATA_ORIGINATED)
-    )
-    assert data_manifest.owned_dataset_names() == expected

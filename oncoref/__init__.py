@@ -386,14 +386,7 @@ from .samples import (
     samples_for_cancer_code,
     samples_for_cohort,
 )
-from .therapy_evidence import (
-    THERAPY_BENEFIT_TIERS,
-    THERAPY_EVIDENCE_COLUMNS,
-    THERAPY_EVIDENCE_TRANSFER_VALUES,
-    THERAPY_TOXICITY_TIERS,
-    therapy_benefit_toxicity_evidence,
-    therapy_benefit_toxicity_evidence_df,
-)
+from .therapy_evidence import therapy_benefit_toxicity_evidence
 from .tmb import cancer_tmb, cancer_tmb_df, cancer_tmb_record, resolve_tmb_source
 from .tumor_references import (
     TUMOR_REFERENCE_DERIVATION_METHODS,
@@ -440,10 +433,6 @@ __all__ = [
     "TECHNICAL_FRACTION",
     "TECHNICAL_RNA_FAMILIES",
     "TECHNICAL_RNA_GROUPS",
-    "THERAPY_BENEFIT_TIERS",
-    "THERAPY_EVIDENCE_COLUMNS",
-    "THERAPY_EVIDENCE_TRANSFER_VALUES",
-    "THERAPY_TOXICITY_TIERS",
     "TUMOR_REFERENCE_DERIVATION_METHODS",
     "TUMOR_REFERENCE_DERIVATION_STATUSES",
     "TUMOR_REFERENCE_PROVENANCE_COLUMNS",
@@ -767,7 +756,6 @@ __all__ = [
     "subtype_tumor_reference_expression",
     "tcga_deconvolved_expression",
     "therapy_benefit_toxicity_evidence",
-    "therapy_benefit_toxicity_evidence_df",
     "therapy_evidence",
     "tissue_of_origin",
     "tpm_to_housekeeping_normalized",

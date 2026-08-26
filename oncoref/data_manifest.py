@@ -436,10 +436,6 @@ PIRLYGENES_MIGRATION_SNAPSHOT: frozenset[str] = frozenset(
     }
 )
 
-# Historical compatibility alias. New code should use the explicitly named
-# snapshot so it cannot be mistaken for pirlygenes' current inventory.
-PIRLYGENES_DATA = PIRLYGENES_MIGRATION_SNAPSHOT
-
 
 def captured() -> set[str]:
     """Datasets already held or shipped for compatibility."""
@@ -449,16 +445,3 @@ def captured() -> set[str]:
 def in_scope() -> set[str]:
     """Base-layer inventory: captured datasets plus still-planned fact tables."""
     return captured() | set(PLANNED)
-
-
-def owned_dataset_names() -> frozenset[str]:
-    """Current oncoref-owned dataset names across every storage backend."""
-
-    return frozenset(
-        set(WHEEL)
-        | set(BUNDLE)
-        | set(HPA)
-        | set(SOURCE)
-        | set(PLANNED)
-        | set(CANCERDATA_ORIGINATED)
-    )

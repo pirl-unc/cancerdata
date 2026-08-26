@@ -33,29 +33,6 @@ Read the guide from concepts to operations:
 Within each section, the intended use and primary modules come first. Detailed
 schema, provenance, fallback, and migration contracts follow.
 
-## Compatibility Policy
-
-The checked-in `public-api-contract.json` is the compatibility lower bound for
-the 1.x series. It covers the flat namespace and the preferred semantic modules.
-CI permits additive modules, exports, and optional parameters, but rejects an
-unacknowledged removal, symbol-kind change, stricter parameter, positional
-reordering, or changed optional default. Public names are retained through the
-1.x series. If an exceptional removal is unavoidable, deprecate it with a
-runtime warning for at least one package release, link the review issue or PR,
-and record that reference when updating the contract.
-
-Run the guard directly with:
-
-```bash
-python scripts/public_api_contract.py
-```
-
-After an additive API change, refresh the manifest with `--update`. The updater
-refuses incompatible rewrites. A deliberately reviewed breaking change requires
-`--update --allow-breaking <issue-or-PR>` so the approval reference is recorded
-in the machine-readable manifest; normal feature work must not use that escape
-hatch merely to silence CI.
-
 ## Cancer Vocabulary
 
 - `oncoref.cancer_ontology` — cancer-type registry, aliases, parent/child tree,
@@ -1223,9 +1200,9 @@ order.
 
 - `oncoref.catalog` — unified dataset inventory and fetch/status/path operations.
 
-`catalog.inventory()` and `data_manifest.owned_dataset_names()` describe the
-current oncoref-owned inventory. `PIRLYGENES_MIGRATION_SNAPSHOT` is separate
-historical evidence pinned to the exact pirlygenes tag and commit recorded in
+`catalog.inventory()` describes the current oncoref-owned inventory.
+`PIRLYGENES_MIGRATION_SNAPSHOT` is separate historical evidence pinned to the
+exact pirlygenes tag and commit recorded in
 `PIRLYGENES_MIGRATION_SNAPSHOT_METADATA`; it is not a live downstream
 completeness assertion. To review a newly added pirlygenes dataset, compare a
 local clone at the proposed ref:

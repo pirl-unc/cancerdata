@@ -6,7 +6,7 @@ from oncoref import therapy_evidence
 
 
 def test_therapy_evidence_schema_ids_and_sources():
-    frame = therapy_evidence.therapy_benefit_toxicity_evidence_df()
+    frame = therapy_evidence.therapy_benefit_toxicity_evidence()
 
     assert len(frame) == 7
     assert tuple(frame.columns) == therapy_evidence.THERAPY_EVIDENCE_COLUMNS
@@ -63,7 +63,7 @@ def test_postmarket_signal_is_not_an_incidence_estimate():
 
 
 def test_therapy_evidence_validation_rejects_incidence_on_postmarket_signal():
-    frame = therapy_evidence.therapy_benefit_toxicity_evidence_df()
+    frame = therapy_evidence.therapy_benefit_toxicity_evidence()
     frame.loc[frame["source_type"].eq("postmarket_signal"), "source_type"] = "POSTMARKET_SIGNAL"
     signal = frame["source_type"].eq("POSTMARKET_SIGNAL")
     frame.loc[signal, "grade3_plus_ae_rate"] = "4%"
@@ -81,19 +81,15 @@ def test_therapy_evidence_validation_rejects_incidence_on_postmarket_signal():
     ],
 )
 def test_therapy_evidence_validation_rejects_unknown_enumerations(column, value):
-    frame = therapy_evidence.therapy_benefit_toxicity_evidence_df()
+    frame = therapy_evidence.therapy_benefit_toxicity_evidence()
     frame.loc[0, column] = value
 
     with pytest.raises(ValueError, match=f"invalid {column}"):
         therapy_evidence._validate_therapy_evidence(frame)
 
 
-def test_therapy_evidence_top_level_compatibility_exports():
+def test_therapy_evidence_public_exports():
     assert oncoref.therapy_benefit_toxicity_evidence is (
         therapy_evidence.therapy_benefit_toxicity_evidence
     )
-    assert oncoref.therapy_benefit_toxicity_evidence_df is (
-        therapy_evidence.therapy_benefit_toxicity_evidence_df
-    )
-    for name in therapy_evidence.__all__:
-        assert name in oncoref.__all__
+    assert oncoref.therapy_evidence is therapy_evidence

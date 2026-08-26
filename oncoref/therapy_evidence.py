@@ -168,17 +168,10 @@ def therapy_benefit_toxicity_evidence(
     return frame.loc[:, THERAPY_EVIDENCE_COLUMNS].copy().reset_index(drop=True)
 
 
-def therapy_benefit_toxicity_evidence_df() -> pd.DataFrame:
-    """All source-anchored therapy benefit/toxicity evidence rows."""
-
-    return therapy_benefit_toxicity_evidence()
-
-
 __all__ = [
     "THERAPY_BENEFIT_TIERS",
     "THERAPY_EVIDENCE_COLUMNS",
     "THERAPY_EVIDENCE_TRANSFER_VALUES",
     "THERAPY_TOXICITY_TIERS",
     "therapy_benefit_toxicity_evidence",
-    "therapy_benefit_toxicity_evidence_df",
 ]
