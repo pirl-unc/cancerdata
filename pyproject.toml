@@ -76,6 +76,7 @@ include = ["oncoref*"]
 oncoref = [
     "data/*.csv",
     "data/*.csv.gz",
+    "data/*.json",
     "data/*.yaml",
 ]
 

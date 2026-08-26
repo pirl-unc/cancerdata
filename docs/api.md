@@ -25,13 +25,36 @@ Read the guide from concepts to operations:
 | --- | --- |
 | Canonical cancer and gene identities | [Cancer Vocabulary](#cancer-vocabulary), [Gene Identity](#gene-identity) |
 | Expression reads, artifacts, and normalization | [Expression And Normalization](#expression-and-normalization) |
-| Clinical and epidemiological reference facts | [ICI Response](#ici-response), [Burden, TMB, Fusions, and Signatures](#burden-tmb-fusions-and-signatures) |
+| Clinical and epidemiological reference facts | [ICI Response](#ici-response), [Therapy Benefit and Toxicity](#therapy-benefit-and-toxicity), [Burden, TMB, Fusions, and Signatures](#burden-tmb-fusions-and-signatures) |
 | Cancer-testis antigen and panel calculations | [CTA Antigens](#cta-antigens), [Generic Antigen Panels](#generic-antigen-panels) |
 | Downloads, caches, and release metadata | [Data Management](#data-management) |
 | Historical import paths | [Compatibility Modules](#compatibility-modules) |
 
 Within each section, the intended use and primary modules come first. Detailed
 schema, provenance, fallback, and migration contracts follow.
+
+## Compatibility Policy
+
+The checked-in `public-api-contract.json` is the compatibility lower bound for
+the 1.x series. It covers the flat namespace and the preferred semantic modules.
+CI permits additive modules, exports, and optional parameters, but rejects an
+unacknowledged removal, symbol-kind change, stricter parameter, positional
+reordering, or changed optional default. Public names are retained through the
+1.x series. If an exceptional removal is unavoidable, deprecate it with a
+runtime warning for at least one package release, link the review issue or PR,
+and record that reference when updating the contract.
+
+Run the guard directly with:
+
+```bash
+python scripts/public_api_contract.py
+```
+
+After an additive API change, refresh the manifest with `--update`. The updater
+refuses incompatible rewrites. A deliberately reviewed breaking change requires
+`--update --allow-breaking <issue-or-PR>` so the approval reference is recorded
+in the machine-readable manifest; normal feature work must not use that escape
+hatch merely to silence CI.
 
 ## Cancer Vocabulary
 
@@ -361,6 +384,32 @@ python scripts/audit_ici_source_locators.py --write-estimates
 The script retrieves one public source document at a time and stores compressed
 cache entries under `~/.cache/oncoref/ici-source-locator-audit`, keeping the source
 corpus out of memory.
+
+## Therapy Benefit and Toxicity
+
+- `oncoref.therapy_evidence` — source-anchored clinical benefit, toxicity, and
+  safety-signal facts. Target-to-drug registries and treatment-selection panels
+  remain downstream in pirlygenes.
+
+`therapy_benefit_toxicity_evidence()` returns the seven migrated evidence rows
+with stable `evidence_id` values, disease/subtype and line-of-therapy context,
+structured evidence-transfer semantics, and source tokens, anchors, and URLs.
+Filters are exact and case-insensitive. When a cancer code and subtype are both
+provided, disease-level rows with a blank subtype remain applicable; a
+subtype-only query returns exact subtype rows. Use
+`include_transferred=False` when cross-indication evidence is not admissible.
+Postmarket-signal rows deliberately carry no incidence-like adverse-event or
+discontinuation rate.
+
+```python
+from oncoref import therapy_evidence
+
+therapy_evidence.therapy_benefit_toxicity_evidence(
+    agent="imatinib",
+    cancer_code="SARC",
+    subtype="gist",
+)
+```
 
 ## CTA Antigens
 
@@ -1173,6 +1222,22 @@ order.
 ### Dataset catalog
 
 - `oncoref.catalog` — unified dataset inventory and fetch/status/path operations.
+
+`catalog.inventory()` and `data_manifest.owned_dataset_names()` describe the
+current oncoref-owned inventory. `PIRLYGENES_MIGRATION_SNAPSHOT` is separate
+historical evidence pinned to the exact pirlygenes tag and commit recorded in
+`PIRLYGENES_MIGRATION_SNAPSHOT_METADATA`; it is not a live downstream
+completeness assertion. To review a newly added pirlygenes dataset, compare a
+local clone at the proposed ref:
+
+```bash
+python scripts/audit_pirlygenes_inventory.py --repo ../pirlygenes --ref <commit>
+```
+
+Any reported addition or removal prompts an ownership review under the boundary
+at the top of this guide. If ownership moves to oncoref, classify it in the
+current manifest and add the implementation; otherwise leave it downstream.
+Do not rewrite the historical snapshot unless correcting its exact pinned tree.
 
 ### Expression bundle
 

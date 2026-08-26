@@ -13,11 +13,10 @@
 """The complete, classified inventory of oncoref-domain data.
 
 This is the single declarative source of truth for *what data oncoref owns*
-and how each dataset is held. It keeps the base layer honest: every dataset is
-classified into exactly one bucket, and a guard test (test_data_manifest.py)
-asserts the buckets partition the frozen pirlygenes inventory exhaustively and
-disjointly — so as oncoref absorbs pirlygenes, nothing is silently dropped or
-double-owned.
+and how each dataset is held. ``catalog.inventory()`` exposes that current
+self-owned inventory. A separately named, version-pinned pirlygenes migration
+snapshot preserves the June 2026 takeover audit without pretending to follow
+later additions or removals in another repository.
 
 Ownership rule:
   oncoref owns empirical base facts and reference mechanics: canonical gene IDs,
@@ -59,6 +58,10 @@ WHEEL: dict[str, tuple[str, str]] = {
     "cancer-incidence-mortality": ("epidemiology", "incidence/mortality by burden category"),
     "cancer-tmb": ("genomics", "median tumor mutational burden per type"),
     "cancer-apd1-response": ("response", "anti-PD-1 monotherapy ORR per type"),
+    "therapy-benefit-toxicity-evidence": (
+        "therapy-evidence",
+        "source-anchored clinical benefit/toxicity fact rows",
+    ),
     "cancer-reference-expression-samples": ("expression", "per-sample curation manifest"),
     "expression_sources": ("expression", "cohort expression-source registry"),
     # normalization references (R-norm; consumed by the clean TPM engine)
@@ -216,12 +219,7 @@ SOURCE: dict[str, tuple[str, str]] = {
 }
 
 #: {name: (category, description)} — oncoref-domain fact tables still to port.
-PLANNED: dict[str, tuple[str, str]] = {
-    "therapy-benefit-toxicity-evidence": (
-        "therapy-evidence",
-        "source-anchored therapy benefit/toxicity fact rows; not target registries or panels",
-    ),
-}
+PLANNED: dict[str, tuple[str, str]] = {}
 
 #: pirlygenes tables oncoref replaced with its own regenerated equivalent.
 SUPERSEDED: dict[str, str] = {
@@ -340,10 +338,21 @@ OUT_OF_SCOPE: frozenset[str] = frozenset(
     }
 )
 
-#: Frozen snapshot of pirlygenes' shipped ``data/`` inventory (file stems + artifact
-#: dirs), 2026-06. The guard test partitions this against the buckets above; a new
-#: pirlygenes dataset must be consciously classified rather than silently missed.
-PIRLYGENES_DATA: frozenset[str] = frozenset(
+#: Provenance for :data:`PIRLYGENES_MIGRATION_SNAPSHOT`. This exact commit's
+#: ``pirlygenes/data`` tree normalizes to the snapshot below. It is historical
+#: migration evidence, not a live cross-repository completeness promise.
+PIRLYGENES_MIGRATION_SNAPSHOT_METADATA: dict[str, str] = {
+    "repository": "pirl-unc/pirlygenes",
+    "ref": "v5.22.80",
+    "commit": "bb6679e39029218e93acb2e54317a8d4ff98f424",
+    "data_path": "pirlygenes/data",
+    "captured_at": "2026-06-12",
+}
+
+#: Exact normalized inventory of ``pirlygenes/data`` at the pinned migration
+#: commit above. Use ``scripts/audit_pirlygenes_inventory.py`` to reproduce this
+#: snapshot or compare it with a newer pirlygenes ref.
+PIRLYGENES_MIGRATION_SNAPSHOT: frozenset[str] = frozenset(
     {
         "ADC-approved",
         "ADC-trials",
@@ -427,6 +436,10 @@ PIRLYGENES_DATA: frozenset[str] = frozenset(
     }
 )
 
+# Historical compatibility alias. New code should use the explicitly named
+# snapshot so it cannot be mistaken for pirlygenes' current inventory.
+PIRLYGENES_DATA = PIRLYGENES_MIGRATION_SNAPSHOT
+
 
 def captured() -> set[str]:
     """Datasets already held or shipped for compatibility."""
@@ -436,3 +449,16 @@ def captured() -> set[str]:
 def in_scope() -> set[str]:
     """Base-layer inventory: captured datasets plus still-planned fact tables."""
     return captured() | set(PLANNED)
+
+
+def owned_dataset_names() -> frozenset[str]:
+    """Current oncoref-owned dataset names across every storage backend."""
+
+    return frozenset(
+        set(WHEEL)
+        | set(BUNDLE)
+        | set(HPA)
+        | set(SOURCE)
+        | set(PLANNED)
+        | set(CANCERDATA_ORIGINATED)
+    )

@@ -4,7 +4,7 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 
-"""Completeness guard: the manifest must classify every pirlygenes dataset (#35)."""
+"""Current ownership and version-pinned pirlygenes migration inventory guards."""
 
 from pathlib import Path
 
@@ -22,10 +22,9 @@ _BUCKETS = {
 
 
 def test_every_pirlygenes_dataset_is_classified():
-    # Each of the 77 frozen pirlygenes assets must fall in exactly one bucket —
-    # so nothing pirlygenes ships is silently dropped or left unclassified.
+    # Every asset in the exact historical migration snapshot has one decision.
     classified = set().union(*_BUCKETS.values())
-    unclassified = data_manifest.PIRLYGENES_DATA - classified
+    unclassified = data_manifest.PIRLYGENES_MIGRATION_SNAPSHOT - classified
     assert not unclassified, f"unclassified pirlygenes datasets: {sorted(unclassified)}"
 
 
@@ -44,7 +43,7 @@ def test_classification_only_covers_known_pirlygenes_data():
     # pipeline, not copied from the frozen pirlygenes inventory.
     classified = set().union(*_BUCKETS.values())
     allowed_originated = set(data_manifest.BUNDLE_ORIGINATED) | set(data_manifest.BUNDLE_TRUFFLEPIG)
-    stray = classified - data_manifest.PIRLYGENES_DATA - allowed_originated
+    stray = classified - data_manifest.PIRLYGENES_MIGRATION_SNAPSHOT - allowed_originated
     assert not stray, f"classified names not in the pirlygenes snapshot: {sorted(stray)}"
 
 
@@ -66,8 +65,12 @@ def test_planned_tables_not_yet_present():
 def test_bundle_matches_downloadable_paths():
     bundle_stems = {p.removesuffix(".csv") for p in data_bundle.DOWNLOADABLE_PATHS}
     assert bundle_stems == set(data_manifest.BUNDLE)
-    assert set(data_manifest.BUNDLE_ORIGINATED).isdisjoint(data_manifest.PIRLYGENES_DATA)
-    assert set(data_manifest.BUNDLE_TRUFFLEPIG).isdisjoint(data_manifest.PIRLYGENES_DATA)
+    assert set(data_manifest.BUNDLE_ORIGINATED).isdisjoint(
+        data_manifest.PIRLYGENES_MIGRATION_SNAPSHOT
+    )
+    assert set(data_manifest.BUNDLE_TRUFFLEPIG).isdisjoint(
+        data_manifest.PIRLYGENES_MIGRATION_SNAPSHOT
+    )
 
 
 def test_hpa_matches_reference_sources():
@@ -92,3 +95,26 @@ def test_originated_not_in_pirlygenes_classification():
         set(data_manifest.WHEEL) | set(data_manifest.PLANNED) | set(data_manifest.OUT_OF_SCOPE)
     )
     assert set(data_manifest.CANCERDATA_ORIGINATED).isdisjoint(classified)
+
+
+def test_pirlygenes_migration_snapshot_has_exact_provenance():
+    assert data_manifest.PIRLYGENES_MIGRATION_SNAPSHOT_METADATA == {
+        "repository": "pirl-unc/pirlygenes",
+        "ref": "v5.22.80",
+        "commit": "bb6679e39029218e93acb2e54317a8d4ff98f424",
+        "data_path": "pirlygenes/data",
+        "captured_at": "2026-06-12",
+    }
+    assert data_manifest.PIRLYGENES_DATA is data_manifest.PIRLYGENES_MIGRATION_SNAPSHOT
+
+
+def test_current_owned_inventory_is_self_contained():
+    expected = (
+        set(data_manifest.WHEEL)
+        | set(data_manifest.BUNDLE)
+        | set(data_manifest.HPA)
+        | set(data_manifest.SOURCE)
+        | set(data_manifest.PLANNED)
+        | set(data_manifest.CANCERDATA_ORIGINATED)
+    )
+    assert data_manifest.owned_dataset_names() == expected

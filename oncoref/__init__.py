@@ -20,6 +20,7 @@ genome and plotting features add only their named extras.
 
 from . import (
     antigen_coverage,
+    api_contract,
     cancer_ontology,
     cohorts,
     cta_coverage,
@@ -28,12 +29,22 @@ from . import (
     expression_engine,
     ici_response,
     source_matrices,
+    therapy_evidence,
 )
 from .apd1 import (
     cancer_apd1_response,
     cancer_apd1_response_df,
     cancer_apd1_response_record,
     resolve_apd1_response_source,
+)
+from .api_contract import (
+    PUBLIC_API_CONTRACT_VERSION,
+    PUBLIC_API_MODULES,
+    assert_public_api_compatible,
+    current_public_api_manifest,
+    load_public_api_contract,
+    public_api_compatibility_errors,
+    public_api_contract_path,
 )
 from .cancer_types import (
     CANCER_TYPE_ALIASES,
@@ -385,6 +396,14 @@ from .samples import (
     samples_for_cancer_code,
     samples_for_cohort,
 )
+from .therapy_evidence import (
+    THERAPY_BENEFIT_TIERS,
+    THERAPY_EVIDENCE_COLUMNS,
+    THERAPY_EVIDENCE_TRANSFER_VALUES,
+    THERAPY_TOXICITY_TIERS,
+    therapy_benefit_toxicity_evidence,
+    therapy_benefit_toxicity_evidence_df,
+)
 from .tmb import cancer_tmb, cancer_tmb_df, cancer_tmb_record, resolve_tmb_source
 from .tumor_references import (
     TUMOR_REFERENCE_DERIVATION_METHODS,
@@ -418,6 +437,8 @@ __all__ = [
     "ONTOLOGY_LEVEL_VALUES",
     "OTHER_TECHNICAL_FRACTION",
     "PROPORTION_METRICS",
+    "PUBLIC_API_CONTRACT_VERSION",
+    "PUBLIC_API_MODULES",
     "REFERENCE_EXPRESSION_SCHEMA_VERSION",
     "REFERENCE_SOURCE_VALUES",
     "REGIMEN_FALLBACK",
@@ -431,6 +452,10 @@ __all__ = [
     "TECHNICAL_FRACTION",
     "TECHNICAL_RNA_FAMILIES",
     "TECHNICAL_RNA_GROUPS",
+    "THERAPY_BENEFIT_TIERS",
+    "THERAPY_EVIDENCE_COLUMNS",
+    "THERAPY_EVIDENCE_TRANSFER_VALUES",
+    "THERAPY_TOXICITY_TIERS",
     "TUMOR_REFERENCE_DERIVATION_METHODS",
     "TUMOR_REFERENCE_DERIVATION_STATUSES",
     "TUMOR_REFERENCE_PROVENANCE_COLUMNS",
@@ -471,6 +496,8 @@ __all__ = [
     "aggregate_transcripts_to_genes",
     # organized API modules
     "antigen_coverage",
+    "api_contract",
+    "assert_public_api_compatible",
     "available_percentile_cohorts",
     "available_representative_cohorts",
     "available_within_sample_cohorts",
@@ -606,6 +633,7 @@ __all__ = [
     "cta_testis_restricted_gene_names",
     "cta_unfiltered_gene_ids",
     "cta_unfiltered_gene_names",
+    "current_public_api_manifest",
     "display_gene_name",
     "drop_technical_rna",
     "ensembl_id_aliases",
@@ -673,6 +701,7 @@ __all__ = [
     "is_protein_coding_gene",
     "is_rescue_feature",
     "known_cohort_ids",
+    "load_public_api_contract",
     "locally_available_percentile_cohorts",
     "locally_available_within_sample_cohorts",
     "log1p_transform",
@@ -716,6 +745,8 @@ __all__ = [
     "proteoform_symbol",
     "proteoform_symbol_map",
     "proteoform_within_sample_top_fraction",
+    "public_api_compatibility_errors",
+    "public_api_contract_path",
     "recommended_hpa_housekeeping_panel",
     "reference_source_codes",
     "renormalize_to_million",
@@ -753,6 +784,9 @@ __all__ = [
     "subtype_deconvolved_expression",
     "subtype_tumor_reference_expression",
     "tcga_deconvolved_expression",
+    "therapy_benefit_toxicity_evidence",
+    "therapy_benefit_toxicity_evidence_df",
+    "therapy_evidence",
     "tissue_of_origin",
     "tpm_to_housekeeping_normalized",
     "tumor_reference_expression_provenance",

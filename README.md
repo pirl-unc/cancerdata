@@ -85,6 +85,7 @@ od.cancer_burden("pancreas", metric="us_mortality_pct")
 od.burden_category("SARC_OS")             # -> "bone_and_joint" (incidence/mortality bucket)
 od.cancer_ici_response("SKCM")            # 42% objective response rate
 od.cancer_ici_response("SKCM", regimen="PD-1+CTLA-4")   # 57.6  (pin a regimen)
+od.therapy_benefit_toxicity_evidence(cancer_code="OV")  # sourced clinical facts
 
 # Cancer-testis antigens (HPA-derived tissue-restriction):
 od.cta_gene_names()                       # expressed CTA symbols (MAGEA4, CT83, …)
