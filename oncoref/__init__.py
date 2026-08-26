@@ -20,7 +20,6 @@ genome and plotting features add only their named extras.
 
 from . import (
     antigen_coverage,
-    api_contract,
     cancer_ontology,
     cohorts,
     cta_coverage,
@@ -36,15 +35,6 @@ from .apd1 import (
     cancer_apd1_response_df,
     cancer_apd1_response_record,
     resolve_apd1_response_source,
-)
-from .api_contract import (
-    PUBLIC_API_CONTRACT_VERSION,
-    PUBLIC_API_MODULES,
-    assert_public_api_compatible,
-    current_public_api_manifest,
-    load_public_api_contract,
-    public_api_compatibility_errors,
-    public_api_contract_path,
 )
 from .cancer_types import (
     CANCER_TYPE_ALIASES,
@@ -437,8 +427,6 @@ __all__ = [
     "ONTOLOGY_LEVEL_VALUES",
     "OTHER_TECHNICAL_FRACTION",
     "PROPORTION_METRICS",
-    "PUBLIC_API_CONTRACT_VERSION",
-    "PUBLIC_API_MODULES",
     "REFERENCE_EXPRESSION_SCHEMA_VERSION",
     "REFERENCE_SOURCE_VALUES",
     "REGIMEN_FALLBACK",
@@ -496,8 +484,6 @@ __all__ = [
     "aggregate_transcripts_to_genes",
     # organized API modules
     "antigen_coverage",
-    "api_contract",
-    "assert_public_api_compatible",
     "available_percentile_cohorts",
     "available_representative_cohorts",
     "available_within_sample_cohorts",
@@ -633,7 +619,6 @@ __all__ = [
     "cta_testis_restricted_gene_names",
     "cta_unfiltered_gene_ids",
     "cta_unfiltered_gene_names",
-    "current_public_api_manifest",
     "display_gene_name",
     "drop_technical_rna",
     "ensembl_id_aliases",
@@ -701,7 +686,6 @@ __all__ = [
     "is_protein_coding_gene",
     "is_rescue_feature",
     "known_cohort_ids",
-    "load_public_api_contract",
     "locally_available_percentile_cohorts",
     "locally_available_within_sample_cohorts",
     "log1p_transform",
@@ -745,8 +729,6 @@ __all__ = [
     "proteoform_symbol",
     "proteoform_symbol_map",
     "proteoform_within_sample_top_fraction",
-    "public_api_compatibility_errors",
-    "public_api_contract_path",
     "recommended_hpa_housekeeping_panel",
     "reference_source_codes",
     "renormalize_to_million",

@@ -433,12 +433,6 @@
         "PROPORTION_METRICS": {
           "kind": "constant"
         },
-        "PUBLIC_API_CONTRACT_VERSION": {
-          "kind": "constant"
-        },
-        "PUBLIC_API_MODULES": {
-          "kind": "constant"
-        },
         "REFERENCE_EXPRESSION_SCHEMA_VERSION": {
           "kind": "constant"
         },
@@ -780,15 +774,6 @@
         },
         "antigen_coverage": {
           "kind": "module"
-        },
-        "api_contract": {
-          "kind": "module"
-        },
-        "assert_public_api_compatible": {
-          "kind": "callable",
-          "signature": {
-            "parameters": []
-          }
         },
         "available_percentile_cohorts": {
           "kind": "callable",
@@ -2889,12 +2874,6 @@
             "parameters": []
           }
         },
-        "current_public_api_manifest": {
-          "kind": "callable",
-          "signature": {
-            "parameters": []
-          }
-        },
         "display_gene_name": {
           "kind": "callable",
           "signature": {
@@ -4005,19 +3984,6 @@
           "kind": "callable",
           "signature": {
             "parameters": []
-          }
-        },
-        "load_public_api_contract": {
-          "kind": "callable",
-          "signature": {
-            "parameters": [
-              {
-                "default": "None",
-                "kind": "POSITIONAL_OR_KEYWORD",
-                "name": "path",
-                "required": false
-              }
-            ]
           }
         },
         "locally_available_percentile_cohorts": {
@@ -5151,31 +5117,6 @@
                 "required": false
               }
             ]
-          }
-        },
-        "public_api_compatibility_errors": {
-          "kind": "callable",
-          "signature": {
-            "parameters": [
-              {
-                "default": "None",
-                "kind": "POSITIONAL_OR_KEYWORD",
-                "name": "expected",
-                "required": false
-              },
-              {
-                "default": "None",
-                "kind": "POSITIONAL_OR_KEYWORD",
-                "name": "observed",
-                "required": false
-              }
-            ]
-          }
-        },
-        "public_api_contract_path": {
-          "kind": "callable",
-          "signature": {
-            "parameters": []
           }
         },
         "recommended_hpa_housekeeping_panel": {
@@ -6454,6 +6395,233 @@
         }
       }
     },
+    "oncoref.apd1": {
+      "symbols": {
+        "cancer_apd1_response": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "inherit",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_inherited",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_apd1_response_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_apd1_response_record": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "inherit",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_inherited",
+                "required": false
+              }
+            ]
+          }
+        },
+        "resolve_apd1_response_source": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "inherit",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.cancer_genes": {
+      "symbols": {
+        "cancer_biomarker_genes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "subtype",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_driver_genes_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_driver_variants_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_key_gene_citation_audit": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_key_genes_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_therapy_targets": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "subtype",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_type_gene_sets": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_type_genes_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_viral_antigens": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "virus",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_viral_antigens_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "degenerate_subtype_pairs_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "disease_state_rules_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "narrative_gene_set": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "set_name",
+                "required": true
+              }
+            ]
+          }
+        },
+        "narrative_gene_sets_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "viral_antigens_for_cancer": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        }
+      }
+    },
     "oncoref.cancer_ontology": {
       "symbols": {
         "CANCER_TYPE_ALIASES": {
@@ -7367,6 +7535,1153 @@
         }
       }
     },
+    "oncoref.cancer_types": {
+      "symbols": {
+        "cancer_evidence_source_code": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "strict",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_lineage_group": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_lineage_group_overrides": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_lineage_groups": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_mismatch_repair_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "VAR_POSITIONAL",
+                "name": "args",
+                "required": false
+              },
+              {
+                "default": null,
+                "kind": "VAR_KEYWORD",
+                "name": "kwargs",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_mismatch_repair_status": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_mismatch_repair_statuses": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_types",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "state",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "classifier_role",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "under",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "expression_only",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_normal_tissue_map": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_subtype_group": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "group_code",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "under",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_subtype_groupings": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_type_ancestors": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_type_category_schema": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_type_category_summary": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_type_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "VAR_POSITIONAL",
+                "name": "args",
+                "required": false
+              },
+              {
+                "default": null,
+                "kind": "VAR_KEYWORD",
+                "name": "kwargs",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_type_descendants": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_self",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_type_families": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_type_info": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_type_lineage": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_type_path": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_semantic_groups",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_type_records": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_types",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "under",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_self",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_descendants",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "lineage_group",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "family",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "ontology_level",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "ontology_kind",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "who_category",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "who_behavior",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "classification_target",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "reference_source",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "differentiation",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "grade_tier",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "primary_tissue",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "normal_tissue",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "subtype_group",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "subtype_axis",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "mmr_state",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "mmr_classifier_role",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "evidence_source",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "expression_only",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "leaves_only",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "query",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_type_reference_code": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_type_reference_data": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_types",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "regimen",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "fallback",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "inherit",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_type_reference_source": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_type_registry": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_type_siblings": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_self",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "same_ontology_level",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_type_subtypes_of": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "parent_code",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_type_synonyms": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_type_tree": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "root",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_types_by_tissue": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "primary_tissue",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_types_in_family": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "family",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_who_soft_tissue_bone_audit": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "registry_status",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "who_category",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "who_behavior",
+                "required": false
+              }
+            ]
+          }
+        },
+        "canonical_cancer_code": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "code",
+                "required": true
+              }
+            ]
+          }
+        },
+        "canonical_cohort_id": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cohort_id",
+                "required": true
+              }
+            ]
+          }
+        },
+        "classification_target_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cohort_aggregate_members": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "aggregate_code",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cohort_aggregates": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cohort_aggregates_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cohort_kind": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cohort_id",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cohort_registry": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cohort_registry_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cohort_source_version": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "computed_union_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "coverage_for_cancer_type": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "expression_reference_coverage": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_types",
+                "required": false
+              },
+              {
+                "default": null,
+                "kind": "VAR_KEYWORD",
+                "name": "query_kwargs",
+                "required": false
+              }
+            ]
+          }
+        },
+        "family_display_name": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "family",
+                "required": true
+              }
+            ]
+          }
+        },
+        "format_cancer_code_label": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "code",
+                "required": true
+              }
+            ]
+          }
+        },
+        "fusion_status": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "is_classification_target": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "is_mixture_cohort": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "code",
+                "required": true
+              }
+            ]
+          }
+        },
+        "known_cohort_ids": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "matched_normal_tissue": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "matched_normal_tissue_expression": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "genes",
+                "required": false
+              }
+            ]
+          }
+        },
+        "matched_normal_tissues": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_types",
+                "required": false
+              },
+              {
+                "default": null,
+                "kind": "VAR_KEYWORD",
+                "name": "query_kwargs",
+                "required": false
+              }
+            ]
+          }
+        },
+        "mixture_cohort_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "mmr_confounder_cancer_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "under",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "expression_only",
+                "required": false
+              }
+            ]
+          }
+        },
+        "mmr_hypermutated_confounder_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "under",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "expression_only",
+                "required": false
+              }
+            ]
+          }
+        },
+        "mmrd_cancer_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "under",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "expression_only",
+                "required": false
+              }
+            ]
+          }
+        },
+        "pmmr_cancer_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "under",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "expression_only",
+                "required": false
+              }
+            ]
+          }
+        },
+        "reference_source_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "reference_source",
+                "required": false
+              }
+            ]
+          }
+        },
+        "resolve_cancer_type": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "strict",
+                "required": false
+              }
+            ]
+          }
+        },
+        "resolve_cohort_id": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cohort_id",
+                "required": true
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "strict",
+                "required": false
+              }
+            ]
+          }
+        },
+        "sarcoma_lineage_codes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "with_expression_only",
+                "required": false
+              }
+            ]
+          }
+        },
+        "tissue_of_origin": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "viral_status": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.catalog": {
+      "symbols": {
+        "Dataset": {
+          "kind": "class",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "kind",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "description",
+                "required": true
+              }
+            ]
+          }
+        },
+        "dataset": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              }
+            ]
+          }
+        },
+        "datasets": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "ensure": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              }
+            ]
+          }
+        },
+        "fetch": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'all'",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "target",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force",
+                "required": false
+              }
+            ]
+          }
+        },
+        "inventory": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "path": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              }
+            ]
+          }
+        },
+        "status": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.cli": {
+      "symbols": {
+        "main": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "argv",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
     "oncoref.cohorts": {
       "symbols": {
         "cohort_aggregate_members": {
@@ -7455,6 +8770,387 @@
           "kind": "callable",
           "signature": {
             "parameters": []
+          }
+        }
+      }
+    },
+    "oncoref.coverage": {
+      "symbols": {
+        "addressable_fraction": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "10.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "gene_ids",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              }
+            ]
+          }
+        },
+        "addressable_fraction_by_cohort": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "10.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "gene_ids",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_id_to_name": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cta_patient_fractions": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "10.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "gene_ids",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              }
+            ]
+          }
+        },
+        "greedy_coverage": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "10.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "gene_ids",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "max_genes",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              }
+            ]
+          }
+        },
+        "mean_antigens_per_patient": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "10.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "gene_ids",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              }
+            ]
+          }
+        },
+        "mean_antigens_per_patient_by_cohort": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "10.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "gene_ids",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              }
+            ]
+          }
+        },
+        "patient_coverage": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'cta'",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "gene_set",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "(25, 50, 100, 200)",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "thresholds",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              }
+            ]
+          }
+        },
+        "render_patient_coverage": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'cta'",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "gene_set",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "25",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold",
+                "required": false
+              },
+              {
+                "default": "(25, 50, 100, 200)",
+                "kind": "KEYWORD_ONLY",
+                "name": "thresholds",
+                "required": false
+              },
+              {
+                "default": "'coverage_out'",
+                "kind": "KEYWORD_ONLY",
+                "name": "out_dir",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              }
+            ]
+          }
+        },
+        "resolve_gene_set": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              }
+            ]
+          }
+        },
+        "within_sample_percentile_addressable_fraction_by_cohort": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "0.95",
+                "kind": "KEYWORD_ONLY",
+                "name": "percentile",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "gene_ids",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              },
+              {
+                "default": "'pass'",
+                "kind": "KEYWORD_ONLY",
+                "name": "sample_qc",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "coverage",
+                "required": false
+              },
+              {
+                "default": "'raise'",
+                "kind": "KEYWORD_ONLY",
+                "name": "on_missing",
+                "required": false
+              }
+            ]
+          }
+        },
+        "within_sample_percentile_coverage_sweep": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "(0.9, 0.95)",
+                "kind": "KEYWORD_ONLY",
+                "name": "percentiles",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "gene_ids",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              },
+              {
+                "default": "'pass'",
+                "kind": "KEYWORD_ONLY",
+                "name": "sample_qc",
+                "required": false
+              },
+              {
+                "default": "'raise'",
+                "kind": "KEYWORD_ONLY",
+                "name": "on_missing",
+                "required": false
+              }
+            ]
           }
         }
       }
@@ -8156,6 +9852,23 @@
         }
       }
     },
+    "oncoref.cta_curation_plots": {
+      "symbols": {
+        "render": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'cta_curation_out'",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "out_dir",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
     "oncoref.cta_peptides": {
       "symbols": {
         "DEFAULT_K": {
@@ -8238,6 +9951,349 @@
                 "default": "'proteoform_key'",
                 "kind": "KEYWORD_ONLY",
                 "name": "by",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.cta_regen": {
+      "symbols": {
+        "regenerate_cta_columns": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "table",
+                "required": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.cta_tissues": {
+      "symbols": {
+        "adaptive_rna_threshold": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "protein_reliability",
+                "required": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.data_bundle": {
+      "symbols": {
+        "BUNDLE_CONTRACT_VERSION": {
+          "kind": "constant"
+        },
+        "BUNDLE_MANIFEST_VERSION": {
+          "kind": "constant"
+        },
+        "BundleIntegrityError": {
+          "kind": "class",
+          "signature": null
+        },
+        "CACHE_COMPLETE_FILENAME": {
+          "kind": "constant"
+        },
+        "CHECKSUM_FILENAME": {
+          "kind": "constant"
+        },
+        "DOWNLOADABLE_PATHS": {
+          "kind": "constant"
+        },
+        "FALLBACK_CHECKSUM_FILENAME": {
+          "kind": "constant"
+        },
+        "FALLBACK_GITHUB_REPO": {
+          "kind": "constant"
+        },
+        "FALLBACK_MANIFEST_FILENAME": {
+          "kind": "constant"
+        },
+        "FALLBACK_RELEASE_CHECKSUM_URL": {
+          "kind": "constant"
+        },
+        "FALLBACK_RELEASE_MANIFEST_URL": {
+          "kind": "constant"
+        },
+        "FALLBACK_RELEASE_URL": {
+          "kind": "constant"
+        },
+        "FALLBACK_TARBALL_FILENAME": {
+          "kind": "constant"
+        },
+        "GITHUB_REPO": {
+          "kind": "constant"
+        },
+        "MANIFEST_FILENAME": {
+          "kind": "constant"
+        },
+        "RELEASE_CHECKSUM_URL": {
+          "kind": "constant"
+        },
+        "RELEASE_MANIFEST_URL": {
+          "kind": "constant"
+        },
+        "RELEASE_SOURCES": {
+          "kind": "constant"
+        },
+        "RELEASE_URL": {
+          "kind": "constant"
+        },
+        "RELEASE_URLS": {
+          "kind": "constant"
+        },
+        "TARBALL_FILENAME": {
+          "kind": "constant"
+        },
+        "bundle_contract": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "bundle_is_local": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "bundle_release_manifest": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'oncoref'",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cache_dir": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cache_root": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "ensure_local": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "auto_fetch",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "verbose",
+                "required": false
+              }
+            ]
+          }
+        },
+        "fetch": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "verbose",
+                "required": false
+              }
+            ]
+          }
+        },
+        "find": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "relative_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "find_local_item": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "relative_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "is_downloadable": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "relative_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "is_local": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "item_is_local": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "relative_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "list_cache_versions": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "local_item_paths": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "relative_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "prune_cache": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "keep_current",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "dry_run",
+                "required": false
+              }
+            ]
+          }
+        },
+        "status": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "verify_local": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        }
+      }
+    },
+    "oncoref.data_manifest": {
+      "symbols": {
+        "captured": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "in_scope": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "owned_dataset_names": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        }
+      }
+    },
+    "oncoref.drivers": {
+      "symbols": {
+        "cancer_driver_spectrum": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_driver_spectrum_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "observed_driver_events": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_unresolved",
                 "required": false
               }
             ]
@@ -13129,6 +15185,1513 @@
         }
       }
     },
+    "oncoref.expression_registry": {
+      "symbols": {
+        "ExpressionSource": {
+          "kind": "class",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "id",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "category",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_codes",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_type",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "builder",
+                "required": false
+              },
+              {
+                "default": "()",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "builder_args",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "external_build_exemption",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "routed_samples_may_overlap",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "project_id",
+                "required": false
+              },
+              {
+                "default": "()",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "project_ids",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "accession",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "url",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "unit",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "expected_size_gb",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "citation",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "special_handling",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "recount3_srp",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_cohort",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "library_prep",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_project",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_version",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "tumor_origin",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "metastasis_site",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "processing_pipeline",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "notes",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "access_level",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "acquisition_status",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "data_access_url",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "molecular_annotation_status",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_pmid",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_scale_class",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "linear_tpm_comparable",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "tpm_proxy",
+                "required": false
+              }
+            ]
+          }
+        },
+        "expression_source": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_id",
+                "required": true
+              }
+            ]
+          }
+        },
+        "expression_source_candidates": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_code",
+                "required": false
+              }
+            ]
+          }
+        },
+        "expression_source_registry_entries": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_type",
+                "required": false
+              }
+            ]
+          }
+        },
+        "expression_source_registry_path": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "expression_source_registry_text": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "expression_sources": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "expression_sources_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "sources_for_cancer_code": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "code",
+                "required": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.expression_source_adapters": {
+      "symbols": {
+        "CtclSampleRecord": {
+          "kind": "class",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "gsm_id",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "case_id",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "compartment",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "gex_name",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "tcrb_name",
+                "required": true
+              }
+            ]
+          }
+        },
+        "GeoMicroarrayGroup": {
+          "kind": "class",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_id",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "accession",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "platform_id",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "platform_name",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "sample_patterns",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "expected_samples",
+                "required": true
+              },
+              {
+                "default": "True",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "log2_transformed",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "symbol_platform_id",
+                "required": false
+              }
+            ]
+          }
+        },
+        "TargetAllLineageAssignment": {
+          "kind": "class",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_code",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "raw_label",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "evidence_source",
+                "required": true
+              }
+            ]
+          }
+        },
+        "build_ctcl_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "raw_tar_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "soft_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_drmetrics_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "counts_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "attributes_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "112",
+                "kind": "KEYWORD_ONLY",
+                "name": "ensembl_release",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_geo_microarray_group": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "group",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "series_matrix_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "platform_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "symbol_platform_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "112",
+                "kind": "KEYWORD_ONLY",
+                "name": "ensembl_release",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_gse125285_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "matrix_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "soft_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_gse139682_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "matrix_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "soft_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_gse141460_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "archive_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "clinical_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_gse75885_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "expression_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "series_matrix_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_hcl_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "archive_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_openpbta_cranio_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "expression_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "histologies_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_openpbta_dipg_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "polya_expression_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "stranded_expression_path",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "histologies_path",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_target_all_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "lineage_assignments",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "manifest",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "file_paths",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "build_target_nbl_source_matrices": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "output_dir",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "manifest",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "file_paths",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "mycn_status",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              },
+              {
+                "default": "1.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_expression_threshold",
+                "required": false
+              }
+            ]
+          }
+        },
+        "ctcl_case_pseudobulk": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "raw_tar_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "ctcl_sample_records": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "tar_names",
+                "required": true
+              }
+            ]
+          }
+        },
+        "drmetrics_routed_samples": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "samples",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "attributes",
+                "required": true
+              }
+            ]
+          }
+        },
+        "fetch_nbl_mycn_status": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cache_path",
+                "required": true
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              }
+            ]
+          }
+        },
+        "fetch_target_all_lineages": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cache_dir",
+                "required": true
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force_download",
+                "required": false
+              }
+            ]
+          }
+        },
+        "geo_platform_url": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "platform_id",
+                "required": true
+              }
+            ]
+          }
+        },
+        "geo_sample_titles": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "series_matrix_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "geo_series_matrix_url": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "accession",
+                "required": true
+              }
+            ]
+          }
+        },
+        "gse125285_skin_matrix": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "matrix_path",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "soft_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "gse139682_gbc_matrix": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "matrix_path",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "soft_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "gse141460_epn_pseudobulk": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "archive_path",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "clinical_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "gse75885_routed_samples": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "samples",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "sample_titles",
+                "required": true
+              }
+            ]
+          }
+        },
+        "hcl_t0_pseudobulk": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "archive_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "microarray_routed_samples": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "sample_metadata",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "sample_patterns",
+                "required": true
+              }
+            ]
+          }
+        },
+        "microarray_tpm_proxy": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "intensities",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "annotations",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "log2_transformed",
+                "required": true
+              }
+            ]
+          }
+        },
+        "nbl_mycn_routed_samples": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "samples",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "case_status",
+                "required": true
+              }
+            ]
+          }
+        },
+        "openpbta_cranio_matrix": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "expression",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "histologies",
+                "required": true
+              }
+            ]
+          }
+        },
+        "openpbta_dipg_matrix": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "polya_expression",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "stranded_expression",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "histologies",
+                "required": true
+              }
+            ]
+          }
+        },
+        "parse_geo_platform_annotation_bridge": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "primary_path",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "symbol_path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "parse_geo_platform_annotations": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "parse_geo_series_matrix": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "parse_geo_soft_samples": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "path",
+                "required": true
+              }
+            ]
+          }
+        },
+        "parse_target_all_lineage_label": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "comment",
+                "required": true
+              }
+            ]
+          }
+        },
+        "target_all_lineage_assignments": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "sample_matrices",
+                "required": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.fusions": {
+      "symbols": {
+        "cancer_fusion_citation_audit": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_fusions": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "defining_only",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "pathognomonic_only",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_subtypes",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_fusions_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_types_with_fusion": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "fusion",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "partner",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "partner_family",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "defining_only",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "as_rows",
+                "required": false
+              }
+            ]
+          }
+        },
+        "fusion_expression_effect_rules_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "fusion_partners": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "gene",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "side",
+                "required": false
+              }
+            ]
+          }
+        },
+        "fusion_surrogate_expression_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "fusion_surrogate_genes_for_cancer": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "protein_family": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "gene",
+                "required": true
+              }
+            ]
+          }
+        },
+        "rare_cancer_fusion_rules_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        }
+      }
+    },
     "oncoref.gene_families": {
       "symbols": {
         "clean_tpm_biological_housekeeping_genes": {
@@ -13556,6 +17119,67 @@
         }
       }
     },
+    "oncoref.gene_qc": {
+      "symbols": {
+        "GeneQcClass": {
+          "kind": "class",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "label",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "group",
+                "required": true
+              }
+            ]
+          }
+        },
+        "classify_gene_qc": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "symbol",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "ensembl_id",
+                "required": false
+              }
+            ]
+          }
+        },
+        "is_rescue_feature": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "symbol",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "ensembl_id",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
     "oncoref.genome": {
       "symbols": {
         "GenomeDependencyError": {
@@ -13903,6 +17527,214 @@
           "kind": "callable",
           "signature": {
             "parameters": []
+          }
+        }
+      }
+    },
+    "oncoref.ici": {
+      "symbols": {
+        "cancer_ici_regimen": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              }
+            ]
+          }
+        },
+        "cancer_ici_response": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "regimen",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "fallback",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "inherit",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_inherited",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_ici_response_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_ici_response_estimates_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "cancer_ici_response_record": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "regimen",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "fallback",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "inherit",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_inherited",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cancer_ici_source_locator_audit_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "ici_regimens": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "pooled_ici_response": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "regimen",
+                "required": false
+              },
+              {
+                "default": "'ORR'",
+                "kind": "KEYWORD_ONLY",
+                "name": "metric",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "verified_only",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "include_alternates",
+                "required": false
+              }
+            ]
+          }
+        },
+        "resolve_ici_response_source": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "regimen",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "fallback",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "inherit",
+                "required": false
+              }
+            ]
+          }
+        },
+        "response_anchor_evidence_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "anchors",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "KEYWORD_ONLY",
+                "name": "value_col",
+                "required": true
+              },
+              {
+                "default": "'regimen'",
+                "kind": "KEYWORD_ONLY",
+                "name": "regimen_col",
+                "required": false
+              }
+            ]
           }
         }
       }
@@ -14459,6 +18291,41 @@
         }
       }
     },
+    "oncoref.load_dataset": {
+      "symbols": {
+        "get_all_csv_paths": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "get_data": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "_dataframes_dict",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "copy",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
     "oncoref.normalization": {
       "symbols": {
         "clean_tpm": {
@@ -14982,6 +18849,650 @@
         }
       }
     },
+    "oncoref.peptides": {
+      "symbols": {
+        "DEFAULT_K": {
+          "kind": "constant"
+        },
+        "cta_specific_9mer_counts": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "9",
+                "kind": "KEYWORD_ONLY",
+                "name": "k",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "refresh",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_specific_9mer_load": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": "10.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "9",
+                "kind": "KEYWORD_ONLY",
+                "name": "k",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_specific_9mer_weights": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "9",
+                "kind": "KEYWORD_ONLY",
+                "name": "k",
+                "required": false
+              },
+              {
+                "default": "'proteoform_key'",
+                "kind": "KEYWORD_ONLY",
+                "name": "by",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.plots": {
+      "symbols": {
+        "apd1_orr_bars": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "strict_pd1",
+                "required": false
+              }
+            ]
+          }
+        },
+        "apd1_response_signature_scatter": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'t_cell_inflamed'",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "signature",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "apd1_vs_tmb": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "annotate",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "strict_pd1",
+                "required": false
+              }
+            ]
+          }
+        },
+        "burden_category_bars": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'us'",
+                "kind": "KEYWORD_ONLY",
+                "name": "region",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "n",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_addressable_burden": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'within_sample'",
+                "kind": "KEYWORD_ONLY",
+                "name": "source",
+                "required": false
+              },
+              {
+                "default": "0.95",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold",
+                "required": false
+              },
+              {
+                "default": "50.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "'us_incidence_pct'",
+                "kind": "KEYWORD_ONLY",
+                "name": "metric",
+                "required": false
+              },
+              {
+                "default": "25",
+                "kind": "KEYWORD_ONLY",
+                "name": "n",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_burden_vs_response": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'apd1'",
+                "kind": "KEYWORD_ONLY",
+                "name": "against",
+                "required": false
+              },
+              {
+                "default": "50.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_coverage_curves": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_types",
+                "required": true
+              },
+              {
+                "default": "50.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "20",
+                "kind": "KEYWORD_ONLY",
+                "name": "max_genes",
+                "required": false
+              },
+              {
+                "default": "10",
+                "kind": "KEYWORD_ONLY",
+                "name": "top_n",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_coverage_stacked_bars": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_types",
+                "required": true
+              },
+              {
+                "default": "50.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "12",
+                "kind": "KEYWORD_ONLY",
+                "name": "max_genes",
+                "required": false
+              },
+              {
+                "default": "40",
+                "kind": "KEYWORD_ONLY",
+                "name": "top_n",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_expression_heatmap": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'median'",
+                "kind": "KEYWORD_ONLY",
+                "name": "stat",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "30",
+                "kind": "KEYWORD_ONLY",
+                "name": "n_cohorts",
+                "required": false
+              },
+              {
+                "default": "30",
+                "kind": "KEYWORD_ONLY",
+                "name": "n_ctas",
+                "required": false
+              },
+              {
+                "default": "30.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "high_tpm",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "proteoform",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_patient_count_heatmap": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "0.95",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "30",
+                "kind": "KEYWORD_ONLY",
+                "name": "n_cohorts",
+                "required": false
+              },
+              {
+                "default": "30",
+                "kind": "KEYWORD_ONLY",
+                "name": "n_ctas",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_specific_9mer_load": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'tmb'",
+                "kind": "KEYWORD_ONLY",
+                "name": "against",
+                "required": false
+              },
+              {
+                "default": "50.0",
+                "kind": "KEYWORD_ONLY",
+                "name": "threshold_tpm",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_within_sample_percentile_addressable_burden": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "0.95",
+                "kind": "KEYWORD_ONLY",
+                "name": "percentile",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "cohorts",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "coverage_table",
+                "required": false
+              },
+              {
+                "default": "'us_incidence_pct'",
+                "kind": "KEYWORD_ONLY",
+                "name": "metric",
+                "required": false
+              },
+              {
+                "default": "25",
+                "kind": "KEYWORD_ONLY",
+                "name": "n",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_within_sample_percentile_coverage_curves": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_types",
+                "required": true
+              },
+              {
+                "default": "0.95",
+                "kind": "KEYWORD_ONLY",
+                "name": "percentile",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "coverage_table",
+                "required": false
+              },
+              {
+                "default": "20",
+                "kind": "KEYWORD_ONLY",
+                "name": "max_genes",
+                "required": false
+              },
+              {
+                "default": "10",
+                "kind": "KEYWORD_ONLY",
+                "name": "top_n",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "cta_within_sample_percentile_coverage_stacked_bars": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_types",
+                "required": true
+              },
+              {
+                "default": "0.95",
+                "kind": "KEYWORD_ONLY",
+                "name": "percentile",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "coverage_table",
+                "required": false
+              },
+              {
+                "default": "12",
+                "kind": "KEYWORD_ONLY",
+                "name": "max_genes",
+                "required": false
+              },
+              {
+                "default": "40",
+                "kind": "KEYWORD_ONLY",
+                "name": "top_n",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "ici_orr_pooled_forest": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "regimen",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        },
+        "ici_regimen_comparison": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              },
+              {
+                "default": "1",
+                "kind": "KEYWORD_ONLY",
+                "name": "min_regimens",
+                "required": false
+              }
+            ]
+          }
+        },
+        "ici_response_by_regimen": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "only_multi",
+                "required": false
+              }
+            ]
+          }
+        },
+        "incidence_vs_mortality": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "'us'",
+                "kind": "KEYWORD_ONLY",
+                "name": "region",
+                "required": false
+              },
+              {
+                "default": "None",
+                "kind": "KEYWORD_ONLY",
+                "name": "save",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
     "oncoref.proteoforms": {
       "symbols": {
         "canonical_proteoform_id": {
@@ -15170,6 +19681,394 @@
                 "kind": "POSITIONAL_OR_KEYWORD",
                 "name": "members_label",
                 "required": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.reference_data": {
+      "symbols": {
+        "ReferenceDataError": {
+          "kind": "class",
+          "signature": null
+        },
+        "cache_dir": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "download": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "version",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "force",
+                "required": false
+              }
+            ]
+          }
+        },
+        "ensure": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "version",
+                "required": false
+              }
+            ]
+          }
+        },
+        "is_cached": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "version",
+                "required": false
+              }
+            ]
+          }
+        },
+        "local_path": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "version",
+                "required": false
+              }
+            ]
+          }
+        },
+        "provenance": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "version",
+                "required": false
+              },
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "verify_content",
+                "required": false
+              }
+            ]
+          }
+        },
+        "resolve_version": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "version",
+                "required": false
+              }
+            ]
+          }
+        },
+        "status": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "False",
+                "kind": "KEYWORD_ONLY",
+                "name": "verify_content",
+                "required": false
+              }
+            ]
+          }
+        },
+        "verify": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "version",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.representative_partitions": {
+      "symbols": {
+        "assign_representative_partitions": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "provenance",
+                "required": true
+              }
+            ]
+          }
+        },
+        "representative_partition_build_metadata": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "partitioned",
+                "required": true
+              }
+            ]
+          }
+        },
+        "representative_partition_cohort_metadata": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "partitioned",
+                "required": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.response_signatures": {
+      "symbols": {
+        "response_signature_direction": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              }
+            ]
+          }
+        },
+        "response_signature_genes": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              }
+            ]
+          }
+        },
+        "response_signature_names": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "response_signatures_df": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "signature_score": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "cancer_type",
+                "required": true
+              },
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "name",
+                "required": true
+              },
+              {
+                "default": "'mean'",
+                "kind": "KEYWORD_ONLY",
+                "name": "statistic",
+                "required": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    "oncoref.samples": {
+      "symbols": {
+        "molecular_provenance_for_cancer_code": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "code",
+                "required": true
+              }
+            ]
+          }
+        },
+        "molecular_provenance_for_sample": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "sample_id",
+                "required": true
+              }
+            ]
+          }
+        },
+        "molecular_sample_counts": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "None",
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "code",
+                "required": false
+              }
+            ]
+          }
+        },
+        "sample_counts_by_cancer_code": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "included_only",
+                "required": false
+              }
+            ]
+          }
+        },
+        "sample_manifest": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "sample_molecular_provenance": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
+          }
+        },
+        "samples_for_cancer_code": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "code",
+                "required": true
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "included_only",
+                "required": false
+              }
+            ]
+          }
+        },
+        "samples_for_cohort": {
+          "kind": "callable",
+          "signature": {
+            "parameters": [
+              {
+                "default": null,
+                "kind": "POSITIONAL_OR_KEYWORD",
+                "name": "source_cohort",
+                "required": true
+              },
+              {
+                "default": "True",
+                "kind": "KEYWORD_ONLY",
+                "name": "included_only",
+                "required": false
               }
             ]
           }
@@ -15774,6 +20673,16 @@
                 "required": false
               }
             ]
+          }
+        }
+      }
+    },
+    "oncoref.version": {
+      "symbols": {
+        "print_version": {
+          "kind": "callable",
+          "signature": {
+            "parameters": []
           }
         }
       }

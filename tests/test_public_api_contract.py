@@ -1,8 +1,14 @@
+import importlib.util
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
-from oncoref import api_contract
+_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "public_api_contract.py"
+_SPEC = importlib.util.spec_from_file_location("public_api_contract", _SCRIPT)
+api_contract = importlib.util.module_from_spec(_SPEC)
+assert _SPEC.loader is not None
+_SPEC.loader.exec_module(api_contract)
 
 
 def _function(parameters):
@@ -24,15 +30,15 @@ def _manifest(symbol):
 
 
 def test_checked_in_public_api_contract_matches_current_api():
-    assert api_contract.public_api_compatibility_errors() == []
-    api_contract.assert_public_api_compatible()
+    expected = api_contract.load_public_api_contract()
+    observed = api_contract.current_public_api_manifest(expected["modules"])
+    assert api_contract.public_api_compatibility_errors(expected, observed) == []
 
 
 def test_public_api_contract_is_machine_readable_and_versioned():
     contract = api_contract.load_public_api_contract()
     assert contract["contract_version"] == api_contract.PUBLIC_API_CONTRACT_VERSION
     assert contract["generated_for_package"] == "1.8.185"
-    assert set(api_contract.PUBLIC_API_MODULES) <= set(contract["modules"])
 
 
 def test_additive_module_symbol_and_optional_parameter_are_compatible():
