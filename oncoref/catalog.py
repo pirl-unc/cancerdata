@@ -242,7 +242,9 @@ def inventory() -> list[dict]:
     fetchable :func:`datasets`. One row per dataset with ``name``, ``held``
     (``wheel`` / ``bundle`` / ``hpa`` / ``source`` / ``planned``), ``category``,
     ``available`` (present locally / shipped), and ``description``. Driven by
-    :mod:`oncoref.data_manifest` so it stays exhaustive against pirlygenes.
+    :mod:`oncoref.data_manifest`; this is the current self-owned inventory.
+    The separately versioned pirlygenes migration snapshot is historical audit
+    evidence and does not expand when downstream adds a new dataset.
     """
     bundle_member = {p.removesuffix(".csv"): p for p in data_bundle.DOWNLOADABLE_PATHS}
     rows: list[dict] = []

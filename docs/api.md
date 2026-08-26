@@ -25,7 +25,7 @@ Read the guide from concepts to operations:
 | --- | --- |
 | Canonical cancer and gene identities | [Cancer Vocabulary](#cancer-vocabulary), [Gene Identity](#gene-identity) |
 | Expression reads, artifacts, and normalization | [Expression And Normalization](#expression-and-normalization) |
-| Clinical and epidemiological reference facts | [ICI Response](#ici-response), [Burden, TMB, Fusions, and Signatures](#burden-tmb-fusions-and-signatures) |
+| Clinical and epidemiological reference facts | [ICI Response](#ici-response), [Therapy Benefit and Toxicity](#therapy-benefit-and-toxicity), [Burden, TMB, Fusions, and Signatures](#burden-tmb-fusions-and-signatures) |
 | Cancer-testis antigen and panel calculations | [CTA Antigens](#cta-antigens), [Generic Antigen Panels](#generic-antigen-panels) |
 | Downloads, caches, and release metadata | [Data Management](#data-management) |
 | Historical import paths | [Compatibility Modules](#compatibility-modules) |
@@ -361,6 +361,32 @@ python scripts/audit_ici_source_locators.py --write-estimates
 The script retrieves one public source document at a time and stores compressed
 cache entries under `~/.cache/oncoref/ici-source-locator-audit`, keeping the source
 corpus out of memory.
+
+## Therapy Benefit and Toxicity
+
+- `oncoref.therapy_evidence` — source-anchored clinical benefit, toxicity, and
+  safety-signal facts. Target-to-drug registries and treatment-selection panels
+  remain downstream in pirlygenes.
+
+`therapy_benefit_toxicity_evidence()` returns the seven migrated evidence rows
+with stable `evidence_id` values, disease/subtype and line-of-therapy context,
+structured evidence-transfer semantics, and source tokens, anchors, and URLs.
+Filters are exact and case-insensitive. When a cancer code and subtype are both
+provided, disease-level rows with a blank subtype remain applicable; a
+subtype-only query returns exact subtype rows. Use
+`include_transferred=False` when cross-indication evidence is not admissible.
+Postmarket-signal rows deliberately carry no incidence-like adverse-event or
+discontinuation rate.
+
+```python
+from oncoref import therapy_evidence
+
+therapy_evidence.therapy_benefit_toxicity_evidence(
+    agent="imatinib",
+    cancer_code="SARC",
+    subtype="gist",
+)
+```
 
 ## CTA Antigens
 
@@ -1173,6 +1199,22 @@ order.
 ### Dataset catalog
 
 - `oncoref.catalog` — unified dataset inventory and fetch/status/path operations.
+
+`catalog.inventory()` describes the current oncoref-owned inventory.
+`PIRLYGENES_MIGRATION_SNAPSHOT` is separate historical evidence pinned to the
+exact pirlygenes tag and commit recorded in
+`PIRLYGENES_MIGRATION_SNAPSHOT_METADATA`; it is not a live downstream
+completeness assertion. To review a newly added pirlygenes dataset, compare a
+local clone at the proposed ref:
+
+```bash
+python scripts/audit_pirlygenes_inventory.py --repo ../pirlygenes --ref <commit>
+```
+
+Any reported addition or removal prompts an ownership review under the boundary
+at the top of this guide. If ownership moves to oncoref, classify it in the
+current manifest and add the implementation; otherwise leave it downstream.
+Do not rewrite the historical snapshot unless correcting its exact pinned tree.
 
 ### Expression bundle
 

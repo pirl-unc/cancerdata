@@ -28,6 +28,7 @@ from . import (
     expression_engine,
     ici_response,
     source_matrices,
+    therapy_evidence,
 )
 from .apd1 import (
     cancer_apd1_response,
@@ -385,6 +386,7 @@ from .samples import (
     samples_for_cancer_code,
     samples_for_cohort,
 )
+from .therapy_evidence import therapy_benefit_toxicity_evidence
 from .tmb import cancer_tmb, cancer_tmb_df, cancer_tmb_record, resolve_tmb_source
 from .tumor_references import (
     TUMOR_REFERENCE_DERIVATION_METHODS,
@@ -753,6 +755,8 @@ __all__ = [
     "subtype_deconvolved_expression",
     "subtype_tumor_reference_expression",
     "tcga_deconvolved_expression",
+    "therapy_benefit_toxicity_evidence",
+    "therapy_evidence",
     "tissue_of_origin",
     "tpm_to_housekeeping_normalized",
     "tumor_reference_expression_provenance",

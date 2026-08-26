@@ -281,15 +281,12 @@ def test_inventory_wheel_always_available():
 
 
 def test_planned_tables_are_boundary_scoped():
-    # The remaining planned table is an empirical oncoref fact surface. Marker
-    # panels, therapy-signature panels, and one-sample rules stay downstream.
     from oncoref import data_manifest
 
-    assert set(data_manifest.PLANNED) == {"therapy-benefit-toxicity-evidence"}
+    assert data_manifest.PLANNED == {}
+    assert "therapy-benefit-toxicity-evidence" in data_manifest.WHEEL
     planned = [r for r in catalog.inventory() if r["held"] == "planned"]
-    assert {r["name"] for r in planned} == set(data_manifest.PLANNED)
-    assert all(not r["available"] for r in planned)
-    assert {r["category"] for r in planned} == {"therapy-evidence"}
+    assert planned == []
 
 
 def test_cli_data_list_shows_full_inventory(capsys):
