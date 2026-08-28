@@ -27,6 +27,7 @@ from . import (
     expression_builders,
     expression_engine,
     ici_response,
+    rna_protein,
     source_matrices,
     therapy_evidence,
 )
@@ -376,6 +377,13 @@ from .response_signatures import (
     response_signatures_df,
     signature_score,
 )
+from .rna_protein import (
+    CPTAC_CALIBRATION_COHORTS,
+    RNA_PROTEIN_SOURCE_CLASSES,
+    RNA_PROTEIN_SOURCE_COLUMNS,
+    RNA_PROTEIN_SOURCE_SCALES,
+    rna_protein_calibration_sources,
+)
 from .samples import (
     molecular_provenance_for_cancer_code,
     molecular_provenance_for_sample,
@@ -413,6 +421,7 @@ __all__ = [
     "CLEAN_TPM_CENSORED_REFERENCE_PROFILE_SOURCE",
     "CLEAN_TPM_CENSORED_REFERENCE_PROFILE_VERSION",
     "CLEAN_TPM_PROTOCOL_SENSITIVE_BIOTYPES",
+    "CPTAC_CALIBRATION_COHORTS",
     "EXPRESSION_ARTIFACT_BUILD_METADATA_SCHEMA_VERSION",
     "HOUSEKEEPING_NORMALIZATION_METHOD",
     "HOUSEKEEPING_REFERENCE_PROFILE_SOURCE",
@@ -426,6 +435,9 @@ __all__ = [
     "REGIMEN_LABELS",
     "REPRESENTATIVE_PARTITION_POLICY_VERSION",
     "RIBOSOMAL_PROTEIN_FRACTION",
+    "RNA_PROTEIN_SOURCE_CLASSES",
+    "RNA_PROTEIN_SOURCE_COLUMNS",
+    "RNA_PROTEIN_SOURCE_SCALES",
     "SAFETY_TISSUE_COVERAGE_LEVELS",
     "SAFETY_TISSUE_COVERAGE_STATES",
     "SAFETY_TISSUE_MAPPING_KINDS",
@@ -738,6 +750,8 @@ __all__ = [
     "response_signature_genes",
     "response_signature_names",
     "response_signatures_df",
+    "rna_protein",
+    "rna_protein_calibration_sources",
     "safety_tissue_mapping_table",
     "sample_columns",
     "sample_counts_by_cancer_code",

@@ -231,6 +231,10 @@ SUPERSEDED: dict[str, str] = {
 #: regenerated here rather than copied from pirlygenes, so they aren't in the
 #: pirlygenes snapshot but DO ship in the wheel and belong in the inventory.
 CANCERDATA_ORIGINATED: dict[str, tuple[str, str]] = {
+    "rna-protein-calibration-sources": (
+        "protein-calibration",
+        "checksum-pinned matched CPTAC RNA/protein source files and measurement scales",
+    ),
     "hpa-safety-tissue-map": (
         "hpa",
         "source/version-aware conceptual-to-native safety-tissue mappings",

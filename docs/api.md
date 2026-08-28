@@ -25,6 +25,7 @@ Read the guide from concepts to operations:
 | --- | --- |
 | Canonical cancer and gene identities | [Cancer Vocabulary](#cancer-vocabulary), [Gene Identity](#gene-identity) |
 | Expression reads, artifacts, and normalization | [Expression And Normalization](#expression-and-normalization) |
+| RNA-to-protein calibration | [RNA-to-Protein Calibration](#rna-to-protein-calibration) |
 | Clinical and epidemiological reference facts | [ICI Response](#ici-response), [Therapy Benefit and Toxicity](#therapy-benefit-and-toxicity), [Burden, TMB, Fusions, and Signatures](#burden-tmb-fusions-and-signatures) |
 | Cancer-testis antigen and panel calculations | [CTA Antigens](#cta-antigens), [Generic Antigen Panels](#generic-antigen-panels) |
 | Downloads, caches, and release metadata | [Data Management](#data-management) |
@@ -387,6 +388,39 @@ therapy_evidence.therapy_benefit_toxicity_evidence(
     subtype="gist",
 )
 ```
+
+## RNA-to-Protein Calibration
+
+- `oncoref.rna_protein` — source and model provenance for estimating quantitative
+  protein measurements from RNA. The first acquisition layer exposes the ten
+  matched-tumor CPTAC cohort pairs used by the calibration build.
+
+`rna_protein_calibration_sources()` returns one checksum-pinned RNA source and
+one checksum-pinned protein source for every supported CPTAC cohort. It records
+the cancer-code mapping, original measurement scale, immutable Zenodo record and
+file, byte size, checksum, license, and the exact CPTAC software version and Git
+commit whose conventions are used by the builder.
+
+```python
+from oncoref import rna_protein
+
+ucec_sources = rna_protein.rna_protein_calibration_sources(
+    cptac_cohort="UCEC"
+)
+```
+
+Run `scripts/build_rna_protein_calibration.py UCEC --download ...` to acquire and
+standardize a pair. The builder uses only RNA tumor columns, joins RNA and
+protein by exact patient ID, maps source genes into canonical Ensembl gene
+space, excludes ambiguous multi-gene groups and every duplicate canonical-ID
+collision, and preserves missing protein observations without imputation. The
+RNA scale is upper-quartile-normalized RSEM `log2(x + 1)`; the protein scale is
+TMT reference-intensity-normalized `log2` abundance. They are not TPM and should
+not be mixed with TPM thresholds.
+
+This source manifest is the reproducible input layer, not yet a prediction API.
+The calibrated model table is versioned separately so consumers cannot mistake
+mere RNA expression for measured protein or a binary clinical protein call.
 
 ## CTA Antigens
 
