@@ -108,7 +108,7 @@ def test_matched_cptac_join_is_canonical_deterministic_and_lossless_for_missingn
     rna = pd.DataFrame(
         {
             "S2_T": [2.0, 4.0, 6.0, 8.0, 10.0, 12.0],
-            "S1_T": [1.0, 3.0, 5.0, 7.0, 9.0, 11.0],
+            "S1": [1.0, 3.0, 5.0, 7.0, 9.0, 11.0],
             "S3_A": [20.0] * 6,
             "RNA_ONLY_T": [30.0] * 6,
         },
@@ -117,7 +117,7 @@ def test_matched_cptac_join_is_canonical_deterministic_and_lossless_for_missingn
     protein = pd.DataFrame(
         {
             "S1": [10.0, float("nan"), 50.0, 70.0, 90.0, 110.0],
-            "S2": [20.0, 40.0, 60.0, 80.0, 100.0, 120.0],
+            "S2_T": [20.0, 40.0, 60.0, 80.0, 100.0, 120.0],
             "PROTEIN_ONLY": [1.0] * 6,
         },
         index=genes,
@@ -133,6 +133,8 @@ def test_matched_cptac_join_is_canonical_deterministic_and_lossless_for_missingn
     pd.testing.assert_frame_equal(first.rna, second.rna)
     pd.testing.assert_frame_equal(first.protein, second.protein)
     assert first.samples["sample_id"].tolist() == ["S1", "S2"]
+    assert first.samples["rna_source_sample_id"].tolist() == ["S1", "S2_T"]
+    assert first.samples["protein_source_sample_id"].tolist() == ["S1", "S2_T"]
     assert first.genes.to_dict(orient="records") == [
         {"canonical_gene_id": "ENSG00000141510", "source_gene_id": tp53},
         {"canonical_gene_id": "ENSG00000146648", "source_gene_id": egfr},

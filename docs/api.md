@@ -410,8 +410,9 @@ ucec_sources = rna_protein.rna_protein_calibration_sources(
 ```
 
 Run `scripts/build_rna_protein_calibration.py UCEC --download ...` to acquire and
-standardize a pair. The builder uses only RNA tumor columns, joins RNA and
-protein by exact patient ID, maps source genes into canonical Ensembl gene
+standardize a pair. The builder excludes RNA `_A` adjacent-normal columns,
+normalizes known `_T` tumor suffixes, and joins by exact patient ID against the
+tumor-only protein matrix. It maps source genes into canonical Ensembl gene
 space, excludes ambiguous multi-gene groups and every duplicate canonical-ID
 collision, and preserves missing protein observations without imputation. The
 RNA scale is upper-quartile-normalized RSEM `log2(x + 1)`; the protein scale is

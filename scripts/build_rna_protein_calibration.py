@@ -147,13 +147,14 @@ def fetch_source_file(
 def load_matched_cptac_cohort(rna_path: Path, protein_path: Path) -> MatchedCptacCohort:
     """Join one BCM RNA/protein tumor pair in canonical gene and patient space.
 
-    RNA ``_T`` columns are tumors; ``_A`` adjacent-normal columns are excluded.
-    Protein columns already contain tumor patient IDs. Only their deterministic
-    intersection is retained. Multi-gene groups and unmapped identifiers are
-    excluded. If multiple source identifiers collapse to one canonical gene, all
-    colliding rows are excluded instead of inventing an aggregation on a log scale.
-    Missing protein values remain missing and define observed/not-observed outcomes
-    for the later calibration model.
+    RNA ``_A`` adjacent-normal columns are excluded and known ``_T`` tumor suffixes
+    are removed from both modalities. Some cohorts already use unsuffixed tumor IDs;
+    only the deterministic intersection with the tumor-only protein matrix is
+    retained. Multi-gene groups and unmapped identifiers are excluded. If multiple
+    source identifiers collapse to one canonical gene, all colliding rows are
+    excluded instead of inventing an aggregation on a log scale. Missing protein
+    values remain missing and define observed/not-observed outcomes for the later
+    calibration model.
     """
 
     rna_raw = pd.read_csv(rna_path, sep="\t", index_col=0, low_memory=False)
@@ -161,15 +162,26 @@ def load_matched_cptac_cohort(rna_path: Path, protein_path: Path) -> MatchedCpta
     rna_raw.columns = rna_raw.columns.astype(str).str.strip()
     protein_raw.columns = protein_raw.columns.astype(str).str.strip()
 
-    rna = rna_raw.loc[:, rna_raw.columns.str.endswith("_T")].copy()
-    rna.columns = rna.columns.str.removesuffix("_T")
-    if rna.columns.duplicated().any() or protein_raw.columns.duplicated().any():
+    rna_source_ids = pd.Series(rna_raw.columns, index=rna_raw.columns)
+    rna_source_ids = rna_source_ids.loc[~rna_source_ids.str.endswith("_A")]
+    rna_patient_ids = rna_source_ids.str.removesuffix("_T")
+    protein_source_ids = pd.Series(protein_raw.columns, index=protein_raw.columns)
+    protein_patient_ids = protein_source_ids.str.removesuffix("_T")
+    if rna_patient_ids.duplicated().any() or protein_patient_ids.duplicated().any():
         raise ValueError("CPTAC sample identifiers must be unique after tumor normalization")
-    matched_samples = sorted(set(rna.columns) & set(protein_raw.columns))
+    rna_source_by_patient = dict(zip(rna_patient_ids, rna_source_ids))
+    protein_source_by_patient = dict(zip(protein_patient_ids, protein_source_ids))
+    matched_samples = sorted(set(rna_patient_ids) & set(protein_patient_ids))
     if not matched_samples:
         raise ValueError("CPTAC RNA and protein matrices have no matched tumor samples")
-    rna = rna.loc[:, matched_samples].apply(pd.to_numeric, errors="coerce")
-    protein = protein_raw.loc[:, matched_samples].apply(pd.to_numeric, errors="coerce")
+    rna = rna_raw.loc[:, [rna_source_by_patient[x] for x in matched_samples]].copy()
+    protein = protein_raw.loc[:, [protein_source_by_patient[x] for x in matched_samples]].copy()
+    rna.columns = protein.columns = matched_samples
+    rna = rna.apply(pd.to_numeric, errors="coerce")
+    protein = protein.apply(pd.to_numeric, errors="coerce")
+
+    if rna.index.duplicated().any() or protein.index.duplicated().any():
+        raise ValueError("CPTAC source gene identifiers must be unique within each modality")
 
     source_gene_ids = sorted(set(rna.index.astype(str)) & set(protein.index.astype(str)))
     mapping = pd.DataFrame({"source_gene_id": source_gene_ids})
@@ -202,8 +214,8 @@ def load_matched_cptac_cohort(rna_path: Path, protein_path: Path) -> MatchedCpta
     samples = pd.DataFrame(
         {
             "sample_id": matched_samples,
-            "rna_source_sample_id": [f"{sample}_T" for sample in matched_samples],
-            "protein_source_sample_id": matched_samples,
+            "rna_source_sample_id": [rna_source_by_patient[x] for x in matched_samples],
+            "protein_source_sample_id": [protein_source_by_patient[x] for x in matched_samples],
         }
     )
     genes = kept[["canonical_gene_id", "source_gene_id"]].copy()
@@ -246,7 +258,10 @@ def build_cohort_inputs(
         "n_canonical_genes": len(matched.genes),
         "protein_missing_fraction": float(matched.protein.isna().to_numpy().mean()),
         "excluded_gene_counts": matched.excluded_genes["exclusion_reason"].value_counts().to_dict(),
-        "sample_join_policy": "RNA tumor suffix _T stripped; exact patient-ID intersection",
+        "sample_join_policy": (
+            "exclude RNA _A columns; strip known _T suffixes; exact patient-ID "
+            "intersection with tumor-only protein matrix"
+        ),
         "multi_gene_policy": "exclude source identifiers containing ; , or |",
         "duplicate_gene_policy": "exclude every row in a duplicate canonical-gene collision",
         "missing_protein_policy": "preserve as not-observed outcome; never impute",
