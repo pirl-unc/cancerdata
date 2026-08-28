@@ -6,8 +6,9 @@
 Curated cancer reference data — cancer-type ontology, tumor mutational burden
 (TMB), incidence/mortality, checkpoint-inhibitor (ICI) response, per-cohort
 RNA-seq expression, Human Protein Atlas (HPA) normal-tissue expression, and
-HPA-derived cancer-testis antigen references — behind one small Python API, a
-data fetch/cache CLI, and a set of reference plots.
+HPA-derived cancer-testis antigen references, plus matched CPTAC RNA/protein
+calibration sources — behind one small Python API, a data fetch/cache CLI, and a
+set of reference plots.
 
 ## Role in the stack
 
@@ -103,6 +104,7 @@ od.within_sample_top_fraction("PRAD")     # per-gene frac of samples top-5% (wit
 | --- | --- |
 | What does this cancer code mean? | `oncoref.cancer_ontology`, `oncoref.cohorts` |
 | What expression reference is available? | `oncoref.expression`, `oncoref.source_matrices` |
+| What matched RNA/protein calibration source is available? | `oncoref.rna_protein` |
 | What tumor-attributed or subtype summary is available? | `oncoref.tumor_references` |
 | How is expression normalized or filtered? | `oncoref.normalization`, `oncoref.gene_families` |
 | What is the canonical gene identity? | `oncoref.gene_ids`, `oncoref.genome`, `oncoref.proteoforms` |
