@@ -391,9 +391,9 @@ therapy_evidence.therapy_benefit_toxicity_evidence(
 
 ## RNA-to-Protein Calibration
 
-- `oncoref.rna_protein` — source and model provenance for estimating quantitative
-  protein measurements from RNA. The first acquisition layer exposes the ten
-  matched-tumor CPTAC cohort pairs used by the calibration build.
+- `oncoref.rna_protein` — source, matched-sample, and model provenance for
+  empirical RNA/protein calibration. Ten CPTAC cohorts contribute 1,023 matched
+  tumors to version `cptac-bcm-cohort-v1`.
 
 `rna_protein_calibration_sources()` returns one checksum-pinned RNA source and
 one checksum-pinned protein source for every supported CPTAC cohort. It records
@@ -405,6 +405,10 @@ commit whose conventions are used by the builder.
 from oncoref import rna_protein
 
 ucec_sources = rna_protein.rna_protein_calibration_sources(
+    cptac_cohort="UCEC"
+)
+tp53_models = rna_protein.rna_protein_calibrations(gene="TP53")
+ucec_samples = rna_protein.rna_protein_calibration_samples(
     cptac_cohort="UCEC"
 )
 ```
@@ -419,9 +423,41 @@ RNA scale is upper-quartile-normalized RSEM `log2(x + 1)`; the protein scale is
 TMT reference-intensity-normalized `log2` abundance. They are not TPM and should
 not be mixed with TPM thresholds.
 
-This source manifest is the reproducible input layer, not yet a prediction API.
-The calibrated model table is versioned separately so consumers cannot mistake
-mere RNA expression for measured protein or a binary clinical protein call.
+`scripts/fit_rna_protein_calibrations.py` builds the released model and sample
+tables from those standardized pairs. `rna_protein_calibrations()` returns one
+row per canonical gene and CPTAC cohort (115,146 rows; 15,087 distinct genes).
+The canonical genome-wide proteoform ID and full registry member count accompany
+every gene. Identical-protein paralogs—including X/Y PAR pairs—share that
+annotation, but their source gene-abundance rows are not summed: aggregation on
+either input log scale would invent a measurement. Query the shared
+`canonical_proteoform_id` explicitly when downstream code needs to deduplicate
+protein identities.
+
+Two models answer different questions:
+
+- `detection_*` models whether the TMT value is observed, conditional on RNA.
+  A fitted row uses L2-regularized logistic regression. Coefficients are omitted
+  for all-observed, all-missing, constant-RNA, low-event, and failed-fit states.
+  `rna_at_50pct_detection` is reported only for a positive slope whose crossing
+  lies inside the observed RNA range. A missing TMT value can reflect sampling,
+  peptide detectability, or abundance; it is not relabeled as biological absence.
+- `quantitative_*` fits ordinary least squares only among observed protein
+  values, with at least ten pairs. The table reports slope/intercept, slope
+  standard error, Pearson correlation, in-sample R²/RMSE, and analytic
+  leave-one-out RMSE. Selection on TMT observation means this is an
+  observed-abundance model, not an imputation of missing values.
+
+Models are fit separately inside each cancer cohort; TMT reference scales are
+never pooled across cohorts. The explicit sample manifest permits leakage audits
+and reproduces every denominator. Metrics named `*_in_sample` are descriptive,
+while `rmse_leave_one_out` is the only held-out metric in this release.
+
+The coefficients accept only the recorded upper-quartile RSEM `log2(x + 1)`
+scale and predict only the recorded reference-normalized TMT log2 scale, within
+the named CPTAC cohort and observed RNA range. They do not accept clean TPM,
+claim protein presentation, establish IHC positivity, or make a binary clinical
+protein-presence call. HPA tissue/IHC evidence remains a separately typed weak
+prior rather than being passed off as matched CPTAC evidence.
 
 ## CTA Antigens
 

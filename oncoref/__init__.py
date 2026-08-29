@@ -379,10 +379,15 @@ from .response_signatures import (
 )
 from .rna_protein import (
     CPTAC_CALIBRATION_COHORTS,
+    CPTAC_CALIBRATION_COLUMNS,
+    CPTAC_CALIBRATION_SAMPLE_COLUMNS,
+    CPTAC_CALIBRATION_VERSION,
     RNA_PROTEIN_SOURCE_CLASSES,
     RNA_PROTEIN_SOURCE_COLUMNS,
     RNA_PROTEIN_SOURCE_SCALES,
+    rna_protein_calibration_samples,
     rna_protein_calibration_sources,
+    rna_protein_calibrations,
 )
 from .samples import (
     molecular_provenance_for_cancer_code,
@@ -422,6 +427,9 @@ __all__ = [
     "CLEAN_TPM_CENSORED_REFERENCE_PROFILE_VERSION",
     "CLEAN_TPM_PROTOCOL_SENSITIVE_BIOTYPES",
     "CPTAC_CALIBRATION_COHORTS",
+    "CPTAC_CALIBRATION_COLUMNS",
+    "CPTAC_CALIBRATION_SAMPLE_COLUMNS",
+    "CPTAC_CALIBRATION_VERSION",
     "EXPRESSION_ARTIFACT_BUILD_METADATA_SCHEMA_VERSION",
     "HOUSEKEEPING_NORMALIZATION_METHOD",
     "HOUSEKEEPING_REFERENCE_PROFILE_SOURCE",
@@ -751,7 +759,9 @@ __all__ = [
     "response_signature_names",
     "response_signatures_df",
     "rna_protein",
+    "rna_protein_calibration_samples",
     "rna_protein_calibration_sources",
+    "rna_protein_calibrations",
     "safety_tissue_mapping_table",
     "sample_columns",
     "sample_counts_by_cancer_code",
