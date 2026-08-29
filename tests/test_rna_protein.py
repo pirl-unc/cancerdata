@@ -9,6 +9,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -20,6 +21,14 @@ _SPEC = importlib.util.spec_from_file_location("build_rna_protein_calibration", 
 builder = importlib.util.module_from_spec(_SPEC)
 sys.modules[_SPEC.name] = builder
 _SPEC.loader.exec_module(builder)
+
+_FIT_SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1] / "scripts" / "fit_rna_protein_calibrations.py"
+)
+_FIT_SPEC = importlib.util.spec_from_file_location("fit_rna_protein_calibrations", _FIT_SCRIPT_PATH)
+fitter = importlib.util.module_from_spec(_FIT_SPEC)
+sys.modules[_FIT_SPEC.name] = fitter
+_FIT_SPEC.loader.exec_module(fitter)
 
 
 def test_cptac_source_manifest_is_complete_and_pinned():
@@ -151,3 +160,147 @@ def test_matched_cptac_join_is_canonical_deterministic_and_lossless_for_missingn
 def test_rna_protein_source_api_is_exported():
     assert oncoref.rna_protein is rna_protein
     assert oncoref.rna_protein_calibration_sources is (rna_protein.rna_protein_calibration_sources)
+
+
+def test_cptac_calibration_table_is_canonical_complete_and_self_consistent():
+    frame = rna_protein.rna_protein_calibrations()
+
+    assert tuple(frame.columns) == rna_protein.CPTAC_CALIBRATION_COLUMNS
+    assert len(frame) == 115146
+    assert frame["canonical_gene_id"].nunique() == 15087
+    assert set(frame["cptac_cohort"]) == set(rna_protein.CPTAC_CALIBRATION_COHORTS)
+    assert not frame.duplicated(["cptac_cohort", "canonical_gene_id"]).any()
+    assert frame["canonical_gene_id"].str.fullmatch(r"ENSG[0-9]{11}").all()
+    assert frame["canonical_proteoform_id"].notna().all()
+    numeric = frame.select_dtypes(include="number").to_numpy()
+    assert np.isfinite(numeric[~np.isnan(numeric)]).all()
+
+    assert frame["proteoform_member_count"].ge(1).all()
+    assert frame["proteoform_member_count"].gt(1).any()
+
+    expected_detection = frame["n_protein_observed"] / frame["n_rna_observed"]
+    assert np.allclose(frame["protein_detection_rate"], expected_detection)
+    fitted_detection = frame.loc[frame["detection_model_status"].eq("fit")]
+    assert (
+        fitted_detection[
+            [
+                "detection_logit_intercept",
+                "detection_logit_slope",
+                "detection_auc",
+                "detection_brier_score_in_sample",
+            ]
+        ]
+        .notna()
+        .all(axis=None)
+    )
+    thresholds = fitted_detection.dropna(subset=["rna_at_50pct_detection"])
+    assert thresholds["detection_logit_slope"].gt(0).all()
+    assert (
+        thresholds["rna_at_50pct_detection"]
+        .between(thresholds["rna_min"], thresholds["rna_max"])
+        .all()
+    )
+
+    fitted_quantitative = frame.loc[frame["quantitative_model_status"].eq("fit")]
+    required_quality = [
+        "quantitative_intercept",
+        "quantitative_slope",
+        "quantitative_slope_standard_error",
+        "pearson_r",
+        "r_squared_in_sample",
+        "rmse_in_sample",
+    ]
+    assert fitted_quantitative[required_quality].notna().all(axis=None)
+    held_out = fitted_quantitative.dropna(subset=["rmse_leave_one_out"])
+    assert (held_out["rmse_leave_one_out"] + 1e-9 >= held_out["rmse_in_sample"]).all()
+    assert np.allclose(
+        fitted_quantitative["r_squared_in_sample"],
+        fitted_quantitative["pearson_r"] ** 2,
+        atol=1e-8,
+    )
+
+
+def test_cptac_calibration_filters_resolve_gene_and_proteoform_ids():
+    tp53 = rna_protein.rna_protein_calibrations(gene="TP53")
+
+    assert len(tp53) == 10
+    assert set(tp53["canonical_gene_id"]) == {"ENSG00000141510"}
+    assert rna_protein.rna_protein_calibrations(
+        cancer_code=" kirc ", cptac_cohort="ccrcc", gene="ENSG00000141510.17"
+    )["cptac_cohort"].tolist() == ["CCRCC"]
+    assert rna_protein.rna_protein_calibrations(gene="not-a-real-gene").empty
+
+    grouped = rna_protein.rna_protein_calibrations().loc[
+        lambda frame: frame["proteoform_member_count"].gt(1)
+    ]
+    example_proteoform = grouped["canonical_proteoform_id"].iloc[0]
+    proteoform_rows = rna_protein.rna_protein_calibrations(proteoform=example_proteoform)
+    assert not proteoform_rows.empty
+    assert set(proteoform_rows["canonical_proteoform_id"]) == {example_proteoform}
+    assert proteoform_rows["proteoform_member_count"].ge(2).all()
+
+
+def test_cptac_sample_manifest_matches_model_denominators_and_sources():
+    samples = rna_protein.rna_protein_calibration_samples()
+    calibrations = rna_protein.rna_protein_calibrations()
+    sources = rna_protein.rna_protein_calibration_sources()
+
+    assert tuple(samples.columns) == rna_protein.CPTAC_CALIBRATION_SAMPLE_COLUMNS
+    assert len(samples) == 1023
+    assert not samples.duplicated(["cptac_cohort", "sample_id"]).any()
+    sample_counts = samples.groupby("cptac_cohort")["sample_id"].size()
+    model_counts = calibrations.groupby("cptac_cohort")["n_matched_samples"].first()
+    pd.testing.assert_series_equal(sample_counts, model_counts, check_names=False)
+    assert set(samples["rna_source_id"]) <= set(sources["source_id"])
+    assert set(samples["protein_source_id"]) <= set(sources["source_id"])
+    assert len(rna_protein.rna_protein_calibration_samples(cancer_code="KIRC")) == 103
+
+
+def test_calibration_model_fits_keep_detection_and_abundance_separate():
+    rna = np.arange(20, dtype=float)
+    protein = np.where(rna >= 10, 2.0 + 3.0 * rna, np.nan)
+
+    detection = fitter.fit_detection_model(rna, protein)
+    quantitative = fitter.fit_quantitative_model(rna, protein)
+
+    assert detection["detection_model_status"] == "fit"
+    assert detection["detection_logit_slope"] > 0
+    assert detection["detection_auc"] == pytest.approx(1.0)
+    assert detection["rna_at_50pct_detection"] == pytest.approx(9.5, abs=1.0)
+    assert quantitative["quantitative_model_status"] == "fit"
+    assert quantitative["quantitative_intercept"] == pytest.approx(2.0)
+    assert quantitative["quantitative_slope"] == pytest.approx(3.0)
+    assert quantitative["pearson_r"] == pytest.approx(1.0)
+    assert quantitative["rmse_leave_one_out"] == pytest.approx(0.0, abs=1e-12)
+
+
+@pytest.mark.parametrize(
+    "protein,expected",
+    [
+        (np.arange(20, dtype=float), "all_detected"),
+        (np.full(20, np.nan), "all_missing"),
+        (np.array([1.0] * 4 + [np.nan] * 16), "insufficient_events"),
+    ],
+)
+def test_detection_model_reports_nonfittable_missingness_states(protein, expected):
+    result = fitter.fit_detection_model(np.arange(20, dtype=float), protein)
+
+    assert result["detection_model_status"] == expected
+    assert pd.isna(result["detection_logit_intercept"])
+    assert pd.isna(result["detection_logit_slope"])
+
+
+def test_calibration_gzip_writer_is_byte_deterministic(tmp_path):
+    frame = pd.DataFrame({"gene": ["B", "A"], "value": [1.25, np.nan]})
+    first = tmp_path / "first.csv.gz"
+    second = tmp_path / "second.csv.gz"
+
+    assert fitter.write_deterministic_gzip_csv(frame, first) == (
+        fitter.write_deterministic_gzip_csv(frame, second)
+    )
+    assert first.read_bytes() == second.read_bytes()
+
+
+def test_rna_protein_calibration_api_is_exported():
+    assert oncoref.rna_protein_calibrations is rna_protein.rna_protein_calibrations
+    assert oncoref.rna_protein_calibration_samples is (rna_protein.rna_protein_calibration_samples)

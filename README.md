@@ -87,6 +87,7 @@ od.burden_category("SARC_OS")             # -> "bone_and_joint" (incidence/morta
 od.cancer_ici_response("SKCM")            # 42% objective response rate
 od.cancer_ici_response("SKCM", regimen="PD-1+CTLA-4")   # 57.6  (pin a regimen)
 od.therapy_benefit_toxicity_evidence(cancer_code="OV")  # sourced clinical facts
+od.rna_protein_calibrations(gene="TP53")     # matched CPTAC cohort-specific models
 
 # Cancer-testis antigens (HPA-derived tissue-restriction):
 od.cta_gene_names()                       # expressed CTA symbols (MAGEA4, CT83, …)
@@ -104,7 +105,7 @@ od.within_sample_top_fraction("PRAD")     # per-gene frac of samples top-5% (wit
 | --- | --- |
 | What does this cancer code mean? | `oncoref.cancer_ontology`, `oncoref.cohorts` |
 | What expression reference is available? | `oncoref.expression`, `oncoref.source_matrices` |
-| What matched RNA/protein calibration source is available? | `oncoref.rna_protein` |
+| What matched RNA/protein calibration is available? | `oncoref.rna_protein` |
 | What tumor-attributed or subtype summary is available? | `oncoref.tumor_references` |
 | How is expression normalized or filtered? | `oncoref.normalization`, `oncoref.gene_families` |
 | What is the canonical gene identity? | `oncoref.gene_ids`, `oncoref.genome`, `oncoref.proteoforms` |
