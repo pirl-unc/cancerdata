@@ -30,6 +30,14 @@ fitter = importlib.util.module_from_spec(_FIT_SPEC)
 sys.modules[_FIT_SPEC.name] = fitter
 _FIT_SPEC.loader.exec_module(fitter)
 
+_HPA_SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1] / "scripts" / "build_rna_protein_hpa_priors.py"
+)
+_HPA_SPEC = importlib.util.spec_from_file_location("build_rna_protein_hpa_priors", _HPA_SCRIPT_PATH)
+hpa_builder = importlib.util.module_from_spec(_HPA_SPEC)
+sys.modules[_HPA_SPEC.name] = hpa_builder
+_HPA_SPEC.loader.exec_module(hpa_builder)
+
 
 def test_cptac_source_manifest_is_complete_and_pinned():
     frame = rna_protein.rna_protein_calibration_sources()
@@ -304,3 +312,195 @@ def test_calibration_gzip_writer_is_byte_deterministic(tmp_path):
 def test_rna_protein_calibration_api_is_exported():
     assert oncoref.rna_protein_calibrations is rna_protein.rna_protein_calibrations
     assert oncoref.rna_protein_calibration_samples is (rna_protein.rna_protein_calibration_samples)
+
+
+def test_hpa_prior_source_manifest_pins_archives_and_extracted_tables():
+    sources = rna_protein.rna_protein_hpa_prior_sources()
+
+    assert tuple(sources.columns) == rna_protein.HPA_PRIOR_SOURCE_COLUMNS
+    assert len(sources) == 2
+    assert set(sources["modality"]) == {"rna", "protein"}
+    assert set(sources["source_version"]) == {"v23"}
+    assert set(sources["source_class"]) == {rna_protein.HPA_PRIOR_SOURCE_CLASS}
+    assert set(sources["license_id"]) == {"CC-BY-SA-3.0"}
+    assert sources["archive_sha256"].str.fullmatch(r"[0-9a-f]{64}").all()
+    assert sources["extracted_sha256"].str.fullmatch(r"[0-9a-f]{64}").all()
+    assert rna_protein.rna_protein_hpa_prior_sources(modality=" RNA ")["source_id"].tolist() == [
+        "hpa-v23-rna-tissue-consensus"
+    ]
+
+
+def test_hpa_prior_table_is_canonical_versioned_and_self_consistent():
+    priors = rna_protein.rna_protein_hpa_priors()
+    sources = rna_protein.rna_protein_hpa_prior_sources()
+
+    assert tuple(priors.columns) == rna_protein.HPA_PRIOR_COLUMNS
+    assert len(priors) == 13461
+    assert priors["canonical_gene_id"].nunique() == 13461
+    assert set(priors["prior_version"]) == {rna_protein.HPA_PRIOR_VERSION}
+    assert set(priors["source_class"]) == {rna_protein.HPA_PRIOR_SOURCE_CLASS}
+    assert set(priors["ihc_reliability"]) == {
+        "Approved",
+        "Enhanced",
+        "Supported",
+        "Uncertain",
+    }
+    assert priors["canonical_gene_id"].str.fullmatch(r"ENSG[0-9]{11}").all()
+    assert priors["canonical_proteoform_id"].notna().all()
+    assert priors["proteoform_member_count"].ge(1).all()
+    assert priors["proteoform_member_count"].gt(1).any()
+    assert set(priors["rna_source_id"]) | set(priors["protein_source_id"]) <= set(
+        sources["source_id"]
+    )
+
+    level_sum = priors[
+        ["n_not_detected_tissues", "n_low_tissues", "n_medium_tissues", "n_high_tissues"]
+    ].sum(axis=1)
+    assert level_sum.eq(priors["n_matched_tissues"]).all()
+    assert (
+        priors["n_detected_tissues"]
+        .eq(priors["n_low_tissues"] + priors["n_medium_tissues"] + priors["n_high_tissues"])
+        .all()
+    )
+    assert np.allclose(
+        priors["ihc_detected_tissue_rate"],
+        priors["n_detected_tissues"] / priors["n_matched_tissues"],
+    )
+    assert priors["n_nonordinal_ihc_observations_excluded"].sum() == 245
+
+    numeric = priors.select_dtypes(include="number").to_numpy()
+    assert np.isfinite(numeric[~np.isnan(numeric)]).all()
+    fitted = priors.loc[priors["detection_prior_status"].eq("fit")]
+    assert len(fitted) == 5667
+    assert (
+        fitted[
+            [
+                "detection_logit_intercept",
+                "detection_logit_slope",
+                "detection_auc",
+                "detection_brier_score_in_sample",
+            ]
+        ]
+        .notna()
+        .all(axis=None)
+    )
+    thresholds = fitted.dropna(subset=["rna_at_50pct_ihc_detection"])
+    assert thresholds["detection_logit_slope"].gt(0).all()
+    assert (
+        thresholds["rna_at_50pct_ihc_detection"]
+        .between(thresholds["rna_min"], thresholds["rna_max"])
+        .all()
+    )
+    associations = priors["rna_ihc_spearman_rho"].dropna()
+    assert associations.between(-1.0, 1.0).all()
+
+
+def test_hpa_prior_filters_resolve_gene_proteoform_reliability_and_status():
+    tp53 = rna_protein.rna_protein_hpa_priors(gene="TP53")
+
+    assert tp53["canonical_gene_id"].tolist() == ["ENSG00000141510"]
+    assert tp53["ihc_reliability"].tolist() == ["Enhanced"]
+    assert rna_protein.rna_protein_hpa_priors(gene="not-a-real-gene").empty
+    assert rna_protein.rna_protein_hpa_priors(gene="MATR3").empty
+    assert not rna_protein.rna_protein_hpa_priors(
+        ihc_reliability=" approved ", detection_status="FIT"
+    ).empty
+
+    grouped = rna_protein.rna_protein_hpa_priors().loc[
+        lambda frame: frame["proteoform_member_count"].gt(1)
+    ]
+    example = grouped["canonical_proteoform_id"].iloc[0]
+    selected = rna_protein.rna_protein_hpa_priors(proteoform=example)
+    assert not selected.empty
+    assert set(selected["canonical_proteoform_id"]) == {example}
+
+
+def test_hpa_builder_uses_exact_tissue_labels_and_excludes_nonordinal_levels():
+    tissues = [f"tissue-{index:02d}" for index in range(43)]
+    rna = pd.DataFrame(
+        {
+            "Gene": ["ENSG00000141510"] * 44,
+            "Gene name": ["TP53"] * 44,
+            "Tissue": [*tissues, "stomach"],
+            "nTPM": np.arange(44, dtype=float),
+        }
+    )
+    ihc = pd.DataFrame(
+        {
+            "Gene": ["ENSG00000141510"] * 45,
+            "Gene name": ["TP53"] * 45,
+            "Tissue": [*tissues, tissues[0], "stomach 1"],
+            "Cell type": ["representative"] * 43 + ["gradient", "representative"],
+            "Level": ["Not detected"] * 20 + ["Medium"] * 23 + ["Ascending", "High"],
+            "Reliability": ["Enhanced"] * 45,
+        }
+    )
+
+    pairs, audit, collisions = hpa_builder.canonical_hpa_tissue_pairs(rna, ihc)
+
+    assert len(pairs) == 43
+    assert set(pairs["Tissue"]) == set(tissues)
+    assert "stomach" not in set(pairs["Tissue"])
+    assert collisions == 0
+    assert audit["n_ihc_cell_type_observations"].tolist() == [44]
+    assert audit["n_nonordinal_ihc_observations_excluded"].tolist() == [1]
+
+
+def test_hpa_builder_rejects_duplicate_source_observations():
+    rna = pd.DataFrame(
+        {
+            "Gene": ["ENSG00000141510", "ENSG00000141510"],
+            "Gene name": ["TP53", "TP53"],
+            "Tissue": ["liver", "liver"],
+            "nTPM": [1.0, 2.0],
+        }
+    )
+    ihc = pd.DataFrame(
+        {
+            "Gene": ["ENSG00000141510"],
+            "Gene name": ["TP53"],
+            "Tissue": ["liver"],
+            "Cell type": ["hepatocytes"],
+            "Level": ["High"],
+            "Reliability": ["Enhanced"],
+        }
+    )
+
+    with pytest.raises(ValueError, match="unique by source gene and tissue"):
+        hpa_builder.canonical_hpa_tissue_pairs(rna, ihc)
+
+
+def test_hpa_detection_prior_fits_only_valid_tissue_pairs():
+    rna = np.arange(21, dtype=float)
+    ordinal = np.array([0.0] * 10 + [2.0] * 10 + [np.nan])
+
+    result = hpa_builder.fit_ihc_detection_prior(rna, ordinal)
+
+    assert result["detection_prior_status"] == "fit"
+    assert result["detection_logit_slope"] > 0
+    assert result["detection_auc"] == pytest.approx(1.0)
+    assert result["rna_ihc_spearman_rho"] > 0
+
+
+def test_hpa_archive_loader_rejects_unpinned_bytes(tmp_path):
+    (tmp_path / "rna_tissue_consensus.tsv.zip").write_bytes(b"not the pinned archive")
+    (tmp_path / "normal_tissue.tsv.zip").write_bytes(b"not the pinned archive")
+
+    with pytest.raises(ValueError, match="archive byte size"):
+        hpa_builder.load_pinned_hpa_archives(tmp_path)
+
+
+def test_hpa_prior_gzip_writer_is_byte_deterministic(tmp_path):
+    frame = pd.DataFrame({"gene": ["B", "A"], "value": [1.25, np.nan]})
+    first = tmp_path / "first.csv.gz"
+    second = tmp_path / "second.csv.gz"
+
+    assert hpa_builder.write_deterministic_gzip_csv(frame, first) == (
+        hpa_builder.write_deterministic_gzip_csv(frame, second)
+    )
+    assert first.read_bytes() == second.read_bytes()
+
+
+def test_hpa_prior_api_is_exported():
+    assert oncoref.rna_protein_hpa_prior_sources is rna_protein.rna_protein_hpa_prior_sources
+    assert oncoref.rna_protein_hpa_priors is rna_protein.rna_protein_hpa_priors

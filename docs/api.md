@@ -459,6 +459,55 @@ claim protein presentation, establish IHC positivity, or make a binary clinical
 protein-presence call. HPA tissue/IHC evidence remains a separately typed weak
 prior rather than being passed off as matched CPTAC evidence.
 
+`rna_protein_hpa_prior_sources()` exposes the separately pinned HPA v23 RNA
+consensus and normal-tissue IHC archives. Both the downloaded ZIP and extracted
+TSV byte sizes and SHA-256 digests are part of the source contract, along with
+the v23 mirror's CC BY-SA 3.0 license declaration. Rebuild the released prior
+with:
+
+```bash
+python scripts/build_rna_protein_hpa_priors.py \
+  --archive-dir /path/to/hpa-v23-archives \
+  --output oncoref/data/rna-protein-hpa-priors.csv.gz
+```
+
+`rna_protein_hpa_priors()` returns 13,461 canonical genes in prior version
+`hpa-v23-tissue-ihc-v1`. It uses only the 43 tissue labels that match exactly
+between the v23 RNA and IHC tables; it does not silently equate labels such as
+`stomach` with `stomach 1`/`stomach 2` or `hippocampal formation` with
+`hippocampus`. Per gene and tissue, the maximum ordinal IHC observation across
+cell types is encoded as Not detected=0, Low=1, Medium=2, or High=3. Gradient,
+not-representative, and missing level values are excluded and counted explicitly.
+Only genes with at least one canonical, exact-label RNA/IHC ordinal pair enter
+the table. Unmapped genes and any source IDs that collide after canonicalization
+are excluded rather than merged. Genome-wide proteoform identity and member
+count are annotations only; gene-level HPA observations are not summed. The HPA
+antibody reliability category remains on every row and may be filtered:
+
+```python
+from oncoref import rna_protein_hpa_prior_sources, rna_protein_hpa_priors
+
+sources = rna_protein_hpa_prior_sources()
+tp53_prior = rna_protein_hpa_priors(gene="TP53")
+approved_fits = rna_protein_hpa_priors(
+    ihc_reliability="Approved",
+    detection_status="fit",
+)
+```
+
+The fitted subset is an L2-regularized logistic association between
+`log2(HPA consensus nTPM + 1)` and whether any ordinal IHC signal was observed
+in the same normal-tissue label. It reports in-sample AUC/Brier score, an
+in-range positive-slope 50% crossing when available, and Spearman association
+with the four-level tissue maximum. Non-fitted states remain explicit for
+all-detected, all-not-detected, low-event, constant-RNA, and failed-fit rows.
+
+This is a coarse cross-tissue prior. It is neither a patient-matched model nor a
+quantitative protein-abundance conversion, has no held-out patient metric, and
+does not establish tumor protein presence, antigen presentation, or safety.
+Use the CPTAC table for matched tumor calibration and keep downstream ranking or
+threshold policy in the consumer.
+
 ## CTA Antigens
 
 A cancer-testis antigen (CTA) is encoded by a gene that is normally restricted
