@@ -143,6 +143,8 @@ PROPORTION_METRICS = frozenset(
     }
 )
 
+COMPUTED_CI_BASES = frozenset({"computed_clopper_pearson", "computed_wilson"})
+
 # Corrections found while checking the legacy extraction against public source
 # records. Keeping them in one table makes every exception reviewable and keeps
 # the uniform provenance pass below free of row-specific branches.
@@ -928,10 +930,11 @@ def complete_value_and_ci_provenance(estimates: pd.DataFrame) -> pd.DataFrame:
             output.at[index, "ci_high_status"] = "numeric"
 
         metric = str(row["metric"]).upper()
+        ci_basis = str(row["ci_basis"] or "")
         can_compute = (
             metric in PROPORTION_METRICS
             and value is not None
-            and ((low is None and high is None) or str(row["ci_basis"]) == "computed_wilson")
+            and ((low is None and high is None) or ci_basis == "computed_wilson")
         )
         computed = _wilson_ci(row["responders"], row["metric_n"]) if can_compute else None
         if computed:
@@ -950,7 +953,7 @@ def complete_value_and_ci_provenance(estimates: pd.DataFrame) -> pd.DataFrame:
         )
         if has_structured_ci:
             output.at[index, "ci_basis"] = (
-                "computed_wilson" if row["ci_basis"] == "computed_wilson" else "reported"
+                ci_basis if ci_basis in COMPUTED_CI_BASES else "reported"
             )
 
         missing_status = (

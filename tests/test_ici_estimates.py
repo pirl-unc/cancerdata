@@ -591,8 +591,8 @@ def _num(v):
 
 
 def test_nbl_response_rows_require_source_denominator():
-    # KEYNOTE-051 supplementary material gives an NBL PD-L1 screening denominator, but
-    # not the treated/evaluable response denominator needed for poolable ORR.
+    # Table 1 gives 11 treated NBL patients; supplementary n=80 is screening only.
+    # Every poolable NBL ORR row must carry the treated/evaluable denominator.
     from oncoref import apd1
 
     est = ici.cancer_ici_response_estimates_df()

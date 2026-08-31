@@ -4,6 +4,8 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 
+import math
+
 import pandas as pd
 
 from oncoref import apd1, ici
@@ -128,6 +130,7 @@ def test_ici_estimates_expose_structured_source_and_ci_provenance():
         "source_unavailable",
     }
     assert set(df["ci_basis"]) <= {
+        "computed_clopper_pearson",
         "computed_wilson",
         "not_applicable",
         "not_reported",
@@ -233,6 +236,47 @@ def test_ici_source_audit_corrections_and_computed_ci():
     unavailable_dor = df.loc["ICI-de9e5a30cc-01"]
     assert unavailable_dor["value_status"] == "not_reported"
     assert unavailable_dor["ci_basis"] == "not_applicable"
+
+
+def test_keynote051_nbl_anchor_uses_treated_response_denominator():
+    estimate_id = "ICI-e9a3cf4215-01"
+    estimates = ici.cancer_ici_response_estimates_df().set_index("estimate_id")
+    row = estimates.loc[estimate_id]
+
+    assert row["cancer_code"] == "NBL"
+    assert row["trial_name"] == "KEYNOTE-051"
+    assert row["source_n"] == 11
+    assert row["metric_n"] == 11
+    assert row["responders"] == 0
+    assert row["value"] == 0.0
+    assert row["value_basis"] == "computed_from_counts"
+    assert row["ci_basis"] == "computed_clopper_pearson"
+    assert row["ci_low"] == 0.0
+    expected_high = 100 * (1 - math.pow(0.025, 1 / 11))
+    assert math.isclose(row["ci_high"], expected_high, abs_tol=5e-5)
+    assert "n=80 is PD-L1 screening only" in row["note"]
+
+    anchor = ici.cancer_ici_response_record("NBL")
+    assert anchor["source_estimate_id"] == estimate_id
+    assert anchor["response_denominator"] == 11
+    assert anchor["response_numerator"] == 0
+    assert anchor["response_ci_basis"] == "computed_clopper_pearson"
+    assert anchor["evidence_type"] == "computed_from_counts"
+    assert ici.cancer_ici_response("NBL") == 0.0
+
+    apd1_anchor = apd1.cancer_apd1_response_record("NBL")
+    assert apd1_anchor["source_estimate_id"] == estimate_id
+    assert apd1_anchor["response_denominator"] == 11
+    assert apd1.cancer_apd1_response("NBL") == 0.0
+
+    pooled = ici.pooled_ici_response("NBL", regimen="PD-1", metric="ORR")
+    assert pooled["pooled_pct"] == 0.0
+    assert pooled["n_total"] == 11
+    assert pooled["responders_total"] == 0
+
+    audit = ici.cancer_ici_source_locator_audit_df().set_index("estimate_id").loc[estimate_id]
+    assert audit["source_locator"] == "Table 1; Table 4 footnote; Results"
+    assert audit["source_locator_status"] == "verified"
 
 
 def test_apd1_anchor_table_uses_same_evidence_schema_for_fallback_targets():
@@ -579,9 +623,9 @@ def test_resolve_ici_response_source_reports_direct_proxy_and_missing():
     assert per_regimen["selected_regimen"] is None
     assert per_regimen["available_regimens"] == ("PD-1", "PD-1+CTLA-4")
 
-    missing = ici.resolve_ici_response_source("NBL")
+    missing = ici.resolve_ici_response_source("HCL")
     assert missing == {
-        "requested_cancer_code": "NBL",
+        "requested_cancer_code": "HCL",
         "resolved_cancer_code": None,
         "inheritance_kind": "missing",
         "is_inherited_evidence": False,
