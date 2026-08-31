@@ -69,6 +69,36 @@ def test_ci_completion_is_idempotent():
     assert first.loc[0, "ci_high"] == 51.0
 
 
+def test_ci_completion_preserves_curated_clopper_pearson_interval():
+    estimates = pd.DataFrame(
+        [
+            {
+                "estimate_id": "ICI-exact",
+                "metric": "ORR",
+                "value": 0,
+                "value_status": "numeric",
+                "ci_low": 0.0,
+                "ci_low_status": "numeric",
+                "ci_high": 28.4914,
+                "ci_high_status": "numeric",
+                "ci_basis": "computed_clopper_pearson",
+                "metric_n": 11,
+                "responders": 0,
+                "source_verified": True,
+                "source_locator_status": "verified",
+                "value_basis": "computed_from_counts",
+                "note": "two-sided exact interval calculated from 0/11",
+            }
+        ]
+    )
+
+    result = audit.complete_value_and_ci_provenance(estimates)
+
+    assert result.loc[0, "ci_low"] == 0.0
+    assert result.loc[0, "ci_high"] == 28.4914
+    assert result.loc[0, "ci_basis"] == "computed_clopper_pearson"
+
+
 def test_build_audit_releases_each_document_and_preserves_row_order(monkeypatch, tmp_path):
     prior_document = None
     loaded_refs = []

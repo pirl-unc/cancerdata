@@ -331,10 +331,12 @@ quotes from the paper.
 - `not_verified`: no supporting source block was confirmed.
 - `not_applicable`: a curator-derived value has no single source location.
 
-`ci_basis` distinguishes source-reported intervals from 95% `computed_wilson`
-intervals, `not_reported`, `source_unavailable`, `not_verified`, and
-`not_applicable`. Reported intervals retain source-specific levels such as 80% or
-90% in their extraction notes; they must not be assumed to be uniformly 95%.
+`ci_basis` distinguishes source-reported intervals from calculated 95% intervals:
+`computed_wilson` for the standard pooled/count-derived interval and
+`computed_clopper_pearson` where an evidence row explicitly uses the two-sided exact
+binomial interval. It also distinguishes `not_reported`, `source_unavailable`,
+`not_verified`, and `not_applicable`. Reported intervals retain source-specific levels
+such as 80% or 90% in their extraction notes; they must not be assumed to be uniformly 95%.
 `ci_low_status` and `ci_high_status` preserve numeric, `NR`, and `NE` bounds
 independently. `value_status` likewise distinguishes numeric, not-reached,
 not-estimable, not-reported, and unverified values. There are no remaining legacy
