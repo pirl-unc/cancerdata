@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import tarfile
+import warnings
 import zipfile
 from copy import deepcopy
 from dataclasses import replace
@@ -791,6 +792,23 @@ def test_source_matrix_unit_helpers_validate_raw_counts_lengths():
     assert np.isclose(out.loc[out["gene_id"] == "g1", "s1"].iloc[0], 666_666.6666666666)
     with pytest.raises(ValueError, match="gene_lengths_kb"):
         expression_builders.normalize_source_matrix_to_tpm(df, unit="raw_counts")
+
+
+def test_source_matrix_unit_helpers_normalize_wide_matrices_without_fragmentation():
+    sample_columns = {f"sample_{i}": [i + 1.0, i + 2.0] for i in range(384)}
+    df = pd.DataFrame({"gene_id": ["g1", "g2"], **sample_columns})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", pd.errors.PerformanceWarning)
+        out = expression_builders.normalize_source_matrix_to_tpm(
+            df,
+            unit="raw_counts",
+            row_id_col="gene_id",
+            gene_lengths_kb={"g1": 1.0, "g2": 2.0},
+        )
+
+    assert out.columns.tolist() == df.columns.tolist()
+    assert np.allclose(out.drop(columns="gene_id").sum(axis=0), 1_000_000.0)
 
 
 def test_source_matrix_builder_emits_summary_rows_for_raw_counts(tmp_path):
@@ -2532,6 +2550,40 @@ def test_geo_soft_parser_rejects_duplicate_sample_titles(tmp_path):
 
     with pytest.raises(ValueError, match="duplicate GEO sample titles"):
         expression_source_adapters.parse_geo_soft_samples(soft_path)
+
+
+def test_gse270638_sample_import_preserves_qc_exclusions(tmp_path):
+    script = _load_script("import_gse270638_meningioma_samples")
+    soft_path = tmp_path / "family.soft.gz"
+    matrix_path = tmp_path / "MENINGIOMA_per_sample_tpm.parquet"
+    qc_path = tmp_path / "MENINGIOMA_sample_qc.csv"
+    sample_ids = [f"I{i}" for i in range(384)]
+
+    with gzip.open(soft_path, "wt") as handle:
+        for index, sample_id in enumerate(sample_ids):
+            handle.write(
+                f"^SAMPLE = GSM{index + 1}\n"
+                f"!Sample_title = {sample_id}\n"
+                "!Sample_source_name_ch1 = Meningioma\n"
+                "!Sample_characteristics_ch1 = tissue: Meningioma\n"
+            )
+    pd.DataFrame(
+        {"Ensembl_Gene_ID": ["ENSG1"], "Symbol": ["X"], **{s: [1.0] for s in sample_ids}}
+    ).to_parquet(matrix_path, index=False)
+    pd.DataFrame(
+        {
+            "sample_id": sample_ids,
+            "sample_qc_status": ["fail", *(["pass"] * 383)],
+            "sample_qc_reasons": ["high_top_gene_fraction", *([""] * 383)],
+        }
+    ).to_csv(qc_path, index=False)
+
+    manifest = script.build_manifest(soft_path, matrix_path, qc_path)
+
+    assert len(manifest) == 384
+    assert manifest["source_file_id"].is_unique
+    assert manifest["included"].sum() == 383
+    assert manifest.loc[0, "exclusion_reason"] == "sample_qc_fail:high_top_gene_fraction"
 
 
 def test_derive_mbl_subgroup_source_matrices_writes_cache_and_release_assets(tmp_path):

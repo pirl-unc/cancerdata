@@ -324,6 +324,7 @@ from .incidence import (
     cancer_burden_df,
     cancer_code_burden_map,
 )
+from .legacy import legacy_dataset_disposition, legacy_dataset_dispositions
 from .normalization import (
     BIOLOGICAL_FRACTION,
     HOUSEKEEPING_NORMALIZATION_METHOD,
@@ -705,6 +706,8 @@ __all__ = [
     "is_protein_coding_gene",
     "is_rescue_feature",
     "known_cohort_ids",
+    "legacy_dataset_disposition",
+    "legacy_dataset_dispositions",
     "locally_available_percentile_cohorts",
     "locally_available_within_sample_cohorts",
     "log1p_transform",

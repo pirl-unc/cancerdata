@@ -34,10 +34,47 @@ _TMB_EVIDENCE_OVERRIDES = {
         "source_scope": "source_rejected_for_site_specific_value",
         "missing_reason": "no_supported_site_specific_median",
     },
-    "NET_RECTAL": {
+    # These broad entities have subtype/site evidence but no defensible median
+    # over the complete aggregate represented by the ontology code.
+    "RCC": {
         "estimate_type": "unknown",
-        "source_scope": "source_rejected_for_site_specific_value",
-        "missing_reason": "no_supported_site_specific_median",
+        "source_scope": "subtype_sources_not_aggregated",
+        "missing_reason": "no_supported_aggregate_median",
+    },
+    "THYM_EPITHELIAL": {
+        "estimate_type": "unknown",
+        "source_scope": "subtype_sources_not_aggregated",
+        "missing_reason": "source_reports_subtype_medians_only",
+    },
+    "NEN": {
+        "estimate_type": "unknown",
+        "source_scope": "source_rejected_for_metric_mismatch",
+        "missing_reason": "source_reports_mean_not_median",
+    },
+    "NET": {
+        "estimate_type": "unknown",
+        "source_scope": "source_rejected_for_metric_mismatch",
+        "missing_reason": "source_reports_mean_not_median",
+    },
+    "NEC": {
+        "estimate_type": "unknown",
+        "source_scope": "source_rejected_for_metric_mismatch",
+        "missing_reason": "source_reports_mean_not_median",
+    },
+    "NEC_LUNG": {
+        "estimate_type": "unknown",
+        "source_scope": "subtype_sources_not_aggregated",
+        "missing_reason": "no_supported_aggregate_median",
+    },
+    "MPN": {
+        "estimate_type": "unknown",
+        "source_scope": "no_direct_source",
+        "missing_reason": "no_published_per_mb_median_curated",
+    },
+    "CML": {
+        "estimate_type": "unknown",
+        "source_scope": "no_direct_source",
+        "missing_reason": "no_published_per_mb_median_curated",
     },
     "KIRP": {"estimate_type": "approximate_literature"},
     "UCS": {"estimate_type": "approximate_literature"},

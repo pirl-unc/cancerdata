@@ -1840,9 +1840,17 @@ def normalize_source_matrix_to_tpm(
     out_cols = [row_id_col]
     if symbol_col is not None and symbol_col in df.columns:
         out_cols.append(symbol_col)
-    out = df[out_cols].copy()
-    for col in cols:
-        out[col] = values[col].to_numpy(dtype=float)
+    # Concatenate the normalized block once. Repeated column insertion makes
+    # wide public matrices (for example, GSE270638's 384 samples) highly
+    # fragmented and emits one pandas PerformanceWarning per sample.
+    identity = df[out_cols].reset_index(drop=True)
+    normalized = values.loc[:, cols].reset_index(drop=True).astype(float)
+    # pandas compares attrs while concatenating. Source loaders may attach a
+    # DataFrame-valued parse diagnostic, whose equality is intentionally not a
+    # scalar operation; the output's public attrs are restored below.
+    identity.attrs = {}
+    normalized.attrs = {}
+    out = pd.concat([identity, normalized], axis=1)
     out.attrs["row_id_col"] = row_id_col
     out.attrs["symbol_col"] = symbol_col
     out.attrs["source_expression_unit"] = unit

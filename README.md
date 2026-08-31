@@ -147,10 +147,22 @@ oncoref version
 ## Development
 
 ```bash
-./develop.sh   # editable install with dev extras
+./develop.sh   # create/refresh .venv and its editable install with dev extras
+source .venv/bin/activate
+oncoref version
 ./format.sh    # ruff format
 ./lint.sh      # ruff check + format --check
 ./test.sh      # lint + the full pytest suite with coverage and two workers
+```
+
+The repository virtualenv is the canonical development CLI. It imports the
+checkout directly, so source changes are visible without reinstalling; rerun
+`./develop.sh` when dependencies or packaging metadata change. To use the same
+CLI outside the checkout, add this shell alias rather than maintaining a
+separate global pip installation:
+
+```bash
+alias oncoref=/absolute/path/to/oncoref/.venv/bin/oncoref
 ```
 
 ## License

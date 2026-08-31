@@ -237,6 +237,12 @@ plus one metastatic-site biopsy, so its small mixed-origin reference remains
 non-classifying. Sample-level provenance retains all 13 pathology-confirmed study
 tumors and only reports HPV status from the publication's direct
 hybridization-capture and PCR evidence.
+MENINGIOMA contributes 384 public GSE270638 tumor profiles from a
+checksum-pinned HTSeq raw-count matrix. Ensembl-release-112 gene lengths convert
+the counts to TPM; 379 profiles pass the source-matrix QC policy and feed the
+derived reference, while five concentration-QC failures remain visible in the
+sample and QC manifests. The larger `n=994` free-text design statement is not
+treated as available data because GEO exposes only these 384 samples.
 The table intentionally does not
 synthesize marker-program or discriminator fallbacks; those remain consumer-layer
 choices in packages such as trufflepig.
@@ -691,6 +697,12 @@ diagnosis-only Treehouse sample.
   confirmation status, expression availability, and access level.
 - `oncoref.samples.molecular_sample_counts(code)` reports libraries and distinct
   donors separately for each physical source cohort.
+
+The eleven historical `legacy-compat` tables remain importable but frozen.
+`oncoref.legacy_dataset_dispositions()` gives every table's reviewed owner,
+replacement surface, and compatibility policy. In particular, new driver facts
+belong in the source-anchored `cancer-entity-driver-spectrum`; the legacy
+driver-gene and driver-variant tables receive no new unsourced rows.
 
 For VSCC, the molecular-provenance table preserves the study's complete
 13-tumor HPV audit: three PCR-confirmed HPV16 integrations, two directly detected

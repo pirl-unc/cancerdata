@@ -279,6 +279,39 @@ def test_keynote051_nbl_anchor_uses_treated_response_denominator():
     assert audit["source_locator_status"] == "verified"
 
 
+def test_aml_combination_anchor_and_mpn_scope_boundary_are_explicit():
+    estimates = ici.cancer_ici_response_estimates_df().set_index("estimate_id")
+
+    aml = estimates.loc["ICI-8b126eef2c-01"]
+    assert aml["cancer_code"] == "LAML"
+    assert aml["trial_nct"] == "NCT02397720"
+    assert aml["source_n"] == 70
+    assert aml["metric_n"] == 70
+    assert aml["responders"] == 23
+    assert aml["value"] == 33.0
+    assert aml["ci_basis"] == "computed_wilson"
+    assert "15 CR/CRi + 1 PR + 7 hematologic improvements" in aml["note"]
+
+    anchor = ici.cancer_ici_response_record("LAML")
+    assert anchor["source_estimate_id"] == "ICI-8b126eef2c-01"
+    assert anchor["drug"] == "azacitidine+nivolumab"
+    assert anchor["response_denominator"] == 70
+    assert ici.cancer_ici_response("LAML") == 33.0
+
+    mpn = estimates.loc["ICI-4b4990885c-01"]
+    assert mpn["role"] == "alternate"
+    assert mpn["value"] == 0.0
+    assert mpn["responders"] == 0
+    assert mpn["metric_n"] == 10
+    assert "myelofibrosis" in mpn["source_population_label"].lower()
+    assert "must not become a representative anchor" in mpn["note"]
+    assert ici.cancer_ici_response("MPN", inherit=False) is None
+
+    audit = ici.cancer_ici_source_locator_audit_df().set_index("estimate_id")
+    assert audit.loc["ICI-8b126eef2c-01", "source_locator_status"] == "verified"
+    assert audit.loc["ICI-4b4990885c-01", "source_locator_status"] == "verified"
+
+
 def test_apd1_anchor_table_uses_same_evidence_schema_for_fallback_targets():
     df = apd1.cancer_apd1_response_df()
     assert {

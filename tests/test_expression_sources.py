@@ -468,6 +468,7 @@ def test_expression_source_candidates_preserve_physical_source_boundaries():
         "EPN",
         "GBC",
         "HCL",
+        "MENINGIOMA",
         "NEC_MERKEL",
         "SARC_IFS",
         "SARC_MMNST",
@@ -558,7 +559,7 @@ def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
         "PENSCC": "microarray_proxy_only",
         "URETH": "deferred_no_dedicated_source",
         "ANSC": "bulk_candidate_needs_sample_selection",
-        "PITNET": "microarray_proxy_only",
+        "PITNET": "bulk_candidate_requires_sra_build",
     }
     candidates = es.expression_source_candidates()
     rows = candidates[candidates["cancer_code"].isin(expected_status)].set_index("cancer_code")
@@ -582,12 +583,42 @@ def test_nci_gap_candidates_have_explicit_non_promoting_owner_decisions():
     assert int(rows.loc["ANSC", "estimated_samples"]) == 23
     assert "lacks an explicit public matrix-to-GEO sample crosswalk" in rows.loc["ANSC", "notes"]
 
+
+def test_new_expression_gap_candidates_have_reproducible_dispositions():
+    expected = {
+        "MENINGIOMA": ("direct_reference_available", "GSE270638", 384),
+        "PITNET": ("bulk_candidate_requires_sra_build", "GSE209903", 65),
+        "CHOROID_PLEXUS": ("microarray_proxy_only", "GSE60892", 40),
+        "ALCL": ("microarray_proxy_only", "GSE58445", 79),
+    }
+    rows = es.expression_source_candidates()
+    rows = rows[rows["cancer_code"].isin(expected)].set_index("cancer_code")
+
+    assert set(rows.index) == set(expected)
+    for code, (status, accession, n_samples) in expected.items():
+        row = rows.loc[code]
+        assert row["source_status"] == status
+        assert row["accession"] == accession
+        assert int(row["estimated_samples"]) == n_samples
+        assert str(row["processing_plan"]).strip()
+        assert str(row["gene_id_plan"]).strip()
+        assert str(row["normalization_plan"]).strip()
+        assert str(row["notes"]).strip()
+
+    meningioma = es.expression_source("gse270638-meningioma")
+    assert meningioma is not None
+    assert meningioma.builder == "scripts/build_geo_matrix.py"
+    assert meningioma.cancer_codes == ("MENINGIOMA",)
+    assert meningioma.source_cohort == "GSE270638_MENINGIOMA_2024"
+    assert meningioma.source_scale_class == "linear_rnaseq_tpm"
+    assert meningioma.linear_tpm_comparable is True
+    assert meningioma.tpm_proxy is False
+
+    unavailable = {"PITNET", "CHOROID_PLEXUS", "ALCL"}
     availability = oncoref.cancer_reference_expression_availability(
-        list(expected_status),
-        reference_source="summary_rows_all",
-        sample_qc="all",
+        sorted(unavailable), reference_source="summary_rows_all", sample_qc="all"
     )
-    assert set(availability["requested_code"]) == set(expected_status)
+    assert set(availability["requested_code"]) == unavailable
     assert not availability["available"].any()
 
 
