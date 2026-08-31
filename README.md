@@ -88,6 +88,7 @@ od.cancer_ici_response("SKCM")            # 42% objective response rate
 od.cancer_ici_response("SKCM", regimen="PD-1+CTLA-4")   # 57.6  (pin a regimen)
 od.therapy_benefit_toxicity_evidence(cancer_code="OV")  # sourced clinical facts
 od.rna_protein_calibrations(gene="TP53")     # matched CPTAC cohort-specific models
+od.rna_protein_hpa_priors(gene="TP53")       # HPA normal-tissue RNA/IHC weak prior
 
 # Cancer-testis antigens (HPA-derived tissue-restriction):
 od.cta_gene_names()                       # expressed CTA symbols (MAGEA4, CT83, …)
