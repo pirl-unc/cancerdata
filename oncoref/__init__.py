@@ -324,6 +324,7 @@ from .incidence import (
     cancer_burden_df,
     cancer_code_burden_map,
 )
+from .legacy import legacy_dataset_disposition, legacy_dataset_dispositions
 from .normalization import (
     BIOLOGICAL_FRACTION,
     HOUSEKEEPING_NORMALIZATION_METHOD,
@@ -406,7 +407,13 @@ from .samples import (
     samples_for_cohort,
 )
 from .therapy_evidence import therapy_benefit_toxicity_evidence
-from .tmb import cancer_tmb, cancer_tmb_df, cancer_tmb_record, resolve_tmb_source
+from .tmb import (
+    cancer_tmb,
+    cancer_tmb_df,
+    cancer_tmb_record,
+    resolve_tmb_source,
+    tmb_evidence_fields,
+)
 from .tumor_references import (
     TUMOR_REFERENCE_DERIVATION_METHODS,
     TUMOR_REFERENCE_DERIVATION_STATUSES,
@@ -705,6 +712,8 @@ __all__ = [
     "is_protein_coding_gene",
     "is_rescue_feature",
     "known_cohort_ids",
+    "legacy_dataset_disposition",
+    "legacy_dataset_dispositions",
     "locally_available_percentile_cohorts",
     "locally_available_within_sample_cohorts",
     "log1p_transform",
@@ -794,6 +803,7 @@ __all__ = [
     "therapy_benefit_toxicity_evidence",
     "therapy_evidence",
     "tissue_of_origin",
+    "tmb_evidence_fields",
     "tpm_to_housekeeping_normalized",
     "tumor_reference_expression_provenance",
     "unversioned",

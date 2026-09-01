@@ -109,12 +109,14 @@ REGIMEN_LABELS = {
     "PD-1": "anti-PD-1 monotherapy",
     "PD-L1": "anti-PD-L1 monotherapy",
     "PD-1+CTLA-4": "anti-PD-1 + anti-CTLA-4",
+    "PD-1+HMA": "anti-PD-1 + hypomethylating agent",
 }
 
 REGIMEN_CLASSES = {
     "PD-1": "anti_pd1_monotherapy",
     "PD-L1": "anti_pdl1_monotherapy",
     "PD-1+CTLA-4": "anti_pd1_ctla4_combination",
+    "PD-1+HMA": "anti_pd1_hma_combination",
 }
 
 

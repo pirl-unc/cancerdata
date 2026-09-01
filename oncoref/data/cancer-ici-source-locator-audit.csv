@@ -782,3 +782,5 @@ ICI-b1b8b062cd-01,PMID:32673170,https://pmc.ncbi.nlm.nih.gov/articles/PMC7460151
 ICI-5c2c2237e1-01,PMID:34293460,https://pubmed.ncbi.nlm.nih.gov/34293460/,pubmed_abstract,"Abstract, Results",verified,"endpoint,value,denominator,ci",18,2026-07-31
 ICI-9eb893ac25-01,PMID:34293460,https://pubmed.ncbi.nlm.nih.gov/34293460/,pubmed_abstract,"Abstract, Results",verified,"endpoint,denominator,ci",14,2026-07-31
 ICI-897a51cb7a-01,PMID:29863979,https://pubmed.ncbi.nlm.nih.gov/29863979/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
+ICI-8b126eef2c-01,PMID:30409776,https://pmc.ncbi.nlm.nih.gov/articles/PMC6397669/,pmc_full_text,"Abstract, Findings; Results, Clinical outcomes",verified,"endpoint,numerator/denominator,value,population,response definition",26,2026-08-31
+ICI-4b4990885c-01,PMID:34581778,https://pmc.ncbi.nlm.nih.gov/articles/PMC9152999/,pmc_full_text,"Abstract; Results, Safety and efficacy",verified,"endpoint,numerator/denominator,population,response status",24,2026-08-31

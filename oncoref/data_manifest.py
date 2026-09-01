@@ -28,7 +28,8 @@ Ownership rule:
 Held buckets (oncoref domain):
   WHEEL     — small base-layer tables shipped in the wheel (no fetch). A
               ``legacy-compat`` category marks shipped historical surfaces that
-              remain importable but are not the intended future ownership boundary.
+              remain importable but are frozen. ``legacy-dataset-dispositions``
+              records the replacement owner/surface for every such table.
   BUNDLE    — heavy expression artifacts in the version-pinned release tarball.
   HPA       — Human Protein Atlas reference tables fetched per-source on demand.
   SOURCE    — the raw per-sample TPM matrices (a separate large optional bundle).
@@ -98,11 +99,11 @@ WHEEL: dict[str, tuple[str, str]] = {
     ),
     "cancer-driver-genes": (
         "legacy-compat",
-        "legacy per-type driver-gene rows; source-anchored fact model still unresolved",
+        "frozen per-type driver-gene rows; new facts use cancer-entity-driver-spectrum",
     ),
     "cancer-driver-variants": (
         "legacy-compat",
-        "legacy per-type driver-variant rows; source-anchored fact model still unresolved",
+        "frozen driver variants; new facts use cancer-entity-driver-spectrum",
     ),
     "cancer-type-genes": (
         "legacy-compat",
@@ -231,6 +232,10 @@ SUPERSEDED: dict[str, str] = {
 #: regenerated here rather than copied from pirlygenes, so they aren't in the
 #: pirlygenes snapshot but DO ship in the wheel and belong in the inventory.
 CANCERDATA_ORIGINATED: dict[str, tuple[str, str]] = {
+    "legacy-dataset-dispositions": (
+        "governance",
+        "reviewed owner/replacement and freeze policy for every legacy-compat dataset",
+    ),
     "rna-protein-hpa-prior-sources": (
         "protein-calibration",
         "checksum-pinned HPA v23 RNA and normal-tissue IHC weak-prior sources",

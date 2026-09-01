@@ -220,3 +220,18 @@ def test_vscc_manifest_and_molecular_provenance_preserve_direct_hpv_evidence():
     assert provenance.loc["Tumor 2", "anatomic_site"] == "metastatic site (site not reported)"
     assert provenance.loc["Tumor 2", "driver_event"] == ("HPV16 integration in NCKAP1 intron 1")
     assert provenance.loc[["Tumor 10", "Tumor 13"], "driver_event"].isna().all()
+
+
+def test_meningioma_manifest_preserves_all_public_profiles_and_qc_boundary():
+    rows = samples_for_cancer_code("MENINGIOMA", included_only=False).set_index("sample_id")
+
+    assert len(rows) == 384
+    assert rows["included"].sum() == 379
+    assert rows["source_file_id"].nunique() == 384
+    assert set(rows["primary_diagnosis"]) == {"Meningioma"}
+    assert set(rows.index[~rows["included"]]) == {"I125", "I155", "I260", "I293", "I294"}
+    assert (
+        rows.loc[~rows["included"], "exclusion_reason"]
+        .str.startswith("sample_qc_fail:high_top_gene_fraction")
+        .all()
+    )

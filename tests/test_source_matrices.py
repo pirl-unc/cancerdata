@@ -61,6 +61,11 @@ def test_source_id_resolver_distinguishes_physical_and_declared_code_routes():
     assert vscc.matrices[0].source_cohort == "SRP449588_VSCC_2024"
     assert sm.codes_for_source("prjna994918-vscc") == ["VSCC"]
 
+    meningioma = sm.resolution_for_source("gse270638-meningioma")
+    assert meningioma.resolution_method == "physical_source"
+    assert meningioma.codes == ("MENINGIOMA",)
+    assert meningioma.matrices[0].source_cohort == "GSE270638_MENINGIOMA_2024"
+
 
 def test_source_id_resolver_does_not_mix_selected_physical_sources():
     treehouse = sm.resolution_for_source("treehouse-polya-25-01")
@@ -214,13 +219,16 @@ def test_cohort_source_versions_avoid_republishing_unchanged_matrices(monkeypatc
     assert sm.source_matrix_version("LUAD") == "5.22.10"
     assert sm.source_matrix_version("CRANIO") == "5.22.11"
     assert sm.source_matrix_version("DIPG") == "5.22.11"
-    assert sm.source_matrix_version("VSCC") == sm.SOURCE_MATRIX_VERSION
+    assert sm.source_matrix_version("VSCC") == "5.22.12"
+    assert sm.source_matrix_version("MENINGIOMA") == sm.SOURCE_MATRIX_VERSION
     assert "/source-v5.22.10/" in sm.release_url("LUAD")
     assert "/source-v5.22.11/" in sm.release_url("DIPG")
-    assert f"/source-v{sm.SOURCE_MATRIX_VERSION}/" in sm.release_url("VSCC")
+    assert "/source-v5.22.12/" in sm.release_url("VSCC")
+    assert f"/source-v{sm.SOURCE_MATRIX_VERSION}/" in sm.release_url("MENINGIOMA")
     assert sm.local_path("LUAD").parent.name == "v5.22.10"
     assert sm.local_path("DIPG").parent.name == "v5.22.11"
-    assert sm.local_path("VSCC").parent.name == f"v{sm.SOURCE_MATRIX_VERSION}"
+    assert sm.local_path("VSCC").parent.name == "v5.22.12"
+    assert sm.local_path("MENINGIOMA").parent.name == f"v{sm.SOURCE_MATRIX_VERSION}"
 
 
 def test_cache_and_fetch(monkeypatch, tmp_path):

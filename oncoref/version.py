@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "1.8.189"
+__version__ = "1.8.190"
 
 # Version of the downloadable data bundle (the heavy per-cohort percentile +
 # representative shards). Bump when the DERIVED reference artifacts change — it pins
@@ -54,14 +54,16 @@ __version__ = "1.8.189"
 # OpenPBTA PAR_Y symbol aliases in the CRANIO and DIPG source matrices.
 # 5.23.23 adds the nine-donor direct VSCC reference from checksum-pinned NCBI
 # Gene Feature counts and the complete thirteen-tumor clinical/HPV audit.
-DATA_VERSION = "5.23.23"
+# 5.23.24 adds the 384-tumor direct meningioma reference from the
+# checksum-pinned GSE270638 HTSeq raw-count matrix.
+DATA_VERSION = "5.23.24"
 
 # Version of the per-cohort RAW source matrices (source_matrices.py). Independent of
 # DATA_VERSION: the source matrices are the unchanging raw-TPM inputs, while DATA_VERSION
 # tracks the derived bundle that's rebuilt from them. Canonicalization happens downstream
 # (read/build time), so a canonical-space bundle bump must NOT repoint — or orphan the
 # local caches of — these raw matrices. Bump only when a cohort's raw matrix changes.
-SOURCE_MATRIX_VERSION = "5.22.12"
+SOURCE_MATRIX_VERSION = "5.22.13"
 
 version_string = f"v{__version__}"
 

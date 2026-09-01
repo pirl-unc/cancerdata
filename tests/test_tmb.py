@@ -6,6 +6,7 @@
 
 import pandas as pd
 
+import oncoref
 from oncoref import cancer_types, tmb
 
 
@@ -46,6 +47,23 @@ def test_tmb_df_exposes_evidence_schema():
     assert missing["estimate_type"] == "unknown"
     assert missing["source_scope"] == "no_direct_source"
     assert missing["missing_reason"] == "no_published_per_mb_median_curated"
+
+
+def test_tmb_evidence_fields_is_public_and_registry_aware():
+    assert oncoref.tmb_evidence_fields is tmb.tmb_evidence_fields
+
+    btc = tmb.tmb_evidence_fields("Biliary Tract Cancer", 1.23)
+    assert btc["estimate_type"] == "published_median"
+    assert btc["source_scope"] == "aggregate_source"
+    assert pd.isna(btc["missing_reason"])
+
+    direct = tmb.tmb_evidence_fields("LUAD", 6.3)
+    assert direct["source_scope"] == "cancer_code_direct"
+
+    audited_gap = tmb.tmb_evidence_fields("NET_MIDGUT", None)
+    assert audited_gap["estimate_type"] == "unknown"
+    assert audited_gap["source_scope"] == "source_rejected_for_site_specific_value"
+    assert audited_gap["missing_reason"] == "no_supported_site_specific_median"
 
 
 def test_tmb_resolves_alias():
@@ -136,9 +154,8 @@ def test_tmb_record_missing_and_bulk_direct_rows():
 def test_net_site_specific_tmb_rows_are_audited_gaps():
     mapping = tmb.cancer_tmb()
     assert "NET_MIDGUT" not in mapping
-    assert "NET_RECTAL" not in mapping
     assert tmb.cancer_tmb("NET_MIDGUT") is None
-    assert tmb.cancer_tmb("NET_RECTAL") is None
+    assert tmb.cancer_tmb("NET_RECTAL") == 1.15
 
     midgut = tmb.resolve_tmb_source("NET_MIDGUT")
     assert midgut["has_tmb_source"] is True
@@ -146,6 +163,49 @@ def test_net_site_specific_tmb_rows_are_audited_gaps():
     assert midgut["estimate_type"] == "unknown"
     assert midgut["source_scope"] == "source_rejected_for_site_specific_value"
     assert midgut["missing_reason"] == "no_supported_site_specific_median"
+
+    rectal = tmb.resolve_tmb_source("NET_RECTAL")
+    assert rectal["inheritance_kind"] == "direct"
+    assert rectal["median_tmb_mut_mb"] == 1.15
+    assert rectal["n_samples"] == 18
+    assert rectal["pmid_doi"] == "PMID:36645718"
+
+
+def test_new_aggregate_tmb_rows_preserve_source_scope_and_missing_boundaries():
+    mapping = tmb.cancer_tmb()
+    assert mapping["BTC"] == 1.23
+    assert mapping["NSCLC"] == 8.0
+
+    rows = tmb.cancer_tmb_df().set_index("cancer_code")
+    assert int(rows.loc["BTC", "n_samples"]) == 803
+    assert int(rows.loc["NSCLC", "n_samples"]) == 970
+    assert rows.loc["BTC", "source_scope"] == "aggregate_source"
+    assert rows.loc["NSCLC", "source_scope"] == "aggregate_source"
+
+    for code in ("BTC", "NSCLC"):
+        resolved = tmb.resolve_tmb_source(code)
+        assert resolved["inheritance_kind"] == "direct"
+        assert resolved["source_scope"] == "aggregate_source"
+
+    expected_missing = {
+        "RCC": ("subtype_sources_not_aggregated", "no_supported_aggregate_median"),
+        "THYM_EPITHELIAL": (
+            "subtype_sources_not_aggregated",
+            "source_reports_subtype_medians_only",
+        ),
+        "NEN": ("source_rejected_for_metric_mismatch", "source_reports_mean_not_median"),
+        "NET": ("source_rejected_for_metric_mismatch", "source_reports_mean_not_median"),
+        "NEC": ("source_rejected_for_metric_mismatch", "source_reports_mean_not_median"),
+        "NEC_LUNG": ("subtype_sources_not_aggregated", "no_supported_aggregate_median"),
+    }
+    for code, (scope, reason) in expected_missing.items():
+        row = rows.loc[code]
+        assert pd.isna(row["median_tmb_mut_mb"])
+        assert row["source_scope"] == scope
+        assert row["missing_reason"] == reason
+        resolved = tmb.resolve_tmb_source(code)
+        assert resolved["inheritance_kind"] == "direct_missing"
+        assert resolved["has_tmb_source"] is True
 
 
 def test_tmb_unknown_value_returns_none():

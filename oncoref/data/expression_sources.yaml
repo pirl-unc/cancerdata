@@ -1758,6 +1758,7 @@ sources:
     tpm_proxy: false
     expected_size_gb: 0.01
     citation: PMID:38898085; DOI:10.1038/s41525-024-00418-8; PRJNA994918
+    source_pmid: PMID:38898085
     source_version: NCBI SRA Gene Feature analyses SRZ1277119/SRZ1610788/SRZ1611554/SRZ1278215/SRZ1276871/SRZ1277376/SRZ1277597/SRZ1277053/SRZ1611176 (scf_rnaseq_gene_counts 0.5.6); RefSeq GCF_000001405.40-RS_2025_08 length reference; harmonized to Ensembl release 112
     processing_pipeline: ncbi_sra_gene_feature_counts_refseq2025_gene_length_tpm_oncoref_canonical_clean_tpm_16_9_75
     pipeline_stem: srp449588_vscc_2024
@@ -1975,6 +1976,45 @@ sources:
       Carcinoid/Supra_carcinoid (n=118) → LUNG_NET_LC; LCNEC (n=69)
       → LUNG_NET_LCNEC; SCLC (n=51) skipped (covered by SCLC
       UCologne 2015).
+
+  - id: gse270638-meningioma
+    category: expression
+    cancer_codes: [MENINGIOMA]
+    source_type: geo-matrix
+    accession: GSE270638
+    url: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE270638
+    builder: scripts/build_geo_matrix.py
+    file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE270nnn/GSE270638/suppl/GSE270638_MNG_RNAseq_Htseq_RawCounts.txt.gz
+    file_name: GSE270638_MNG_RNAseq_Htseq_RawCounts.txt.gz
+    file_sha256: 7a0486612342707c7c1b58fdc4a8361667c6891019582dd4f8bf088c0cd8b4e3
+    file_bytes: 20298059
+    soft_file_url: https://ftp.ncbi.nlm.nih.gov/geo/series/GSE270nnn/GSE270638/soft/GSE270638_family.soft.gz
+    soft_file_name: GSE270638_family.soft.gz
+    soft_file_md5: 456979eb335728019be5c297b3489789
+    soft_file_bytes: 14141
+    unit: raw_counts
+    gene_id_col: gene_id
+    symbol_col: gene_symbol
+    drop_cols: [gene_type]
+    expected_source_samples: 384
+    expected_samples_by_code: {MENINGIOMA: 384}
+    source_cohort: GSE270638_MENINGIOMA_2024
+    source_project: GEO
+    source_version: GSE270638 public 2024-08-21; raw-count matrix sha256 7a0486612342707c7c1b58fdc4a8361667c6891019582dd4f8bf088c0cd8b4e3; harmonized to Ensembl release 112
+    processing_pipeline: gse270638_htseq_raw_counts_gene_length_tpm_ensembl112_clean_tpm_16_9_75
+    source_scale_class: linear_rnaseq_tpm
+    linear_tpm_comparable: true
+    tpm_proxy: false
+    tumor_origin: mixed
+    library_prep: fresh-frozen bulk RNA-seq
+    expected_size_gb: 0.02
+    citation: GSE270638; BioProject PRJNA1127224
+    notes: >
+      The public processed matrix contains 384 tumor columns and 60,662 gene
+      rows. GEO's free-text Overall design says n=994, while the accession
+      exposes 384 samples and the downloadable matrix contains exactly those
+      384 identifiers. Build and release only the auditable matrix cohort; do
+      not manufacture or impute the unexposed 610 profiles.
 
   # ─── GPL570 Affymetrix HG-U133 Plus 2.0 microarray sources ────────────
   # Generic builder lives in pirlygenes/builders/affy_gpl570.py +

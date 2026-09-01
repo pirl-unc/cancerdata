@@ -298,6 +298,12 @@ class GeoMatrixSource:
     tumor_origin: str = "primary"
     metastasis_site: str | None = None
     source_type: str | None = None
+    file_sha256: str | None = None
+    file_bytes: int | None = None
+    soft_file_url: str | None = None
+    soft_file_name: str | None = None
+    soft_file_md5: str | None = None
+    soft_file_bytes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -1009,12 +1015,44 @@ def geo_matrix_source_from_entry(
         raise ValueError(f"source {entry.get('id')!r} has no cancer_codes")
     cancer_code: str | list[str] = cancer_codes[0] if len(cancer_codes) == 1 else cancer_codes
     expected = _expected_samples_by_code(entry, cancer_codes)
+    file_sha256 = _coerce_optional_text(entry.get("file_sha256"))
+    if file_sha256 is not None:
+        file_sha256 = _validated_checksum(
+            file_sha256,
+            algorithm="sha256",
+            description=f"source {entry.get('id')!r} file_sha256",
+        )
+    soft_file_md5 = _coerce_optional_text(entry.get("soft_file_md5"))
+    if soft_file_md5 is not None:
+        soft_file_md5 = _validated_checksum(
+            soft_file_md5,
+            algorithm="md5",
+            description=f"source {entry.get('id')!r} soft_file_md5",
+        )
+    file_bytes = entry.get("file_bytes")
+    if file_bytes is not None:
+        file_bytes = _nonnegative_sample_count(
+            file_bytes,
+            description=f"source {entry.get('id')!r} file_bytes",
+        )
+    soft_file_bytes = entry.get("soft_file_bytes")
+    if soft_file_bytes is not None:
+        soft_file_bytes = _nonnegative_sample_count(
+            soft_file_bytes,
+            description=f"source {entry.get('id')!r} soft_file_bytes",
+        )
     return GeoMatrixSource(
         cancer_code=cancer_code,
         source_cohort=str(entry["source_cohort"]),
         source_project=entry.get("source_project"),
         citation=entry.get("citation"),
         file_url=entry.get("file_url"),
+        file_sha256=file_sha256,
+        file_bytes=file_bytes,
+        soft_file_url=entry.get("soft_file_url"),
+        soft_file_name=_coerce_optional_text(entry.get("soft_file_name")),
+        soft_file_md5=soft_file_md5,
+        soft_file_bytes=soft_file_bytes,
         file_name=str(entry["file_name"]),
         unit=_coerce_source_expression_unit(str(entry["unit"])),
         gene_id_col=str(entry.get("gene_id_col", "")),
@@ -1840,9 +1878,17 @@ def normalize_source_matrix_to_tpm(
     out_cols = [row_id_col]
     if symbol_col is not None and symbol_col in df.columns:
         out_cols.append(symbol_col)
-    out = df[out_cols].copy()
-    for col in cols:
-        out[col] = values[col].to_numpy(dtype=float)
+    # Concatenate the normalized block once. Repeated column insertion makes
+    # wide public matrices (for example, GSE270638's 384 samples) highly
+    # fragmented and emits one pandas PerformanceWarning per sample.
+    identity = df[out_cols].copy()
+    normalized = values.loc[:, cols].astype(float)
+    # pandas compares attrs while concatenating. Source loaders may attach a
+    # DataFrame-valued parse diagnostic, whose equality is intentionally not a
+    # scalar operation; the output's public attrs are restored below.
+    identity.attrs = {}
+    normalized.attrs = {}
+    out = pd.concat([identity, normalized], axis=1)
     out.attrs["row_id_col"] = row_id_col
     out.attrs["symbol_col"] = symbol_col
     out.attrs["source_expression_unit"] = unit
@@ -2794,6 +2840,34 @@ def _md5(path: Path) -> str:
 
 def _sha256(path: Path) -> str:
     return _file_digest(path, "sha256")
+
+
+def verify_source_file_integrity(
+    path: str | Path,
+    *,
+    label: str,
+    expected_bytes: int | None = None,
+    expected_sha256: str | None = None,
+    expected_md5: str | None = None,
+) -> Path:
+    """Validate declared size/checksum pins for a public build input."""
+    resolved = Path(path)
+    if expected_bytes is not None:
+        observed_bytes = resolved.stat().st_size
+        if observed_bytes != expected_bytes:
+            raise ValueError(f"{label} size mismatch: {observed_bytes} != {expected_bytes}")
+    for algorithm, expected in (("sha256", expected_sha256), ("md5", expected_md5)):
+        if expected is None:
+            continue
+        validated = _validated_checksum(
+            expected,
+            algorithm=algorithm,
+            description=f"{label} expected {algorithm}",
+        )
+        observed = _file_digest(resolved, algorithm)
+        if observed != validated:
+            raise ValueError(f"{label} {algorithm.upper()} mismatch: {observed} != {validated}")
+    return resolved
 
 
 def download_verified_file(
@@ -4486,6 +4560,12 @@ def prepare_source_matrix(
         if not source.file_url:
             raise ValueError("source_path is absent and GeoMatrixSource.file_url is not set")
         file_path = _download(source.file_url, file_path, force=force_download)
+    verify_source_file_integrity(
+        file_path,
+        label=f"{source.source_cohort} source matrix",
+        expected_bytes=source.file_bytes,
+        expected_sha256=source.file_sha256,
+    )
 
     raw = read_source_expression_matrix(
         file_path,
