@@ -11,9 +11,15 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from oncoref.expression_builders import sample_columns
+from oncoref.expression_builders import (
+    GeoMatrixSource,
+    geo_matrix_source_from_registry,
+    sample_columns,
+    verify_source_file_integrity,
+)
 from oncoref.expression_source_adapters import parse_geo_soft_samples
 
+SOURCE_ID = "gse270638-meningioma"
 COHORT = "GSE270638_MENINGIOMA_2024"
 PIPELINE = "gse270638_htseq_raw_counts_gene_length_tpm_ensembl112_clean_tpm_16_9_75"
 MANIFEST_COLUMNS = [
@@ -40,8 +46,21 @@ MANIFEST_COLUMNS = [
 ]
 
 
-def build_manifest(soft_path: Path, matrix_path: Path, qc_path: Path) -> pd.DataFrame:
+def build_manifest(
+    soft_path: Path,
+    matrix_path: Path,
+    qc_path: Path,
+    *,
+    source: GeoMatrixSource | None = None,
+) -> pd.DataFrame:
     """Return one auditable manifest row per public matrix column."""
+    source = source or geo_matrix_source_from_registry(SOURCE_ID)
+    verify_source_file_integrity(
+        soft_path,
+        label=f"{source.source_cohort} GEO SOFT",
+        expected_bytes=source.soft_file_bytes,
+        expected_md5=source.soft_file_md5,
+    )
     metadata = parse_geo_soft_samples(soft_path)
     by_title = {values["title"]: values for values in metadata.values()}
     matrix = pd.read_parquet(matrix_path)
@@ -99,9 +118,16 @@ def main() -> None:
     parser.add_argument("--matrix", required=True, type=Path)
     parser.add_argument("--qc", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument(
+        "--registry",
+        type=Path,
+        default=None,
+        help="Optional expression_sources.yaml path; defaults to the packaged registry.",
+    )
     args = parser.parse_args()
 
-    manifest = build_manifest(args.soft, args.matrix, args.qc)
+    source = geo_matrix_source_from_registry(SOURCE_ID, registry_path=args.registry)
+    manifest = build_manifest(args.soft, args.matrix, args.qc, source=source)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     manifest.to_csv(args.output, index=False)
     print(

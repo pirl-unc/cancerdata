@@ -797,6 +797,7 @@ def test_source_matrix_unit_helpers_validate_raw_counts_lengths():
 def test_source_matrix_unit_helpers_normalize_wide_matrices_without_fragmentation():
     sample_columns = {f"sample_{i}": [i + 1.0, i + 2.0] for i in range(384)}
     df = pd.DataFrame({"gene_id": ["g1", "g2"], **sample_columns})
+    df.index = pd.Index([17, 42], name="source_row")
 
     with warnings.catch_warnings():
         warnings.simplefilter("error", pd.errors.PerformanceWarning)
@@ -808,6 +809,7 @@ def test_source_matrix_unit_helpers_normalize_wide_matrices_without_fragmentatio
         )
 
     assert out.columns.tolist() == df.columns.tolist()
+    assert out.index.equals(df.index)
     assert np.allclose(out.drop(columns="gene_id").sum(axis=0), 1_000_000.0)
 
 
@@ -935,6 +937,12 @@ def test_geo_matrix_source_from_entry_compiles_yaml_filters_and_routing():
             "source_cohort": "SYNTHETIC",
             "file_url": "https://example.org/source.tsv.gz",
             "file_name": "source.tsv.gz",
+            "file_sha256": "a" * 64,
+            "file_bytes": 1234,
+            "soft_file_url": "https://example.org/source.soft.gz",
+            "soft_file_name": "source.soft.gz",
+            "soft_file_md5": "b" * 32,
+            "soft_file_bytes": 567,
             "unit": "log2-TPM",
             "gene_id_col": "",
             "sample_filter": {"include_match": "tumor", "exclude_match": "bad"},
@@ -953,6 +961,12 @@ def test_geo_matrix_source_from_entry_compiles_yaml_filters_and_routing():
 
     assert source.cancer_code == ["CODE_A", "CODE_B"]
     assert source.unit == "log2(TPM+1)"
+    assert source.file_sha256 == "a" * 64
+    assert source.file_bytes == 1234
+    assert source.soft_file_url == "https://example.org/source.soft.gz"
+    assert source.soft_file_name == "source.soft.gz"
+    assert source.soft_file_md5 == "b" * 32
+    assert source.soft_file_bytes == 567
     assert source.sample_filter(["tumor_a1", "normal_a1", "tumor_bad", "tumor_b1"]) == [
         "tumor_a1",
         "tumor_b1",
@@ -982,6 +996,76 @@ def test_geo_matrix_source_from_entry_validates_tumor_origin():
         )
 
 
+@pytest.mark.parametrize("input_route", ["source_path", "cache", "download"])
+def test_geo_matrix_builder_rejects_checksum_mismatch_for_every_input_route(
+    monkeypatch, tmp_path, input_route
+):
+    expected = b"gene_id\tsample_1\ng1\t1\n"
+    corrupted = b"gene_id\tsample_1\ng1\t2\n"
+    source = expression_builders.geo_matrix_source_from_entry(
+        {
+            "id": "checksum-test",
+            "source_type": "geo-matrix",
+            "cancer_codes": ["CODE_A"],
+            "source_cohort": "CHECKSUM_TEST",
+            "file_url": "https://example.org/source.tsv",
+            "file_name": "source.tsv",
+            "file_sha256": hashlib.sha256(expected).hexdigest(),
+            "file_bytes": len(expected),
+            "unit": "TPM",
+            "gene_id_col": "gene_id",
+        }
+    )
+    cache_dir = tmp_path / "cache"
+    source_path = None
+    if input_route == "source_path":
+        source_path = tmp_path / "explicit.tsv"
+        source_path.write_bytes(corrupted)
+    elif input_route == "cache":
+        cache_dir.mkdir()
+        (cache_dir / source.file_name).write_bytes(corrupted)
+    else:
+
+        def fake_download(_url, destination, *, force=False):
+            destination = Path(destination)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(corrupted)
+            return destination
+
+        monkeypatch.setattr(expression_builders, "_download", fake_download)
+
+    with pytest.raises(ValueError, match="source matrix SHA256 mismatch"):
+        expression_builders.prepare_source_matrix(
+            source,
+            cache_dir=cache_dir,
+            source_path=source_path,
+        )
+
+
+def test_geo_matrix_source_from_entry_rejects_invalid_integrity_pins():
+    entry = {
+        "id": "checksum-test",
+        "source_type": "geo-matrix",
+        "cancer_codes": ["CODE_A"],
+        "source_cohort": "CHECKSUM_TEST",
+        "file_name": "source.tsv",
+        "unit": "TPM",
+        "file_sha256": "not-a-digest",
+    }
+    with pytest.raises(ValueError, match="file_sha256 must be a 64-character sha256"):
+        expression_builders.geo_matrix_source_from_entry(entry)
+
+    entry["file_sha256"] = "a" * 64
+    entry["soft_file_md5"] = "not-a-digest"
+    with pytest.raises(ValueError, match="soft_file_md5 must be a 32-character md5"):
+        expression_builders.geo_matrix_source_from_entry(entry)
+
+    entry["soft_file_md5"] = "b" * 32
+    entry["file_bytes"] = -1
+    with pytest.raises(ValueError, match="file_bytes must be a non-negative integer"):
+        expression_builders.geo_matrix_source_from_entry(entry)
+
+
 def test_geo_matrix_source_from_registry_loads_packaged_geo_entry():
     source = expression_builders.geo_matrix_source_from_registry("gse328026-sarc-pec")
 
@@ -998,6 +1082,18 @@ def test_geo_matrix_source_from_registry_loads_packaged_geo_entry():
     )
     assert source.tumor_origin == "primary"
     assert source.metastasis_site is None
+
+
+def test_meningioma_registry_source_carries_matrix_and_soft_integrity_pins():
+    source = expression_builders.geo_matrix_source_from_registry("gse270638-meningioma")
+
+    assert source.file_bytes == 20298059
+    assert source.file_sha256 == (
+        "7a0486612342707c7c1b58fdc4a8361667c6891019582dd4f8bf088c0cd8b4e3"
+    )
+    assert source.soft_file_name == "GSE270638_family.soft.gz"
+    assert source.soft_file_bytes == 14141
+    assert source.soft_file_md5 == "456979eb335728019be5c297b3489789"
 
 
 def test_gdc_source_from_entry_parses_project_and_filters():
@@ -2577,13 +2673,28 @@ def test_gse270638_sample_import_preserves_qc_exclusions(tmp_path):
             "sample_qc_reasons": ["high_top_gene_fraction", *([""] * 383)],
         }
     ).to_csv(qc_path, index=False)
+    soft_md5 = hashlib.md5(soft_path.read_bytes()).hexdigest()
+    source = expression_builders.GeoMatrixSource(
+        cancer_code="MENINGIOMA",
+        source_cohort="GSE270638_MENINGIOMA_2024",
+        file_name="source.tsv.gz",
+        unit="raw_counts",
+        soft_file_name=soft_path.name,
+        soft_file_md5=soft_md5,
+        soft_file_bytes=soft_path.stat().st_size,
+    )
 
-    manifest = script.build_manifest(soft_path, matrix_path, qc_path)
+    manifest = script.build_manifest(soft_path, matrix_path, qc_path, source=source)
 
     assert len(manifest) == 384
     assert manifest["source_file_id"].is_unique
     assert manifest["included"].sum() == 383
     assert manifest.loc[0, "exclusion_reason"] == "sample_qc_fail:high_top_gene_fraction"
+
+    soft_bytes = soft_path.read_bytes()
+    soft_path.write_bytes(soft_bytes[:-1] + bytes([soft_bytes[-1] ^ 1]))
+    with pytest.raises(ValueError, match="GEO SOFT MD5 mismatch"):
+        script.build_manifest(soft_path, matrix_path, qc_path, source=source)
 
 
 def test_derive_mbl_subgroup_source_matrices_writes_cache_and_release_assets(tmp_path):
