@@ -6,6 +6,7 @@
 
 import pandas as pd
 
+import oncoref
 from oncoref import cancer_types, tmb
 
 
@@ -46,6 +47,23 @@ def test_tmb_df_exposes_evidence_schema():
     assert missing["estimate_type"] == "unknown"
     assert missing["source_scope"] == "no_direct_source"
     assert missing["missing_reason"] == "no_published_per_mb_median_curated"
+
+
+def test_tmb_evidence_fields_is_public_and_registry_aware():
+    assert oncoref.tmb_evidence_fields is tmb.tmb_evidence_fields
+
+    btc = tmb.tmb_evidence_fields("Biliary Tract Cancer", 1.23)
+    assert btc["estimate_type"] == "published_median"
+    assert btc["source_scope"] == "aggregate_source"
+    assert pd.isna(btc["missing_reason"])
+
+    direct = tmb.tmb_evidence_fields("LUAD", 6.3)
+    assert direct["source_scope"] == "cancer_code_direct"
+
+    audited_gap = tmb.tmb_evidence_fields("NET_MIDGUT", None)
+    assert audited_gap["estimate_type"] == "unknown"
+    assert audited_gap["source_scope"] == "source_rejected_for_site_specific_value"
+    assert audited_gap["missing_reason"] == "no_supported_site_specific_median"
 
 
 def test_tmb_resolves_alias():
@@ -161,6 +179,13 @@ def test_new_aggregate_tmb_rows_preserve_source_scope_and_missing_boundaries():
     rows = tmb.cancer_tmb_df().set_index("cancer_code")
     assert int(rows.loc["BTC", "n_samples"]) == 803
     assert int(rows.loc["NSCLC", "n_samples"]) == 970
+    assert rows.loc["BTC", "source_scope"] == "aggregate_source"
+    assert rows.loc["NSCLC", "source_scope"] == "aggregate_source"
+
+    for code in ("BTC", "NSCLC"):
+        resolved = tmb.resolve_tmb_source(code)
+        assert resolved["inheritance_kind"] == "direct"
+        assert resolved["source_scope"] == "aggregate_source"
 
     expected_missing = {
         "RCC": ("subtype_sources_not_aggregated", "no_supported_aggregate_median"),

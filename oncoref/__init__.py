@@ -407,7 +407,13 @@ from .samples import (
     samples_for_cohort,
 )
 from .therapy_evidence import therapy_benefit_toxicity_evidence
-from .tmb import cancer_tmb, cancer_tmb_df, cancer_tmb_record, resolve_tmb_source
+from .tmb import (
+    cancer_tmb,
+    cancer_tmb_df,
+    cancer_tmb_record,
+    resolve_tmb_source,
+    tmb_evidence_fields,
+)
 from .tumor_references import (
     TUMOR_REFERENCE_DERIVATION_METHODS,
     TUMOR_REFERENCE_DERIVATION_STATUSES,
@@ -797,6 +803,7 @@ __all__ = [
     "therapy_benefit_toxicity_evidence",
     "therapy_evidence",
     "tissue_of_origin",
+    "tmb_evidence_fields",
     "tpm_to_housekeeping_normalized",
     "tumor_reference_expression_provenance",
     "unversioned",

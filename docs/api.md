@@ -1313,6 +1313,9 @@ order.
   lookups such as `COAD_MSI` or `READ_MSI` resolving through `CRC_MSI`. Direct
   audited gaps use `inheritance_kind="direct_missing"` so callers can distinguish
   “known no supported site-specific estimate” from an unmapped cancer code.
+  `tmb.tmb_evidence_fields(cancer_type, median_tmb_mut_mb)` is the public,
+  non-inheriting helper for classifying one explicit estimate; it applies reviewed
+  per-code overrides and derives aggregate source scope from the cancer registry.
 - `oncoref.incidence` — incidence/mortality burden and burden categories.
   `incidence.cancer_burden_df()` is the auditable burden table: percentages are
   the public lookup values, and raw-count, source-locator, source-site,

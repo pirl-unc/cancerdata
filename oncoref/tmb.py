@@ -14,10 +14,12 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import pandas as pd
 
 from .cancer_types import cancer_evidence_source_code, cancer_type_registry, resolve_cancer_type
-from .load_dataset import get_data
+from .load_dataset import _register_derived_cache, get_data
 
 _TMB_EVIDENCE_OVERRIDES = {
     # MSI-H/dMMR colorectal estimates are published at the CRC source scope; anatomical
@@ -96,6 +98,19 @@ _TMB_EVIDENCE_OVERRIDES = {
 }
 
 
+@lru_cache(maxsize=1)
+def _aggregate_tmb_source_codes() -> frozenset[str]:
+    """Registry codes whose evidence represents a mixed source-scope cohort."""
+    registry = cancer_type_registry()
+    mixture_cohort = registry["mixture_cohort"].fillna(False).astype(bool)
+    ontology_kind = registry["ontology_kind"].fillna("").astype(str)
+    source_scope = ontology_kind.str.endswith("source_scope")
+    return frozenset(registry.loc[mixture_cohort & source_scope, "code"].astype(str))
+
+
+_register_derived_cache(_aggregate_tmb_source_codes.cache_clear)
+
+
 def cancer_tmb_df():
     """Return the curated ``cancer-tmb.csv`` reference: median tumor mutational
     burden (mut/Mb) per cancer-type code, with a per-row published source/PMID
@@ -108,25 +123,46 @@ def cancer_tmb_df():
     studies; see the ``source``/``notes`` columns — panel and WES TMB are not
     strictly comparable in the low-TMB range."""
     df = get_data("cancer-tmb").copy()
-    evidence = [_tmb_evidence_fields(row) for _, row in df.iterrows()]
+    evidence = [
+        tmb_evidence_fields(row["cancer_code"], row["median_tmb_mut_mb"])
+        for _, row in df.iterrows()
+    ]
     for col in ("estimate_type", "source_scope", "missing_reason"):
         df[col] = [record[col] for record in evidence]
     return df
 
 
-def _tmb_evidence_fields(row) -> dict[str, object]:
-    code = str(row.get("cancer_code", ""))
+def tmb_evidence_fields(
+    cancer_type: str,
+    median_tmb_mut_mb: float | None,
+) -> dict[str, object]:
+    """Classify the provenance of one explicit TMB estimate.
+
+    ``cancer_type`` accepts a canonical registry code, display name, or alias.
+    ``median_tmb_mut_mb`` is the row's numeric estimate, or ``None``/``NaN``
+    when no defensible estimate is available. The returned mapping contains
+    ``estimate_type``, ``source_scope``, and ``missing_reason``.
+
+    This helper classifies the supplied row; it does not search parent or
+    source-scope rows. Use :func:`resolve_tmb_source` when inherited evidence
+    should be resolved. Numeric estimates for registry entities designated as
+    mixed source-scope cohorts are reported as ``source_scope="aggregate_source"``.
+    Reviewed per-code overrides take precedence over that registry default.
+    """
+    code = resolve_cancer_type(cancer_type)
     override = _TMB_EVIDENCE_OVERRIDES.get(code, {})
-    value = row.get("median_tmb_mut_mb")
-    if pd.isna(value):
+    if pd.isna(median_tmb_mut_mb):
         return {
             "estimate_type": override.get("estimate_type", "unknown"),
             "source_scope": override.get("source_scope", "no_direct_source"),
             "missing_reason": override.get("missing_reason", "no_published_per_mb_median_curated"),
         }
+    default_scope = (
+        "aggregate_source" if code in _aggregate_tmb_source_codes() else "cancer_code_direct"
+    )
     return {
         "estimate_type": override.get("estimate_type", "published_median"),
-        "source_scope": override.get("source_scope", "cancer_code_direct"),
+        "source_scope": override.get("source_scope", default_scope),
         "missing_reason": override.get("missing_reason", float("nan")),
     }
 
