@@ -279,11 +279,13 @@ def test_keynote051_nbl_anchor_uses_treated_response_denominator():
     assert audit["source_locator_status"] == "verified"
 
 
-def test_aml_combination_anchor_and_mpn_scope_boundary_are_explicit():
+def test_aml_combination_stays_out_of_monotherapy_anchor_and_mpn_scope_is_explicit():
     estimates = ici.cancer_ici_response_estimates_df().set_index("estimate_id")
 
     aml = estimates.loc["ICI-8b126eef2c-01"]
     assert aml["cancer_code"] == "LAML"
+    assert aml["regimen"] == "PD-1+HMA"
+    assert aml["role"] == "alternate"
     assert aml["trial_nct"] == "NCT02397720"
     assert aml["source_n"] == 70
     assert aml["metric_n"] == 70
@@ -292,11 +294,27 @@ def test_aml_combination_anchor_and_mpn_scope_boundary_are_explicit():
     assert aml["ci_basis"] == "computed_wilson"
     assert "15 CR/CRi + 1 PR + 7 hematologic improvements" in aml["note"]
 
-    anchor = ici.cancer_ici_response_record("LAML")
-    assert anchor["source_estimate_id"] == "ICI-8b126eef2c-01"
-    assert anchor["drug"] == "azacitidine+nivolumab"
-    assert anchor["response_denominator"] == 70
-    assert ici.cancer_ici_response("LAML") == 33.0
+    anchors = ici.cancer_ici_response_df()
+    assert "LAML" not in set(anchors["cancer_code"])
+    assert ici.cancer_ici_response("LAML") is None
+    assert ici.cancer_ici_response_record("LAML") is None
+    assert ici.cancer_ici_response("LAML", regimen="PD-1", inherit=False) is None
+    assert ici.cancer_ici_response_record("LAML", regimen="PD-1", inherit=False) is None
+    assert apd1.cancer_apd1_response("LAML") is None
+
+    monotherapy = ici.pooled_ici_response("LAML", regimen="PD-1", metric="ORR")
+    assert monotherapy["n_studies"] == 0
+    assert monotherapy["pooled_pct"] is None
+    combination = ici.pooled_ici_response("LAML", regimen="PD-1+HMA", metric="ORR")
+    assert combination["n_studies"] == 1
+    assert combination["n_total"] == 70
+    assert combination["responders_total"] == 23
+    assert combination["pooled_pct"] == 32.9
+    primary_only = ici.pooled_ici_response(
+        "LAML", regimen="PD-1+HMA", metric="ORR", include_alternates=False
+    )
+    assert primary_only["n_studies"] == 0
+    assert ici.REGIMEN_CLASSES["PD-1+HMA"] == "anti_pd1_hma_combination"
 
     mpn = estimates.loc["ICI-4b4990885c-01"]
     assert mpn["role"] == "alternate"
