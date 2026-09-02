@@ -31,16 +31,25 @@ from functools import lru_cache
 
 import pandas as pd
 
-from .load_dataset import get_data
+from .legacy import warn_legacy_dataset_access
+from .load_dataset import _register_derived_cache, get_data
 
 
 @lru_cache(maxsize=1)
 def _frame() -> pd.DataFrame:
+    warn_legacy_dataset_access("cancer-response-signatures", stacklevel=3)
     return get_data("cancer-response-signatures", copy=False)
 
 
+_register_derived_cache(_frame.cache_clear)
+
+
 def response_signatures_df() -> pd.DataFrame:
-    """The full curated signature table (one row per signature gene). Copy."""
+    """Frozen response-signature compatibility snapshot; defensive copy.
+
+    New purpose-specific therapy-response signature panels belong to
+    pirlygenes. This snapshot remains available for historical oncoref plots.
+    """
     return _frame().copy()
 
 

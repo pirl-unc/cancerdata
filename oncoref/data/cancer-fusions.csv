@@ -1,189 +1,189 @@
-cancer_code,fusion_family,gene_5prime,gene_5prime_family,gene_3prime,gene_3prime_family,frequency,is_defining,pathognomonic,rnaseq_detectable,mechanism,confidence,pmid,notes
-SARC_EWS,EWSR1-ETS,EWSR1,FET,FLI1,ETS,~85%,true,true,yes,fusion_transcript,high,PMID:1522903,Ewing sarcoma; t(11;22)(q24;q12); most common partner
-SARC_EWS,EWSR1-ETS,EWSR1,FET,ERG,ETS,~10%,true,true,yes,fusion_transcript,high,PMID:8162068,t(21;22)(q22;q12); second most common ETS partner
-SARC_EWS,EWSR1-ETS,EWSR1,FET,ETV1,ETS,rare,true,true,yes,fusion_transcript,medium,PMID:7700648,rare ETS variant fusion
-SARC_EWS,EWSR1-ETS,EWSR1,FET,ETV4,ETS,rare,true,true,yes,fusion_transcript,medium,PMID:9858836,rare ETS variant fusion (also called E1AF)
-SARC_EWS,EWSR1-ETS,EWSR1,FET,FEV,ETS,rare,true,true,yes,fusion_transcript,medium,PMID:31756779,rare ETS variant fusion
-SARC_EWS,FUS-ETS,FUS,FET,ERG,ETS,rare,true,true,yes,fusion_transcript,medium,PMID:12907633,FET-family alternative (FUS instead of EWSR1)
-SARC_SYN,SS18-SSX,SS18,,SSX1,SSX,~65%,true,true,yes,fusion_transcript,high,PMID:7951320,synovial sarcoma; t(X;18)(p11;q11); SSX1 more common in biphasic
-SARC_SYN,SS18-SSX,SS18,,SSX2,SSX,~35%,true,true,yes,fusion_transcript,high,PMID:7951320,SSX2 tends monophasic
-SARC_SYN,SS18-SSX,SS18,,SSX4,SSX,rare,true,true,yes,fusion_transcript,medium,PMID:11368913,rare third partner
-SARC_DSRCT,EWSR1-WT1,EWSR1,FET,WT1,zinc-finger TF,~95%,true,true,yes,fusion_transcript,high,PMID:7862627,desmoplastic small round cell tumor; t(11;22)(p13;q12)
-SARC_ASPS,ASPSCR1-TFE3,ASPSCR1,,TFE3,MiT/TFE,~95%,true,false,surrogate,fusion_transcript,high,PMID:17543078,alveolar soft part sarcoma; der(17)t(X;17); ASPL=ASPSCR1; TFE3 IHC surrogate
-SARC_CCS,EWSR1-ATF1,EWSR1,FET,ATF1,bZIP(CREB/ATF),~90%,true,true,yes,fusion_transcript,high,PMID:19561568,clear cell sarcoma (melanoma of soft parts); t(12;22)(q13;q12)
-SARC_CCS,EWSR1-CREB1,EWSR1,FET,CREB1,bZIP(CREB/ATF),minority,true,false,yes,fusion_transcript,medium,PMID:19561568,variant; also seen in GI clear cell sarcoma-like / angiomatoid FH
-SARC_IFS,ETV6-NTRK3,ETV6,ETS,NTRK3,RTK,common,false,false,yes,fusion_transcript,high,PMID:9462753,common IFS driver but not universal and not inferred from diagnosis; t(12;15)(p13;q25); TRK-inhibitor responsive
-SARC_IFS,EML4-NTRK3,EML4,,NTRK3,RTK,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed molecularly confirmed IFS driver; entity assignment still requires compatible age site and pathology
-CMN,ETV6-NTRK3,ETV6,ETS,NTRK3,RTK,cellular subset,false,false,yes,fusion_transcript,high,PMID:29915264,observed in cellular congenital mesoblastic nephroma; CMN remains distinct from soft-tissue IFS
-CMN,LMNA-NTRK1,LMNA,,NTRK1,RTK,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed in one cellular CMN
-CMN,TPR-NTRK1,TPR,,NTRK1,RTK,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed in one mixed CMN
-CMN,KIAA1549-BRAF,KIAA1549,,BRAF,RAF kinase,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed in one mixed CMN
-SARC_EHE,WWTR1-CAMTA1,WWTR1,Hippo coactivator,CAMTA1,,~90%,true,true,yes,fusion_transcript,high,PMID:21885404,epithelioid hemangioendothelioma; t(1;3); WWTR1=TAZ; CAMTA1 IHC surrogate
-SARC_EHE,YAP1-TFE3,YAP1,Hippo coactivator,TFE3,MiT/TFE,minority,true,false,surrogate,fusion_transcript,high,PMID:23737213,distinct EHE subset; TFE3 IHC surrogate; YAP1-TFE3 variant
-SARC_LGFMS,FUS-CREB3L2,FUS,FET,CREB3L2,bZIP(CREB/ATF),~90%,true,true,yes,fusion_transcript,high,PMID:15139001,low-grade fibromyxoid sarcoma; t(7;16)(q33;p11)
-SARC_LGFMS,FUS-CREB3L1,FUS,FET,CREB3L1,bZIP(CREB/ATF),minority,true,true,yes,fusion_transcript,medium,PMID:15640831,variant translocation t(11;16)
-SARC_LGFMS,EWSR1-CREB3L1,EWSR1,FET,CREB3L1,bZIP(CREB/ATF),rare,true,true,yes,fusion_transcript,medium,PMID:23588368,rare FET-family variant
-SARC_EMC,EWSR1-NR4A3,EWSR1,FET,NR4A3,nuclear receptor,~60%,true,true,yes,fusion_transcript,high,PMID:18855877,extraskeletal myxoid chondrosarcoma; t(9;22)(q22;q12); NR4A3=CHN/TEC/NOR1
-SARC_EMC,TAF15-NR4A3,TAF15,FET,NR4A3,nuclear receptor,~30%,true,true,yes,fusion_transcript,high,PMID:24746215,TAF15=TAF2N/RBP56; t(9;17)
-SARC_EMC,TCF12-NR4A3,TCF12,bHLH,NR4A3,nuclear receptor,rare,true,true,yes,fusion_transcript,medium,PMID:24746215,rare variant; t(9;15)
-SARC_SFT,NAB2-STAT6,NAB2,,STAT6,STAT,~95%,true,true,surrogate,fusion_transcript,high,PMID:23313952,solitary fibrous tumor; intrachromosomal 12q13 inversion; nuclear STAT6 IHC surrogate; intronic breakpoints can miss in RNA
-SARC_IMT,TPM3-ALK,TPM3,tropomyosin,ALK,RTK,common,true,true,surrogate,fusion_transcript,high,PMID:10934142,inflammatory myofibroblastic tumor; ALK IHC surrogate; ALK-inhibitor responsive
-SARC_IMT,TPM4-ALK,TPM4,tropomyosin,ALK,RTK,minority,true,true,surrogate,fusion_transcript,medium,PMID:10934142,IMT ALK partner
-SARC_IMT,EML4-ALK,EML4,,ALK,RTK,minority,true,false,surrogate,fusion_transcript,medium,PMID:24277751,IMT ALK partner
-SARC_IMT,RANBP2-ALK,RANBP2,,ALK,RTK,minority,true,true,surrogate,fusion_transcript,medium,PMID:24034896,epithelioid inflammatory myofibroblastic sarcoma; aggressive variant
-SARC_IMT,CARS1-ALK,CARS1,,ALK,RTK,minority,true,true,surrogate,fusion_transcript,medium,PMID:13679433,ALK-rearranged IMT subset (CARS=CARS1)
-SARC_IMT,ETV6-NTRK3,ETV6,ETS,NTRK3,RTK,rare,true,false,yes,fusion_transcript,medium,PMID:26647767,NTRK-rearranged IMT subset
-SARC_IMT,TFG-ROS1,TFG,,ROS1,RTK,rare,true,true,surrogate,fusion_transcript,low,PMID:26647767,ROS1 partner reported in IMT
-SARC_DFSP,COL1A1-PDGFB,COL1A1,collagen,PDGFB,growth factor,~90%,true,true,surrogate,fusion_transcript,high,PMID:31949795,dermatofibrosarcoma protuberans; supernumerary ring chr from t(17;22); PDGFB overexpression; imatinib responsive
-SARC_MYXLPS,FUS-DDIT3,FUS,FET,DDIT3,bZIP(C/EBP),~90%,true,true,yes,fusion_transcript,high,PMID:16651630,myxoid/round cell liposarcoma; t(12;16)(q13;p11); DDIT3=CHOP
-SARC_MYXLPS,EWSR1-DDIT3,EWSR1,FET,DDIT3,bZIP(C/EBP),minority,true,true,yes,fusion_transcript,medium,PMID:17647282,variant t(12;22)
-SARC_PEC,SFPQ-TFE3,SFPQ,,TFE3,MiT/TFE,minority,false,false,surrogate,fusion_transcript,medium,PMID:40239600,PEComa TFE3-rearranged subset; SFPQ=PSF; TFE3 IHC surrogate; most PEComas are TSC1/2-driven not fusion
-SARC_PEC,DVL2-TFE3,DVL2,,TFE3,MiT/TFE,rare,false,false,surrogate,fusion_transcript,low,PMID:25651471,rare PEComa TFE3 partner
-SARC_RMS_ARMS,PAX3-FOXO1,PAX3,PAX,FOXO1,FOX,~70%,true,true,yes,fusion_transcript,high,PMID:8275086,alveolar rhabdomyosarcoma; t(2;13)(q35;q14); worse prognosis than PAX7
-SARC_RMS_ARMS,PAX7-FOXO1,PAX7,PAX,FOXO1,FOX,~20%,true,true,yes,fusion_transcript,medium,PMID:8187070,"t(1;13)(p36;q14); younger, better outcome; FOXO1=FKHR"
-SARC_RMS_SSRMS,VGLL2-NCOA2,VGLL2,vestigial-like,NCOA2,NR coactivator,subset,true,true,yes,fusion_transcript,medium,PMID:26501226,infantile spindle cell/sclerosing RMS; congenital subset
-SARC_RMS_SSRMS,TEAD1-NCOA2,TEAD1,TEAD,NCOA2,NR coactivator,subset,true,true,yes,fusion_transcript,low,PMID:26501226,alternative infantile spindle cell RMS fusion
-SARC_RMS_SSRMS,(none),,,,,,false,false,no,other,high,,"older child/adult sclerosing-spindle RMS driven by MYOD1 L122R point mutation, not a fusion"
-SARC_CHON_MESENCHYMAL,HEY1-NCOA2,HEY1,bHLH,NCOA2,NR coactivator,~80%,true,true,yes,fusion_transcript,high,PMID:22034177,mesenchymal chondrosarcoma; ins(8;8) or t(8;8)
-SARC_CHON_MESENCHYMAL,IRF2BP2-CDX1,IRF2BP2,,CDX1,homeobox,rare,false,false,yes,fusion_transcript,low,PMID:23185413,rare mesenchymal chondrosarcoma variant
-SARC_EWSR1_NONETS,EWSR1-NFATC2,EWSR1,FET,NFATC2,NFAT,recurrent,true,false,yes,fusion_transcript,high,PMID:19318479,EWSR1-non-ETS round cell sarcoma; fusion amplification supports malignant context
-SARC_EWSR1_NONETS,EWSR1-PATZ1,EWSR1,FET,PATZ1,zinc-finger TF,recurrent,true,false,yes,fusion_transcript,high,PMID:31189996,EWSR1-PATZ1 spindle and round cell sarcoma; polyphenotypic and morphologically variable
-SARC_EWSR1_NONETS,EWSR1-SMARCA5,EWSR1,FET,SMARCA5,chromatin remodeler,rare,true,false,yes,fusion_transcript,medium,PMID:21113140,originally reported as extraskeletal Ewing/PNET before recognition of EWSR1-non-ETS sarcomas
-SARC_SEF,EWSR1-CREB3L1,EWSR1,FET,CREB3L1,bZIP(CREB/ATF),common,true,false,yes,fusion_transcript,high,PMID:24441665,recurrent fusion in pure sclerosing epithelioid fibrosarcoma; also occurs rarely in LGFMS
-SARC_SEF,EWSR1-CREB3L2,EWSR1,FET,CREB3L2,bZIP(CREB/ATF),rare,true,false,yes,fusion_transcript,medium,PMID:31675134,rare alternative fusion in primary osseous sclerosing epithelioid fibrosarcoma
-SARC_SEF,EWSR1-CREB3L3,EWSR1,FET,CREB3L3,bZIP(CREB/ATF),rare,true,false,yes,fusion_transcript,medium,PMID:28569045,rare alternative fusion in sclerosing epithelioid fibrosarcoma
-SARC_NTRK_SPINDLE,TPM3-NTRK1,TPM3,tropomyosin,NTRK1,RTK,reported,true,false,yes,fusion_transcript,high,PMID:35149769,NTRK-rearranged spindle cell neoplasm; molecular class is defining but this pair is not entity-specific
-SARC_NTRK_SPINDLE,LMNA-NTRK1,LMNA,nuclear lamina,NTRK1,RTK,reported,true,false,yes,fusion_transcript,high,PMID:35149769,NTRK-rearranged spindle cell neoplasm; molecular class is defining but this pair is not entity-specific
-SARC_NTRK_SPINDLE,STRN-NTRK2,STRN,striatin,NTRK2,RTK,reported,true,false,yes,fusion_transcript,medium,PMID:38525823,NTRK-rearranged spindle cell neoplasm; molecular class is defining but this pair is not entity-specific
-SARC_NTRK_SPINDLE,SQSTM1-NTRK3,SQSTM1,autophagy adaptor,NTRK3,RTK,reported,true,false,yes,fusion_transcript,medium,PMID:35149769,NTRK-rearranged spindle cell neoplasm; molecular class is defining but this pair is not entity-specific
-SARC_PMT_MALIGNANT,FN1-FGFR1,FN1,extracellular matrix,FGFR1,RTK,reported,false,false,yes,fusion_transcript,medium,PMID:31066955,reported in a possible malignant phosphaturic mesenchymal tumour; associated with PMT but not defining malignant behavior
-SARC_EIMS,RANBP2-ALK,RANBP2,nucleoporin,ALK,RTK,majority,true,false,surrogate,fusion_transcript,high,PMID:26139079,epithelioid inflammatory myofibroblastic sarcoma; nuclear-membrane ALK staining is a diagnostic surrogate
-SARC_CHON,(none),,,,,,false,false,no,other,high,,"conventional chondrosarcoma driven by IDH1/IDH2 mutation, not a fusion"
-SARC_ESS_LG,JAZF1-SUZ12,JAZF1,,SUZ12,PRC2/Polycomb,~50%,true,true,yes,fusion_transcript,high,PMID:16049311,low-grade endometrial stromal sarcoma; t(7;17); SUZ12=JJAZ1
-SARC_ESS_LG,JAZF1-PHF1,JAZF1,,PHF1,PRC2/Polycomb,minority,true,true,yes,fusion_transcript,medium,PMID:16397222,variant; PHF1 (6p21) recurrent partner
-SARC_ESS_LG,EPC1-PHF1,EPC1,PRC2/Polycomb,PHF1,PRC2/Polycomb,minority,true,true,yes,fusion_transcript,medium,PMID:16397222,PHF1-rearranged LG-ESS variant
-SARC_ESS_HG,YWHAE-NUTM2A,YWHAE,14-3-3,NUTM2A,NUT,common,true,true,yes,fusion_transcript,high,PMID:22456610,high-grade endometrial stromal sarcoma; t(10;17); NUTM2A/B=FAM22A/B; cyclin D1+
-SARC_ESS_HG,YWHAE-NUTM2B,YWHAE,14-3-3,NUTM2B,NUT,common,true,true,yes,fusion_transcript,high,PMID:22456610,paralogous 3' partner
-SARC_ESS_HG,ZC3H7B-BCOR,ZC3H7B,,BCOR,PRC2/Polycomb,subset,true,false,yes,fusion_transcript,medium,PMID:23580382,BCOR-rearranged HG-ESS subset; BCOR ITD-related morphology
-SARC_LMS,(none),,,,,,false,false,no,other,high,,"leiomyosarcoma: complex karyotype, TP53/RB1/PTEN loss; no recurrent fusion"
-SARC_UPS,(none),,,,,,false,false,no,other,high,,"undifferentiated pleomorphic sarcoma: complex genome, no defining fusion"
-SARC_MYXFIB,(none),,,,,,false,false,no,other,high,,"myxofibrosarcoma: complex karyotype, no recurrent fusion"
-SARC_DDLPS,(none),,,,,,false,false,no,other,high,,"dedifferentiated liposarcoma: 12q13-15 amplification (MDM2/CDK4), not a fusion"
-SARC_WDLPS,(none),,,,,,false,false,no,other,high,,"well-differentiated liposarcoma: MDM2/CDK4 amplification (ring/giant marker chr), not a fusion"
-SARC_PLEOLPS,(none),,,,,,false,false,no,other,high,,"pleomorphic liposarcoma: complex karyotype, TP53/RB1 loss; no defining fusion"
-SARC_GIST,(none),,,,,,false,false,no,other,high,,GIST: KIT or PDGFRA activating mutation (or SDH-deficient); not fusion-driven
-SARC_MPNST,(none),,,,,,false,false,no,other,high,,MPNST: NF1 loss + SUZ12/EED (PRC2) loss + CDKN2A; not fusion-driven
-SARC_EPITH,(none),,,,,,false,false,no,other,high,,"epithelioid sarcoma: SMARCB1/INI1 loss (deletion), not a fusion"
-SARC_KS,(none),,,,,,false,false,no,other,high,,"Kaposi sarcoma: HHV8/KSHV viral oncogenesis, not a chromosomal fusion"
-SARC_OS,(none),,,,,,false,false,no,other,high,,"osteosarcoma: complex/chaotic karyotype, chromothripsis, TP53/RB1; no recurrent fusion"
-SARC_RMS_ERMS,(none),,,,,,false,false,no,other,high,,"embryonal RMS: RAS-pathway mutations, 11p15 LOH; fusion-negative"
-SARC_CHOR,(none),,,,,,false,false,surrogate,other,high,,chordoma: TBXT(brachyury) duplication/overexpression drives; not a fusion (brachyury IHC)
-SARC_GCTB,(none),,,,,,false,false,surrogate,other,high,,giant cell tumor of bone: H3F3A (H3-3A) G34W point mutation; not a fusion
-LAML,RUNX1-RUNX1T1,RUNX1,CBF,RUNX1T1,CBF,common,true,true,yes,fusion_transcript,high,PMID:31935293,AML t(8;21)(q22;q22); core-binding factor; RUNX1T1=ETO/MTG8; favorable
-LAML,CBFB-MYH11,CBFB,CBF,MYH11,myosin,common,true,true,yes,fusion_transcript,high,PMID:8142642,AML inv(16)(p13q22)/t(16;16); CBF-AML; favorable
-LAML,KMT2A-MLLT3,KMT2A,KMT/HMTase,MLLT3,YEATS,subset,true,true,yes,fusion_transcript,high,PMID:15188459,AML t(9;11); KMT2A=MLL; MLLT3=AF9; promiscuous MLL partner
-LAML,KMT2A-MLLT10,KMT2A,KMT/HMTase,MLLT10,MLL partner,subset,true,false,yes,fusion_transcript,medium,PMID:9305618,t(10;11); MLLT10=AF10
-LAML,KMT2A-ELL,KMT2A,KMT/HMTase,ELL,,subset,true,true,yes,fusion_transcript,medium,PMID:26949571,t(11;19)(q23;p13.1)
-LAML,KMT2A-MLLT1,KMT2A,KMT/HMTase,MLLT1,YEATS,subset,true,true,yes,fusion_transcript,medium,PMID:16875930,t(11;19)(q23;p13.3); MLLT1=ENL
-LAML,DEK-NUP214,DEK,,NUP214,nucleoporin,rare,true,true,yes,fusion_transcript,high,PMID:32526729,t(6;9)(p23;q34); FLT3-ITD-associated; poor prognosis; NUP214=CAN
-LAML,NUP98-NSD1,NUP98,nucleoporin,NSD1,KMT/HMTase,rare,true,true,yes,fusion_transcript,medium,PMID:11493482,t(5;11); cryptic; pediatric AML; poor prognosis
-LAML,NUP98-KDM5A,NUP98,nucleoporin,KDM5A,,rare,true,true,yes,fusion_transcript,low,PMID:23531517,t(11;12); KDM5A=JARID1A; acute megakaryoblastic
-LAML,RBM15-MKL1,RBM15,,MKL1,MRTF,rare,true,true,yes,fusion_transcript,medium,PMID:11746984,"t(1;22); infant acute megakaryoblastic leukemia; MKL1=MRTFA, RBM15=OTT"
-LAML_APL,PML-RARA,PML,TRIM/PML,RARA,nuclear receptor,~95%,true,true,yes,fusion_transcript,high,PMID:1652369,acute promyelocytic leukemia; t(15;17)(q24;q21); ATRA/ATO responsive
-LAML_APL,ZBTB16-RARA,ZBTB16,BTB-ZF TF,RARA,nuclear receptor,rare,true,true,yes,fusion_transcript,high,PMID:8302850,t(11;17); ZBTB16=PLZF; ATRA-resistant variant
-LAML_APL,NPM1-RARA,NPM1,nucleophosmin,RARA,nuclear receptor,rare,true,true,yes,fusion_transcript,medium,PMID:8562957,t(5;17) variant APL
-CML,BCR-ABL1,BCR,,ABL1,non-RTK kinase,~100%,true,false,yes,fusion_transcript,high,PMID:40360311,chronic myeloid leukemia; t(9;22) Philadelphia; p210 (e13a2/e14a2); TKI responsive
-B_ALL,BCR-ABL1,BCR,,ABL1,non-RTK kinase,~25%,true,false,yes,fusion_transcript,high,PMID:35834222,Ph+ B-ALL; adults more often; p190 (e1a2) typical; TKI responsive
-B_ALL,ETV6-RUNX1,ETV6,ETS,RUNX1,CBF,~25%,true,true,yes,fusion_transcript,high,PMID:28418909,"childhood B-ALL; t(12;21)(p13;q22) cryptic; ETV6=TEL, RUNX1=AML1; favorable"
-B_ALL,TCF3-PBX1,TCF3,bHLH(E-protein),PBX1,homeobox(TALE),~5%,true,true,yes,fusion_transcript,high,PMID:19713226,t(1;19)(q23;p13); TCF3=E2A; pre-B
-B_ALL,KMT2A-AFF1,KMT2A,KMT/HMTase,AFF1,AF4/LAF4,subset,true,true,yes,fusion_transcript,high,PMID:26463423,t(4;11)(q21;q23); infant B-ALL; AFF1=AF4; poor prognosis
-B_ALL,DUX4-IGH,IGH,Ig locus,DUX4,homeobox,subset,true,true,surrogate,ig_enhancer_hijack,medium,PMID:27019113,DUX4-rearranged B-ALL; IGH enhancer drives DUX4; ERG deregulation; favorable; orientation per IGH-enhancer juxtaposition
-B_ALL,P2RY8-CRLF2,P2RY8,,CRLF2,cytokine receptor,subset,true,true,surrogate,promoter_swap,medium,PMID:19838194,Ph-like; PAR1 deletion places CRLF2 under P2RY8 promoter; CRLF2 overexpression
-B_ALL,IGH-CRLF2,IGH,Ig locus,CRLF2,cytokine receptor,subset,true,true,surrogate,ig_enhancer_hijack,medium,PMID:28033648,Ph-like; IGH enhancer drives CRLF2; JAK pathway activation
-T_ALL,STIL-TAL1,STIL,,TAL1,bHLH,subset,true,true,surrogate,promoter_swap,high,PMID:8350619,T-ALL; SIL-TAL1 microdeletion 1p32 places TAL1 under STIL promoter; TAL1 overexpression
-T_ALL,TLX1-TRD,TRD,TCR locus,TLX1,homeobox,subset,true,true,surrogate,enhancer_hijack,medium,PMID:7719228,t(10;14)/t(7;10); TCR enhancer drives TLX1 (HOX11) overexpression
-T_ALL,TLX3-BCL11B,BCL11B,,TLX3,homeobox,subset,true,true,surrogate,enhancer_hijack,medium,PMID:17308084,t(5;14)(q35;q32); TLX3=HOX11L2 overexpression via BCL11B enhancer
-T_ALL,NUP214-ABL1,NUP214,nucleoporin,ABL1,non-RTK kinase,subset,true,true,yes,fusion_transcript,medium,PMID:15361874,episomal amplification 9q34; TKI-sensitive T-ALL
-T_ALL,KMT2A-MLLT10,KMT2A,KMT/HMTase,MLLT10,MLL partner,subset,true,false,yes,fusion_transcript,medium,PMID:30203571,t(10;11); MLLT10=AF10; early T-cell precursor associated
-MCL,CCND1-IGH,IGH,Ig locus,CCND1,cyclin,~95%,true,false,surrogate,ig_enhancer_hijack,high,PMID:40381701,mantle cell lymphoma; t(11;14)(q13;q32)/IGH::CCND1 genetic hallmark reported in about 95% of cases; IGH enhancer drives cyclin D1; no chimeric transcript; cyclin D1 IHC/FISH surrogate
-FL,BCL2-IGH,IGH,Ig locus,BCL2,BCL2/apoptosis,~85%,true,false,surrogate,ig_enhancer_hijack,high,PMID:18684042,follicular lymphoma; t(14;18)(q32;q21); IGH enhancer drives BCL2 anti-apoptotic overexpression
-BL,MYC-IGH,IGH,Ig locus,MYC,,~80%,true,false,surrogate,ig_enhancer_hijack,high,PMID:23673335,Burkitt lymphoma; t(8;14)(q24;q32); IGH enhancer drives MYC
-BL,MYC-IGK,IGK,Ig locus,MYC,,minority,true,true,surrogate,ig_enhancer_hijack,high,PMID:11795942,variant t(2;8); IGK light-chain enhancer drives MYC
-BL,MYC-IGL,IGL,Ig locus,MYC,,minority,true,true,surrogate,ig_enhancer_hijack,high,PMID:16888615,variant t(8;22); IGL light-chain enhancer drives MYC
-DLBC,BCL6-IGH,IGH,Ig locus,BCL6,BTB-ZF TF,subset,false,false,surrogate,ig_enhancer_hijack,medium,PMID:36575004,DLBCL; BCL6 (3q27) promiscuous rearrangements; many non-Ig partners; BCL6 overexpression
-DLBC,MYC-IGH,IGH,Ig locus,MYC,,subset,false,false,surrogate,ig_enhancer_hijack,medium,PMID:25229766,double-hit / HGBL with MYC + BCL2 (and/or BCL6) rearrangements; aggressive
-DLBC,BCL2-IGH,IGH,Ig locus,BCL2,BCL2/apoptosis,subset,false,false,surrogate,ig_enhancer_hijack,medium,PMID:20660332,double-hit partner lesion (GCB-DLBCL)
-MM,CCND1-IGH,IGH,Ig locus,CCND1,cyclin,~15-20%,true,false,surrogate,ig_enhancer_hijack,high,PMID:35982976,multiple myeloma; t(11;14); cyclin D1 overexpression; venetoclax-sensitive subset
-MM,NSD2-IGH,IGH,Ig locus,NSD2,KMT/HMTase,~15%,true,true,surrogate,ig_enhancer_hijack,high,PMID:12139740,t(4;14)(p16;q32); NSD2=WHSC1/MMSET + FGFR3 dysregulation; high-risk
-MM,FGFR3-IGH,IGH,Ig locus,FGFR3,RTK,~15%,true,true,surrogate,ig_enhancer_hijack,high,PMID:12139740,co-deregulated with NSD2 in t(4;14); FGFR3 overexpression
-MM,MAF-IGH,IGH,Ig locus,MAF,bZIP(MAF),~5%,true,true,surrogate,ig_enhancer_hijack,high,PMID:9616139,t(14;16)(q32;q23); c-MAF overexpression; high-risk
-MM,CCND3-IGH,IGH,Ig locus,CCND3,cyclin,rare,true,true,surrogate,ig_enhancer_hijack,medium,PMID:42418658,t(6;14)(p21;q32); cyclin D3 overexpression
-MM,MAFB-IGH,IGH,Ig locus,MAFB,bZIP(MAF),rare,true,true,surrogate,ig_enhancer_hijack,medium,PMID:15257707,t(14;20)(q32;q12); MAFB overexpression; high-risk
-CLL,(none),,,,,,false,false,no,other,high,,"CLL: del13q14, trisomy 12, del11q(ATM), del17p(TP53), IGHV mutation status; not fusion-driven"
-MDS,(none),,,,,,false,false,no,other,high,,"MDS: del5q/-7/del20q, SF3B1/TET2/ASXL1/TP53 mutations; not fusion-driven (rare exceptions)"
-MPN,(none),,,,,,false,false,no,other,high,,"MPN (PV/ET/PMF): JAK2 V617F, CALR, or MPL driver mutations; not fusion-driven"
-CTCL,(none),,,,,,false,false,no,other,high,,"cutaneous T-cell lymphoma (MF/Sezary): complex CNAs, no defining recurrent fusion"
-HCL,(none),,,,,,false,false,no,other,high,,hairy cell leukemia: BRAF V600E point mutation; not a fusion
-NUTM,BRD4-NUTM1,BRD4,BET,NUTM1,NUT,~70%,true,true,yes,fusion_transcript,high,PMID:12543779,NUT carcinoma; t(15;19); most common partner; BET-inhibitor target
-NUTM,BRD3-NUTM1,BRD3,BET,NUTM1,NUT,~15%,true,true,yes,fusion_transcript,high,PMID:34672128,second most common NUT carcinoma fusion
-NUTM,NSD3-NUTM1,NSD3,KMT/HMTase,NUTM1,NUT,~10%,true,true,yes,fusion_transcript,high,PMID:35325484,NSD3=WHSC1L1; NUT carcinoma variant
-NUTM,ZNF532-NUTM1,ZNF532,,NUTM1,NUT,rare,true,true,yes,fusion_transcript,medium,PMID:34232599,rare NUT carcinoma partner
-ADCC,MYB-NFIB,MYB,MYB,NFIB,NFI,~60%,true,true,yes,fusion_transcript,high,PMID:19841262,adenoid cystic carcinoma; t(6;9)(q22-23;p23-24)
-ADCC,MYBL1-NFIB,MYBL1,MYB,NFIB,NFI,subset,true,true,yes,fusion_transcript,high,PMID:26851182,MYBL1-NFIB alternative in MYB-negative ACC; same MYB-pathway activation
-ACINIC,HTN3-MSANTD3,HTN3,,MSANTD3,,subset,true,true,yes,fusion_transcript,medium,PMID:30520817,acinic cell carcinoma (salivary) recurrent fusion; t(4;11)
-ACINIC,(none),,,,,,false,false,surrogate,enhancer_hijack,medium,PMID:30664630,secretory acinic / mammary analogue overlap; many acinic cell carcinomas show NR4A3 enhancer hijack overexpression rather than a clean chimera
-THCA,CCDC6-RET,CCDC6,,RET,RTK,subset,false,false,yes,fusion_transcript,high,PMID:39212716,papillary thyroid carcinoma RET/PTC1; CCDC6=H4; RET-inhibitor target; radiation-associated
-THCA,NCOA4-RET,NCOA4,NR coactivator,RET,RTK,subset,false,false,yes,fusion_transcript,high,PMID:39212716,RET/PTC3; NCOA4=ELE1/ARA70; common in radiation-induced PTC
-THCA,PAX8-PPARG,PAX8,PAX,PPARG,nuclear receptor,subset,false,false,yes,fusion_transcript,high,PMID:25069464,follicular thyroid carcinoma (and follicular-variant PTC); t(2;3)(q13;p25)
-THCA,ETV6-NTRK3,ETV6,ETS,NTRK3,RTK,minority,false,false,yes,fusion_transcript,medium,PMID:29046324,NTRK-rearranged PTC; TRK-inhibitor target
-THCA,STRN-ALK,STRN,,ALK,RTK,rare,false,false,surrogate,fusion_transcript,medium,PMID:29046324,ALK-rearranged thyroid carcinoma subset
-THCA,(none),,,,,,false,false,no,other,high,,"most PTC driven by BRAF V600E point mutation, not a fusion; fusions enrich in young/radiation cases"
-LUAD,EML4-ALK,EML4,,ALK,RTK,~4-5%,false,false,yes,fusion_transcript,high,PMID:17625570,NSCLC; inv(2)(p21p23); ALK-TKI responsive; variant 1/3 common; intronic breakpoints
-LUAD,CD74-ROS1,CD74,,ROS1,RTK,~1-2%,false,false,yes,fusion_transcript,high,PMID:23877438,ROS1-rearranged NSCLC; crizotinib/entrectinib target
-LUAD,EZR-ROS1,EZR,,ROS1,RTK,minority,false,false,yes,fusion_transcript,medium,PMID:25230898,ROS1 partner in NSCLC
-LUAD,SLC34A2-ROS1,SLC34A2,SLC,ROS1,RTK,minority,false,false,yes,fusion_transcript,medium,PMID:28860822,ROS1 partner in NSCLC
-LUAD,KIF5B-RET,KIF5B,,RET,RTK,~1-2%,false,false,yes,fusion_transcript,high,PMID:22327623,RET-rearranged NSCLC; selpercatinib/pralsetinib target
-LUAD,CCDC6-RET,CCDC6,,RET,RTK,minority,false,false,yes,fusion_transcript,medium,PMID:22327623,RET partner in NSCLC
-LUAD,CD74-NRG1,CD74,,NRG1,growth factor,rare,false,false,yes,fusion_transcript,medium,PMID:24469108,NRG1-rearranged (often invasive mucinous adenocarcinoma); HER3 pathway; zenocutuzumab target
-LUAD,SLC3A2-NRG1,SLC3A2,SLC,NRG1,growth factor,rare,false,false,yes,fusion_transcript,low,PMID:34743207,NRG1 partner
-LUAD,NTRK,,,NTRK1,RTK,rare,false,false,yes,fusion_transcript,medium,PMID:24162815,"NTRK1/3-rearranged NSCLC (rare); multiple 5' partners (e.g. MPRIP, TPM3, SQSTM1); TRK-inhibitor target"
-PRAD,TMPRSS2-ERG,TMPRSS2,,ERG,ETS,~50%,false,false,surrogate,promoter_swap,high,PMID:16254181,prostate cancer; androgen-driven TMPRSS2 promoter drives ERG; intrachromosomal del 21q22; ERG IHC surrogate
-PRAD,SLC45A3-ERG,SLC45A3,SLC,ERG,ETS,minority,false,false,surrogate,promoter_swap,medium,PMID:20118910,androgen-regulated SLC45A3 (prostein) promoter drives ERG
-PRAD,TMPRSS2-ETV1,TMPRSS2,,ETV1,ETS,minority,false,false,surrogate,promoter_swap,medium,PMID:16254181,ETV1 alternative ETS partner; ETV1 has additional 5' partners
-PRAD,TMPRSS2-ETV4,TMPRSS2,,ETV4,ETS,rare,false,false,surrogate,promoter_swap,medium,PMID:16585160,rarer ETS fusion
-PRAD,TMPRSS2-ETV5,TMPRSS2,,ETV5,ETS,rare,false,false,surrogate,promoter_swap,low,PMID:18172298,rarest ETS fusion
-GBM,FGFR3-TACC3,FGFR3,RTK,TACC3,TACC,~3%,false,false,yes,fusion_transcript,high,PMID:22837387,glioblastoma; tandem dup 4p16; FGFR-inhibitor target; tandem-dup can be missed by some callers
-GBM,(none),,,,,,false,false,no,other,high,,"most GBM driven by EGFR amp/EGFRvIII, +7/-10, CDKN2A loss, TERT promoter; not a defining fusion"
-LGG,KIAA1549-BRAF,KIAA1549,,BRAF,,~70%,true,true,yes,fusion_transcript,high,PMID:26083571,pilocytic astrocytoma; tandem dup 7q34; MAPK activation; MEK-inhibitor sensitive
-LGG,FGFR3-TACC3,FGFR3,RTK,TACC3,TACC,subset,false,false,yes,fusion_transcript,medium,PMID:28976058,subset of diffuse gliomas; FGFR target
-LGG,(none),,,,,,false,false,no,other,high,,diffuse adult LGG driven by IDH1/2 mutation +/- 1p19q codeletion or ATRX/TP53; not fusion-defined
-ASTB,MN1-BEND2,MN1,,BEND2,,defining,true,true,yes,fusion_transcript,high,PMID:36366964,MN1::BEND2 fusion-defined astroblastoma / high-grade neuroepithelial tumor; BEND2 expression surrogate available
-CHOL,FGFR2-BICC1,FGFR2,RTK,BICC1,,subset,false,false,yes,fusion_transcript,high,PMID:31807010,intrahepatic cholangiocarcinoma; FGFR2 fusions (~10-15% iCCA); FGFR-inhibitor (pemigatinib) target; promiscuous 3' partners
-CHOL,FGFR2-AHCYL1,FGFR2,RTK,AHCYL1,,subset,false,false,yes,fusion_transcript,medium,PMID:24122810,recurrent FGFR2 3' partner in iCCA
-MTC,(none),,,,,,false,false,no,other,high,,medullary thyroid carcinoma: RET germline/somatic POINT mutations (M918T etc.) or RAS; NOT a fusion
-NEC_MERKEL,(none),,,,,,false,false,no,other,high,,Merkel cell carcinoma: MCPyV clonal integration (virus-positive) or UV-mutation (virus-negative); not a chromosomal fusion
-SCLC,(none),,,,,,false,false,no,other,high,,"small cell lung cancer: near-universal TP53 + RB1 loss, MYC family amp; no recurrent fusion"
-NET_PANCREAS,(none),,,,,,false,false,no,other,high,,"pancreatic neuroendocrine tumor: MEN1, DAXX/ATRX, mTOR-pathway mutations; not fusion-driven"
-NET_MIDGUT,(none),,,,,,false,false,no,other,high,,"midgut/small-bowel NET: CDKN1B mutation, chr18 LOH; not fusion-driven"
-LIHC,DNAJB1-PRKACA,DNAJB1,,PRKACA,non-RTK kinase,~100% of FLC,true,true,yes,fusion_transcript,high,PMID:24578576,"fibrolamellar HCC subtype; ~400kb deletion chr19 fuses DNAJB1 to PRKACA; defining for FLC (young, non-cirrhotic)"
-LIHC,(none),,,,,,false,false,no,other,high,,"conventional HCC: TERT promoter, CTNNB1, TP53; not fusion-driven"
-BRCA,ETV6-NTRK3,ETV6,ETS,NTRK3,RTK,~100% of secretory,true,false,yes,fusion_transcript,high,PMID:12450792,secretory carcinoma of breast (MASC analogue); t(12;15); rare subtype but defining; TRK-inhibitor target
-BRCA,(none),,,,,,false,false,no,other,high,,common breast cancer (luminal/HER2/basal): driven by ER/HER2/CN events; no defining fusion (secretory carcinoma excepted)
-SARC_RMS_ARMS,PAX-FOXO/alt,PAX3,PAX,NCOA1,NR coactivator,rare,true,true,yes,fusion_transcript,low,PMID:19953635,PAX3 alternative 3' partner (NCOA1); fusion-positive ARMS variant
-SARC_RMS_ARMS,PAX-FOXO/alt,PAX3,PAX,NCOA2,NR coactivator,rare,true,true,yes,fusion_transcript,low,PMID:19953635,PAX3 alternative 3' partner (NCOA2)
-SARC_RMS_SSRMS,FET-TFCP2,EWSR1,FET,TFCP2,CP2 TF,subset,true,true,yes,fusion_transcript,medium,PMID:32556562,"sclerosing/spindle-cell RMS, often intraosseous; FET-TFCP2"
-SARC_RMS_SSRMS,FET-TFCP2,FUS,FET,TFCP2,CP2 TF,minority,true,true,yes,fusion_transcript,low,PMID:32556562,FUS alternative to EWSR1 in spindle/sclerosing RMS
-SARC_RMS_SSRMS,NCOA2-fusion,SRF,MADS-box TF,NCOA2,NR coactivator,rare,true,true,yes,fusion_transcript,low,PMID:23463663,infantile spindle cell RMS variant (SRF-NCOA2)
-SARC_CIC,CIC-DUX4,CIC,HMG-box (capicua),DUX4,homeobox,~95%,true,true,surrogate,fusion_transcript,medium,PMID:16717057,CIC-rearranged sarcoma; t(4;19)/t(10;19); DUX4 D4Z4 macrosatellite is hard to call by RNA-seq -> ETV4/PEA3 + WT1 overexpression surrogate
-SARC_CIC,CIC-FOXO4,CIC,HMG-box (capicua),FOXO4,FOX,minority,true,true,yes,fusion_transcript,low,PMID:25007147,t(X;19) variant
-SARC_CIC,CIC-NUTM1,CIC,HMG-box (capicua),NUTM1,NUT,rare,true,true,yes,fusion_transcript,low,PMID:38851744,rare CIC 3' partner
-SARC_BCOR,BCOR-CCNB3,BCOR,PRC2/Polycomb,CCNB3,cyclin,majority,true,true,yes,fusion_transcript,medium,PMID:22387997,"BCOR-rearranged sarcoma; Xp11 paracentric inversion (cryptic by FISH, RNA-seq detectable)"
-SARC_BCOR,ZC3H7B-BCOR,ZC3H7B,,BCOR,PRC2/Polycomb,minority,true,false,yes,fusion_transcript,low,PMID:26752546,also occurs in high-grade endometrial stromal sarcoma (not entity-specific)
-SARC_BCOR,BCOR-MAML3,BCOR,PRC2/Polycomb,MAML3,Mastermind,rare,true,true,yes,fusion_transcript,low,PMID:26752546,variant BCOR fusion
-SARC_BCOR,(none-ITD),,,,,subset,true,false,no,other,medium,PMID:32372022,"infantile primitive myxoid mesenchymal tumor / undifferentiated round cell: BCOR internal tandem duplication (ITD), not a fusion"
-SARC_MYOEP,EWSR1-POU5F1,EWSR1,FET,POU5F1,POU-homeobox,subset,true,true,yes,fusion_transcript,medium,PMID:20815032,soft-tissue myoepithelial carcinoma; POU5F1=OCT4 pluripotency factor
-SARC_MYOEP,FUS-POU5F1,FUS,FET,POU5F1,POU-homeobox,minority,true,true,yes,fusion_transcript,low,PMID:25066216,FET-family alternative (FUS)
-SARC_MYOEP,EWSR1-PBX1,EWSR1,FET,PBX1,homeobox(TALE),subset,true,true,yes,fusion_transcript,low,PMID:18383210,myoepithelioma EWSR1 partner
-SARC_MYOEP,EWSR1-ZNF444,EWSR1,FET,ZNF444,,rare,true,true,yes,fusion_transcript,low,PMID:19760602,rare myoepithelial partner
-SARC_SMARCA4,(none),,,,,,false,false,no,other,high,,"SMARCA4/BRG1 deficiency (deletion/truncating mutation), not a fusion"
-ALCL,ALK_rearrangement,NPM1,nucleophosmin,ALK,RTK,~majority of ALK+ ALCL,true,false,yes,fusion_transcript,high,PMID:8122112,ALK+ ALCL; t(2;5)(p23;q35); NPM1-ALK most common ALK partner (also TPM3/ATIC/TFG); ALK-inhibitor target. ALK- ALCL is DUSP22/TP63-rearranged.
+cancer_code,fusion_family,gene_5prime,gene_5prime_ensembl_id,gene_5prime_kind,gene_5prime_family,gene_3prime,gene_3prime_ensembl_id,gene_3prime_kind,gene_3prime_family,frequency,is_defining,pathognomonic,rnaseq_detectable,mechanism,confidence,pmid,notes
+SARC_EWS,EWSR1-ETS,EWSR1,ENSG00000182944,gene,FET,FLI1,ENSG00000151702,gene,ETS,~85%,true,true,yes,fusion_transcript,high,PMID:1522903,Ewing sarcoma; t(11;22)(q24;q12); most common partner
+SARC_EWS,EWSR1-ETS,EWSR1,ENSG00000182944,gene,FET,ERG,ENSG00000157554,gene,ETS,~10%,true,true,yes,fusion_transcript,high,PMID:8162068,t(21;22)(q22;q12); second most common ETS partner
+SARC_EWS,EWSR1-ETS,EWSR1,ENSG00000182944,gene,FET,ETV1,ENSG00000006468,gene,ETS,rare,true,true,yes,fusion_transcript,medium,PMID:7700648,rare ETS variant fusion
+SARC_EWS,EWSR1-ETS,EWSR1,ENSG00000182944,gene,FET,ETV4,ENSG00000175832,gene,ETS,rare,true,true,yes,fusion_transcript,medium,PMID:9858836,rare ETS variant fusion (also called E1AF)
+SARC_EWS,EWSR1-ETS,EWSR1,ENSG00000182944,gene,FET,FEV,ENSG00000163497,gene,ETS,rare,true,true,yes,fusion_transcript,medium,PMID:31756779,rare ETS variant fusion
+SARC_EWS,FUS-ETS,FUS,ENSG00000089280,gene,FET,ERG,ENSG00000157554,gene,ETS,rare,true,true,yes,fusion_transcript,medium,PMID:12907633,FET-family alternative (FUS instead of EWSR1)
+SARC_SYN,SS18-SSX,SS18,ENSG00000141380,gene,,SSX1,ENSG00000126752,gene,SSX,~65%,true,true,yes,fusion_transcript,high,PMID:7951320,synovial sarcoma; t(X;18)(p11;q11); SSX1 more common in biphasic
+SARC_SYN,SS18-SSX,SS18,ENSG00000141380,gene,,SSX2,ENSG00000241476,gene,SSX,~35%,true,true,yes,fusion_transcript,high,PMID:7951320,SSX2 tends monophasic
+SARC_SYN,SS18-SSX,SS18,ENSG00000141380,gene,,SSX4,ENSG00000268009,gene,SSX,rare,true,true,yes,fusion_transcript,medium,PMID:11368913,rare third partner
+SARC_DSRCT,EWSR1-WT1,EWSR1,ENSG00000182944,gene,FET,WT1,ENSG00000184937,gene,zinc-finger TF,~95%,true,true,yes,fusion_transcript,high,PMID:7862627,desmoplastic small round cell tumor; t(11;22)(p13;q12)
+SARC_ASPS,ASPSCR1-TFE3,ASPSCR1,ENSG00000169696,gene,,TFE3,ENSG00000068323,gene,MiT/TFE,~95%,true,false,surrogate,fusion_transcript,high,PMID:17543078,alveolar soft part sarcoma; der(17)t(X;17); ASPL=ASPSCR1; TFE3 IHC surrogate
+SARC_CCS,EWSR1-ATF1,EWSR1,ENSG00000182944,gene,FET,ATF1,ENSG00000123268,gene,bZIP(CREB/ATF),~90%,true,true,yes,fusion_transcript,high,PMID:19561568,clear cell sarcoma (melanoma of soft parts); t(12;22)(q13;q12)
+SARC_CCS,EWSR1-CREB1,EWSR1,ENSG00000182944,gene,FET,CREB1,ENSG00000118260,gene,bZIP(CREB/ATF),minority,true,false,yes,fusion_transcript,medium,PMID:19561568,variant; also seen in GI clear cell sarcoma-like / angiomatoid FH
+SARC_IFS,ETV6-NTRK3,ETV6,ENSG00000139083,gene,ETS,NTRK3,ENSG00000140538,gene,RTK,common,false,false,yes,fusion_transcript,high,PMID:9462753,common IFS driver but not universal and not inferred from diagnosis; t(12;15)(p13;q25); TRK-inhibitor responsive
+SARC_IFS,EML4-NTRK3,EML4,ENSG00000143924,gene,,NTRK3,ENSG00000140538,gene,RTK,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed molecularly confirmed IFS driver; entity assignment still requires compatible age site and pathology
+CMN,ETV6-NTRK3,ETV6,ENSG00000139083,gene,ETS,NTRK3,ENSG00000140538,gene,RTK,cellular subset,false,false,yes,fusion_transcript,high,PMID:29915264,observed in cellular congenital mesoblastic nephroma; CMN remains distinct from soft-tissue IFS
+CMN,LMNA-NTRK1,LMNA,ENSG00000160789,gene,,NTRK1,ENSG00000198400,gene,RTK,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed in one cellular CMN
+CMN,TPR-NTRK1,TPR,ENSG00000047410,gene,,NTRK1,ENSG00000198400,gene,RTK,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed in one mixed CMN
+CMN,KIAA1549-BRAF,KIAA1549,ENSG00000122778,gene,,BRAF,ENSG00000157764,gene,RAF kinase,rare,false,false,yes,fusion_transcript,high,PMID:29915264,observed in one mixed CMN
+SARC_EHE,WWTR1-CAMTA1,WWTR1,ENSG00000018408,gene,Hippo coactivator,CAMTA1,ENSG00000171735,gene,,~90%,true,true,yes,fusion_transcript,high,PMID:21885404,epithelioid hemangioendothelioma; t(1;3); WWTR1=TAZ; CAMTA1 IHC surrogate
+SARC_EHE,YAP1-TFE3,YAP1,ENSG00000137693,gene,Hippo coactivator,TFE3,ENSG00000068323,gene,MiT/TFE,minority,true,false,surrogate,fusion_transcript,high,PMID:23737213,distinct EHE subset; TFE3 IHC surrogate; YAP1-TFE3 variant
+SARC_LGFMS,FUS-CREB3L2,FUS,ENSG00000089280,gene,FET,CREB3L2,ENSG00000182158,gene,bZIP(CREB/ATF),~90%,true,true,yes,fusion_transcript,high,PMID:15139001,low-grade fibromyxoid sarcoma; t(7;16)(q33;p11)
+SARC_LGFMS,FUS-CREB3L1,FUS,ENSG00000089280,gene,FET,CREB3L1,ENSG00000157613,gene,bZIP(CREB/ATF),minority,true,true,yes,fusion_transcript,medium,PMID:15640831,variant translocation t(11;16)
+SARC_LGFMS,EWSR1-CREB3L1,EWSR1,ENSG00000182944,gene,FET,CREB3L1,ENSG00000157613,gene,bZIP(CREB/ATF),rare,true,true,yes,fusion_transcript,medium,PMID:23588368,rare FET-family variant
+SARC_EMC,EWSR1-NR4A3,EWSR1,ENSG00000182944,gene,FET,NR4A3,ENSG00000119508,gene,nuclear receptor,~60%,true,true,yes,fusion_transcript,high,PMID:18855877,extraskeletal myxoid chondrosarcoma; t(9;22)(q22;q12); NR4A3=CHN/TEC/NOR1
+SARC_EMC,TAF15-NR4A3,TAF15,ENSG00000270647,gene,FET,NR4A3,ENSG00000119508,gene,nuclear receptor,~30%,true,true,yes,fusion_transcript,high,PMID:24746215,TAF15=TAF2N/RBP56; t(9;17)
+SARC_EMC,TCF12-NR4A3,TCF12,ENSG00000140262,gene,bHLH,NR4A3,ENSG00000119508,gene,nuclear receptor,rare,true,true,yes,fusion_transcript,medium,PMID:24746215,rare variant; t(9;15)
+SARC_SFT,NAB2-STAT6,NAB2,ENSG00000166886,gene,,STAT6,ENSG00000166888,gene,STAT,~95%,true,true,surrogate,fusion_transcript,high,PMID:23313952,solitary fibrous tumor; intrachromosomal 12q13 inversion; nuclear STAT6 IHC surrogate; intronic breakpoints can miss in RNA
+SARC_IMT,TPM3-ALK,TPM3,ENSG00000143549,gene,tropomyosin,ALK,ENSG00000171094,gene,RTK,common,true,true,surrogate,fusion_transcript,high,PMID:10934142,inflammatory myofibroblastic tumor; ALK IHC surrogate; ALK-inhibitor responsive
+SARC_IMT,TPM4-ALK,TPM4,ENSG00000167460,gene,tropomyosin,ALK,ENSG00000171094,gene,RTK,minority,true,true,surrogate,fusion_transcript,medium,PMID:10934142,IMT ALK partner
+SARC_IMT,EML4-ALK,EML4,ENSG00000143924,gene,,ALK,ENSG00000171094,gene,RTK,minority,true,false,surrogate,fusion_transcript,medium,PMID:24277751,IMT ALK partner
+SARC_IMT,RANBP2-ALK,RANBP2,ENSG00000153201,gene,,ALK,ENSG00000171094,gene,RTK,minority,true,true,surrogate,fusion_transcript,medium,PMID:24034896,epithelioid inflammatory myofibroblastic sarcoma; aggressive variant
+SARC_IMT,CARS1-ALK,CARS1,ENSG00000110619,gene,,ALK,ENSG00000171094,gene,RTK,minority,true,true,surrogate,fusion_transcript,medium,PMID:13679433,ALK-rearranged IMT subset (CARS=CARS1)
+SARC_IMT,ETV6-NTRK3,ETV6,ENSG00000139083,gene,ETS,NTRK3,ENSG00000140538,gene,RTK,rare,true,false,yes,fusion_transcript,medium,PMID:26647767,NTRK-rearranged IMT subset
+SARC_IMT,TFG-ROS1,TFG,ENSG00000114354,gene,,ROS1,ENSG00000047936,gene,RTK,rare,true,true,surrogate,fusion_transcript,low,PMID:26647767,ROS1 partner reported in IMT
+SARC_DFSP,COL1A1-PDGFB,COL1A1,ENSG00000108821,gene,collagen,PDGFB,ENSG00000100311,gene,growth factor,~90%,true,true,surrogate,fusion_transcript,high,PMID:31949795,dermatofibrosarcoma protuberans; supernumerary ring chr from t(17;22); PDGFB overexpression; imatinib responsive
+SARC_MYXLPS,FUS-DDIT3,FUS,ENSG00000089280,gene,FET,DDIT3,ENSG00000175197,gene,bZIP(C/EBP),~90%,true,true,yes,fusion_transcript,high,PMID:16651630,myxoid/round cell liposarcoma; t(12;16)(q13;p11); DDIT3=CHOP
+SARC_MYXLPS,EWSR1-DDIT3,EWSR1,ENSG00000182944,gene,FET,DDIT3,ENSG00000175197,gene,bZIP(C/EBP),minority,true,true,yes,fusion_transcript,medium,PMID:17647282,variant t(12;22)
+SARC_PEC,SFPQ-TFE3,SFPQ,ENSG00000116560,gene,,TFE3,ENSG00000068323,gene,MiT/TFE,minority,false,false,surrogate,fusion_transcript,medium,PMID:40239600,PEComa TFE3-rearranged subset; SFPQ=PSF; TFE3 IHC surrogate; most PEComas are TSC1/2-driven not fusion
+SARC_PEC,DVL2-TFE3,DVL2,ENSG00000004975,gene,,TFE3,ENSG00000068323,gene,MiT/TFE,rare,false,false,surrogate,fusion_transcript,low,PMID:25651471,rare PEComa TFE3 partner
+SARC_RMS_ARMS,PAX3-FOXO1,PAX3,ENSG00000135903,gene,PAX,FOXO1,ENSG00000150907,gene,FOX,~70%,true,true,yes,fusion_transcript,high,PMID:8275086,alveolar rhabdomyosarcoma; t(2;13)(q35;q14); worse prognosis than PAX7
+SARC_RMS_ARMS,PAX7-FOXO1,PAX7,ENSG00000009709,gene,PAX,FOXO1,ENSG00000150907,gene,FOX,~20%,true,true,yes,fusion_transcript,medium,PMID:8187070,"t(1;13)(p36;q14); younger, better outcome; FOXO1=FKHR"
+SARC_RMS_SSRMS,VGLL2-NCOA2,VGLL2,ENSG00000170162,gene,vestigial-like,NCOA2,ENSG00000140396,gene,NR coactivator,subset,true,true,yes,fusion_transcript,medium,PMID:26501226,infantile spindle cell/sclerosing RMS; congenital subset
+SARC_RMS_SSRMS,TEAD1-NCOA2,TEAD1,ENSG00000187079,gene,TEAD,NCOA2,ENSG00000140396,gene,NR coactivator,subset,true,true,yes,fusion_transcript,low,PMID:26501226,alternative infantile spindle cell RMS fusion
+SARC_RMS_SSRMS,(none),,,none,,,,none,,,false,false,no,other,high,,"older child/adult sclerosing-spindle RMS driven by MYOD1 L122R point mutation, not a fusion"
+SARC_CHON_MESENCHYMAL,HEY1-NCOA2,HEY1,ENSG00000164683,gene,bHLH,NCOA2,ENSG00000140396,gene,NR coactivator,~80%,true,true,yes,fusion_transcript,high,PMID:22034177,mesenchymal chondrosarcoma; ins(8;8) or t(8;8)
+SARC_CHON_MESENCHYMAL,IRF2BP2-CDX1,IRF2BP2,ENSG00000168264,gene,,CDX1,ENSG00000113722,gene,homeobox,rare,false,false,yes,fusion_transcript,low,PMID:23185413,rare mesenchymal chondrosarcoma variant
+SARC_EWSR1_NONETS,EWSR1-NFATC2,EWSR1,ENSG00000182944,gene,FET,NFATC2,ENSG00000101096,gene,NFAT,recurrent,true,false,yes,fusion_transcript,high,PMID:19318479,EWSR1-non-ETS round cell sarcoma; fusion amplification supports malignant context
+SARC_EWSR1_NONETS,EWSR1-PATZ1,EWSR1,ENSG00000182944,gene,FET,PATZ1,ENSG00000100105,gene,zinc-finger TF,recurrent,true,false,yes,fusion_transcript,high,PMID:31189996,EWSR1-PATZ1 spindle and round cell sarcoma; polyphenotypic and morphologically variable
+SARC_EWSR1_NONETS,EWSR1-SMARCA5,EWSR1,ENSG00000182944,gene,FET,SMARCA5,ENSG00000153147,gene,chromatin remodeler,rare,true,false,yes,fusion_transcript,medium,PMID:21113140,originally reported as extraskeletal Ewing/PNET before recognition of EWSR1-non-ETS sarcomas
+SARC_SEF,EWSR1-CREB3L1,EWSR1,ENSG00000182944,gene,FET,CREB3L1,ENSG00000157613,gene,bZIP(CREB/ATF),common,true,false,yes,fusion_transcript,high,PMID:24441665,recurrent fusion in pure sclerosing epithelioid fibrosarcoma; also occurs rarely in LGFMS
+SARC_SEF,EWSR1-CREB3L2,EWSR1,ENSG00000182944,gene,FET,CREB3L2,ENSG00000182158,gene,bZIP(CREB/ATF),rare,true,false,yes,fusion_transcript,medium,PMID:31675134,rare alternative fusion in primary osseous sclerosing epithelioid fibrosarcoma
+SARC_SEF,EWSR1-CREB3L3,EWSR1,ENSG00000182944,gene,FET,CREB3L3,ENSG00000060566,gene,bZIP(CREB/ATF),rare,true,false,yes,fusion_transcript,medium,PMID:28569045,rare alternative fusion in sclerosing epithelioid fibrosarcoma
+SARC_NTRK_SPINDLE,TPM3-NTRK1,TPM3,ENSG00000143549,gene,tropomyosin,NTRK1,ENSG00000198400,gene,RTK,reported,true,false,yes,fusion_transcript,high,PMID:35149769,NTRK-rearranged spindle cell neoplasm; molecular class is defining but this pair is not entity-specific
+SARC_NTRK_SPINDLE,LMNA-NTRK1,LMNA,ENSG00000160789,gene,nuclear lamina,NTRK1,ENSG00000198400,gene,RTK,reported,true,false,yes,fusion_transcript,high,PMID:35149769,NTRK-rearranged spindle cell neoplasm; molecular class is defining but this pair is not entity-specific
+SARC_NTRK_SPINDLE,STRN-NTRK2,STRN,ENSG00000115808,gene,striatin,NTRK2,ENSG00000148053,gene,RTK,reported,true,false,yes,fusion_transcript,medium,PMID:38525823,NTRK-rearranged spindle cell neoplasm; molecular class is defining but this pair is not entity-specific
+SARC_NTRK_SPINDLE,SQSTM1-NTRK3,SQSTM1,ENSG00000161011,gene,autophagy adaptor,NTRK3,ENSG00000140538,gene,RTK,reported,true,false,yes,fusion_transcript,medium,PMID:35149769,NTRK-rearranged spindle cell neoplasm; molecular class is defining but this pair is not entity-specific
+SARC_PMT_MALIGNANT,FN1-FGFR1,FN1,ENSG00000115414,gene,extracellular matrix,FGFR1,ENSG00000077782,gene,RTK,reported,false,false,yes,fusion_transcript,medium,PMID:31066955,reported in a possible malignant phosphaturic mesenchymal tumour; associated with PMT but not defining malignant behavior
+SARC_EIMS,RANBP2-ALK,RANBP2,ENSG00000153201,gene,nucleoporin,ALK,ENSG00000171094,gene,RTK,majority,true,false,surrogate,fusion_transcript,high,PMID:26139079,epithelioid inflammatory myofibroblastic sarcoma; nuclear-membrane ALK staining is a diagnostic surrogate
+SARC_CHON,(none),,,none,,,,none,,,false,false,no,other,high,,"conventional chondrosarcoma driven by IDH1/IDH2 mutation, not a fusion"
+SARC_ESS_LG,JAZF1-SUZ12,JAZF1,ENSG00000153814,gene,,SUZ12,ENSG00000178691,gene,PRC2/Polycomb,~50%,true,true,yes,fusion_transcript,high,PMID:16049311,low-grade endometrial stromal sarcoma; t(7;17); SUZ12=JJAZ1
+SARC_ESS_LG,JAZF1-PHF1,JAZF1,ENSG00000153814,gene,,PHF1,ENSG00000112511,gene,PRC2/Polycomb,minority,true,true,yes,fusion_transcript,medium,PMID:16397222,variant; PHF1 (6p21) recurrent partner
+SARC_ESS_LG,EPC1-PHF1,EPC1,ENSG00000120616,gene,PRC2/Polycomb,PHF1,ENSG00000112511,gene,PRC2/Polycomb,minority,true,true,yes,fusion_transcript,medium,PMID:16397222,PHF1-rearranged LG-ESS variant
+SARC_ESS_HG,YWHAE-NUTM2A,YWHAE,ENSG00000108953,gene,14-3-3,NUTM2A,ENSG00000184923,gene,NUT,common,true,true,yes,fusion_transcript,high,PMID:22456610,high-grade endometrial stromal sarcoma; t(10;17); NUTM2A/B=FAM22A/B; cyclin D1+
+SARC_ESS_HG,YWHAE-NUTM2B,YWHAE,ENSG00000108953,gene,14-3-3,NUTM2B,ENSG00000188199,gene,NUT,common,true,true,yes,fusion_transcript,high,PMID:22456610,paralogous 3' partner
+SARC_ESS_HG,ZC3H7B-BCOR,ZC3H7B,ENSG00000100403,gene,,BCOR,ENSG00000183337,gene,PRC2/Polycomb,subset,true,false,yes,fusion_transcript,medium,PMID:23580382,BCOR-rearranged HG-ESS subset; BCOR ITD-related morphology
+SARC_LMS,(none),,,none,,,,none,,,false,false,no,other,high,,"leiomyosarcoma: complex karyotype, TP53/RB1/PTEN loss; no recurrent fusion"
+SARC_UPS,(none),,,none,,,,none,,,false,false,no,other,high,,"undifferentiated pleomorphic sarcoma: complex genome, no defining fusion"
+SARC_MYXFIB,(none),,,none,,,,none,,,false,false,no,other,high,,"myxofibrosarcoma: complex karyotype, no recurrent fusion"
+SARC_DDLPS,(none),,,none,,,,none,,,false,false,no,other,high,,"dedifferentiated liposarcoma: 12q13-15 amplification (MDM2/CDK4), not a fusion"
+SARC_WDLPS,(none),,,none,,,,none,,,false,false,no,other,high,,"well-differentiated liposarcoma: MDM2/CDK4 amplification (ring/giant marker chr), not a fusion"
+SARC_PLEOLPS,(none),,,none,,,,none,,,false,false,no,other,high,,"pleomorphic liposarcoma: complex karyotype, TP53/RB1 loss; no defining fusion"
+SARC_GIST,(none),,,none,,,,none,,,false,false,no,other,high,,GIST: KIT or PDGFRA activating mutation (or SDH-deficient); not fusion-driven
+SARC_MPNST,(none),,,none,,,,none,,,false,false,no,other,high,,MPNST: NF1 loss + SUZ12/EED (PRC2) loss + CDKN2A; not fusion-driven
+SARC_EPITH,(none),,,none,,,,none,,,false,false,no,other,high,,"epithelioid sarcoma: SMARCB1/INI1 loss (deletion), not a fusion"
+SARC_KS,(none),,,none,,,,none,,,false,false,no,other,high,,"Kaposi sarcoma: HHV8/KSHV viral oncogenesis, not a chromosomal fusion"
+SARC_OS,(none),,,none,,,,none,,,false,false,no,other,high,,"osteosarcoma: complex/chaotic karyotype, chromothripsis, TP53/RB1; no recurrent fusion"
+SARC_RMS_ERMS,(none),,,none,,,,none,,,false,false,no,other,high,,"embryonal RMS: RAS-pathway mutations, 11p15 LOH; fusion-negative"
+SARC_CHOR,(none),,,none,,,,none,,,false,false,surrogate,other,high,,chordoma: TBXT(brachyury) duplication/overexpression drives; not a fusion (brachyury IHC)
+SARC_GCTB,(none),,,none,,,,none,,,false,false,surrogate,other,high,,giant cell tumor of bone: H3F3A (H3-3A) G34W point mutation; not a fusion
+LAML,RUNX1-RUNX1T1,RUNX1,ENSG00000159216,gene,CBF,RUNX1T1,ENSG00000079102,gene,CBF,common,true,true,yes,fusion_transcript,high,PMID:31935293,AML t(8;21)(q22;q22); core-binding factor; RUNX1T1=ETO/MTG8; favorable
+LAML,CBFB-MYH11,CBFB,ENSG00000067955,gene,CBF,MYH11,ENSG00000133392,gene,myosin,common,true,true,yes,fusion_transcript,high,PMID:8142642,AML inv(16)(p13q22)/t(16;16); CBF-AML; favorable
+LAML,KMT2A-MLLT3,KMT2A,ENSG00000118058,gene,KMT/HMTase,MLLT3,ENSG00000171843,gene,YEATS,subset,true,true,yes,fusion_transcript,high,PMID:15188459,AML t(9;11); KMT2A=MLL; MLLT3=AF9; promiscuous MLL partner
+LAML,KMT2A-MLLT10,KMT2A,ENSG00000118058,gene,KMT/HMTase,MLLT10,ENSG00000078403,gene,MLL partner,subset,true,false,yes,fusion_transcript,medium,PMID:9305618,t(10;11); MLLT10=AF10
+LAML,KMT2A-ELL,KMT2A,ENSG00000118058,gene,KMT/HMTase,ELL,ENSG00000105656,gene,,subset,true,true,yes,fusion_transcript,medium,PMID:26949571,t(11;19)(q23;p13.1)
+LAML,KMT2A-MLLT1,KMT2A,ENSG00000118058,gene,KMT/HMTase,MLLT1,ENSG00000130382,gene,YEATS,subset,true,true,yes,fusion_transcript,medium,PMID:16875930,t(11;19)(q23;p13.3); MLLT1=ENL
+LAML,DEK-NUP214,DEK,ENSG00000124795,gene,,NUP214,ENSG00000126883,gene,nucleoporin,rare,true,true,yes,fusion_transcript,high,PMID:32526729,t(6;9)(p23;q34); FLT3-ITD-associated; poor prognosis; NUP214=CAN
+LAML,NUP98-NSD1,NUP98,ENSG00000110713,gene,nucleoporin,NSD1,ENSG00000165671,gene,KMT/HMTase,rare,true,true,yes,fusion_transcript,medium,PMID:11493482,t(5;11); cryptic; pediatric AML; poor prognosis
+LAML,NUP98-KDM5A,NUP98,ENSG00000110713,gene,nucleoporin,KDM5A,ENSG00000073614,gene,,rare,true,true,yes,fusion_transcript,low,PMID:23531517,t(11;12); KDM5A=JARID1A; acute megakaryoblastic
+LAML,RBM15-MKL1,RBM15,ENSG00000162775,gene,,MKL1,ENSG00000196588,gene,MRTF,rare,true,true,yes,fusion_transcript,medium,PMID:11746984,"t(1;22); infant acute megakaryoblastic leukemia; MKL1=MRTFA, RBM15=OTT"
+LAML_APL,PML-RARA,PML,ENSG00000140464,gene,TRIM/PML,RARA,ENSG00000131759,gene,nuclear receptor,~95%,true,true,yes,fusion_transcript,high,PMID:1652369,acute promyelocytic leukemia; t(15;17)(q24;q21); ATRA/ATO responsive
+LAML_APL,ZBTB16-RARA,ZBTB16,ENSG00000109906,gene,BTB-ZF TF,RARA,ENSG00000131759,gene,nuclear receptor,rare,true,true,yes,fusion_transcript,high,PMID:8302850,t(11;17); ZBTB16=PLZF; ATRA-resistant variant
+LAML_APL,NPM1-RARA,NPM1,ENSG00000181163,gene,nucleophosmin,RARA,ENSG00000131759,gene,nuclear receptor,rare,true,true,yes,fusion_transcript,medium,PMID:8562957,t(5;17) variant APL
+CML,BCR-ABL1,BCR,ENSG00000186716,gene,,ABL1,ENSG00000097007,gene,non-RTK kinase,~100%,true,false,yes,fusion_transcript,high,PMID:40360311,chronic myeloid leukemia; t(9;22) Philadelphia; p210 (e13a2/e14a2); TKI responsive
+B_ALL,BCR-ABL1,BCR,ENSG00000186716,gene,,ABL1,ENSG00000097007,gene,non-RTK kinase,~25%,true,false,yes,fusion_transcript,high,PMID:35834222,Ph+ B-ALL; adults more often; p190 (e1a2) typical; TKI responsive
+B_ALL,ETV6-RUNX1,ETV6,ENSG00000139083,gene,ETS,RUNX1,ENSG00000159216,gene,CBF,~25%,true,true,yes,fusion_transcript,high,PMID:28418909,"childhood B-ALL; t(12;21)(p13;q22) cryptic; ETV6=TEL, RUNX1=AML1; favorable"
+B_ALL,TCF3-PBX1,TCF3,ENSG00000071564,gene,bHLH(E-protein),PBX1,ENSG00000185630,gene,homeobox(TALE),~5%,true,true,yes,fusion_transcript,high,PMID:19713226,t(1;19)(q23;p13); TCF3=E2A; pre-B
+B_ALL,KMT2A-AFF1,KMT2A,ENSG00000118058,gene,KMT/HMTase,AFF1,ENSG00000172493,gene,AF4/LAF4,subset,true,true,yes,fusion_transcript,high,PMID:26463423,t(4;11)(q21;q23); infant B-ALL; AFF1=AF4; poor prognosis
+B_ALL,DUX4-IGH,IGH,,immunoglobulin_locus,Ig locus,DUX4,ENSG00000260596,gene,homeobox,subset,true,true,surrogate,ig_enhancer_hijack,medium,PMID:27019113,DUX4-rearranged B-ALL; IGH enhancer drives DUX4; ERG deregulation; favorable; orientation per IGH-enhancer juxtaposition
+B_ALL,P2RY8-CRLF2,P2RY8,ENSG00000182162,gene,,CRLF2,ENSG00000205755,gene,cytokine receptor,subset,true,true,surrogate,promoter_swap,medium,PMID:19838194,Ph-like; PAR1 deletion places CRLF2 under P2RY8 promoter; CRLF2 overexpression
+B_ALL,IGH-CRLF2,IGH,,immunoglobulin_locus,Ig locus,CRLF2,ENSG00000205755,gene,cytokine receptor,subset,true,true,surrogate,ig_enhancer_hijack,medium,PMID:28033648,Ph-like; IGH enhancer drives CRLF2; JAK pathway activation
+T_ALL,STIL-TAL1,STIL,ENSG00000123473,gene,,TAL1,ENSG00000162367,gene,bHLH,subset,true,true,surrogate,promoter_swap,high,PMID:8350619,T-ALL; SIL-TAL1 microdeletion 1p32 places TAL1 under STIL promoter; TAL1 overexpression
+T_ALL,TLX1-TRD,TRD,,tcr_locus,TCR locus,TLX1,ENSG00000107807,gene,homeobox,subset,true,true,surrogate,enhancer_hijack,medium,PMID:7719228,t(10;14)/t(7;10); TCR enhancer drives TLX1 (HOX11) overexpression
+T_ALL,TLX3-BCL11B,BCL11B,ENSG00000127152,gene,,TLX3,ENSG00000164438,gene,homeobox,subset,true,true,surrogate,enhancer_hijack,medium,PMID:17308084,t(5;14)(q35;q32); TLX3=HOX11L2 overexpression via BCL11B enhancer
+T_ALL,NUP214-ABL1,NUP214,ENSG00000126883,gene,nucleoporin,ABL1,ENSG00000097007,gene,non-RTK kinase,subset,true,true,yes,fusion_transcript,medium,PMID:15361874,episomal amplification 9q34; TKI-sensitive T-ALL
+T_ALL,KMT2A-MLLT10,KMT2A,ENSG00000118058,gene,KMT/HMTase,MLLT10,ENSG00000078403,gene,MLL partner,subset,true,false,yes,fusion_transcript,medium,PMID:30203571,t(10;11); MLLT10=AF10; early T-cell precursor associated
+MCL,CCND1-IGH,IGH,,immunoglobulin_locus,Ig locus,CCND1,ENSG00000110092,gene,cyclin,~95%,true,false,surrogate,ig_enhancer_hijack,high,PMID:40381701,mantle cell lymphoma; t(11;14)(q13;q32)/IGH::CCND1 genetic hallmark reported in about 95% of cases; IGH enhancer drives cyclin D1; no chimeric transcript; cyclin D1 IHC/FISH surrogate
+FL,BCL2-IGH,IGH,,immunoglobulin_locus,Ig locus,BCL2,ENSG00000171791,gene,BCL2/apoptosis,~85%,true,false,surrogate,ig_enhancer_hijack,high,PMID:18684042,follicular lymphoma; t(14;18)(q32;q21); IGH enhancer drives BCL2 anti-apoptotic overexpression
+BL,MYC-IGH,IGH,,immunoglobulin_locus,Ig locus,MYC,ENSG00000136997,gene,,~80%,true,false,surrogate,ig_enhancer_hijack,high,PMID:23673335,Burkitt lymphoma; t(8;14)(q24;q32); IGH enhancer drives MYC
+BL,MYC-IGK,IGK,,immunoglobulin_locus,Ig locus,MYC,ENSG00000136997,gene,,minority,true,true,surrogate,ig_enhancer_hijack,high,PMID:11795942,variant t(2;8); IGK light-chain enhancer drives MYC
+BL,MYC-IGL,IGL,,immunoglobulin_locus,Ig locus,MYC,ENSG00000136997,gene,,minority,true,true,surrogate,ig_enhancer_hijack,high,PMID:16888615,variant t(8;22); IGL light-chain enhancer drives MYC
+DLBC,BCL6-IGH,IGH,,immunoglobulin_locus,Ig locus,BCL6,ENSG00000113916,gene,BTB-ZF TF,subset,false,false,surrogate,ig_enhancer_hijack,medium,PMID:36575004,DLBCL; BCL6 (3q27) promiscuous rearrangements; many non-Ig partners; BCL6 overexpression
+DLBC,MYC-IGH,IGH,,immunoglobulin_locus,Ig locus,MYC,ENSG00000136997,gene,,subset,false,false,surrogate,ig_enhancer_hijack,medium,PMID:25229766,double-hit / HGBL with MYC + BCL2 (and/or BCL6) rearrangements; aggressive
+DLBC,BCL2-IGH,IGH,,immunoglobulin_locus,Ig locus,BCL2,ENSG00000171791,gene,BCL2/apoptosis,subset,false,false,surrogate,ig_enhancer_hijack,medium,PMID:20660332,double-hit partner lesion (GCB-DLBCL)
+MM,CCND1-IGH,IGH,,immunoglobulin_locus,Ig locus,CCND1,ENSG00000110092,gene,cyclin,~15-20%,true,false,surrogate,ig_enhancer_hijack,high,PMID:35982976,multiple myeloma; t(11;14); cyclin D1 overexpression; venetoclax-sensitive subset
+MM,NSD2-IGH,IGH,,immunoglobulin_locus,Ig locus,NSD2,ENSG00000109685,gene,KMT/HMTase,~15%,true,true,surrogate,ig_enhancer_hijack,high,PMID:12139740,t(4;14)(p16;q32); NSD2=WHSC1/MMSET + FGFR3 dysregulation; high-risk
+MM,FGFR3-IGH,IGH,,immunoglobulin_locus,Ig locus,FGFR3,ENSG00000068078,gene,RTK,~15%,true,true,surrogate,ig_enhancer_hijack,high,PMID:12139740,co-deregulated with NSD2 in t(4;14); FGFR3 overexpression
+MM,MAF-IGH,IGH,,immunoglobulin_locus,Ig locus,MAF,ENSG00000178573,gene,bZIP(MAF),~5%,true,true,surrogate,ig_enhancer_hijack,high,PMID:9616139,t(14;16)(q32;q23); c-MAF overexpression; high-risk
+MM,CCND3-IGH,IGH,,immunoglobulin_locus,Ig locus,CCND3,ENSG00000112576,gene,cyclin,rare,true,true,surrogate,ig_enhancer_hijack,medium,PMID:42418658,t(6;14)(p21;q32); cyclin D3 overexpression
+MM,MAFB-IGH,IGH,,immunoglobulin_locus,Ig locus,MAFB,ENSG00000204103,gene,bZIP(MAF),rare,true,true,surrogate,ig_enhancer_hijack,medium,PMID:15257707,t(14;20)(q32;q12); MAFB overexpression; high-risk
+CLL,(none),,,none,,,,none,,,false,false,no,other,high,,"CLL: del13q14, trisomy 12, del11q(ATM), del17p(TP53), IGHV mutation status; not fusion-driven"
+MDS,(none),,,none,,,,none,,,false,false,no,other,high,,"MDS: del5q/-7/del20q, SF3B1/TET2/ASXL1/TP53 mutations; not fusion-driven (rare exceptions)"
+MPN,(none),,,none,,,,none,,,false,false,no,other,high,,"MPN (PV/ET/PMF): JAK2 V617F, CALR, or MPL driver mutations; not fusion-driven"
+CTCL,(none),,,none,,,,none,,,false,false,no,other,high,,"cutaneous T-cell lymphoma (MF/Sezary): complex CNAs, no defining recurrent fusion"
+HCL,(none),,,none,,,,none,,,false,false,no,other,high,,hairy cell leukemia: BRAF V600E point mutation; not a fusion
+NUTM,BRD4-NUTM1,BRD4,ENSG00000141867,gene,BET,NUTM1,ENSG00000184507,gene,NUT,~70%,true,true,yes,fusion_transcript,high,PMID:12543779,NUT carcinoma; t(15;19); most common partner; BET-inhibitor target
+NUTM,BRD3-NUTM1,BRD3,ENSG00000169925,gene,BET,NUTM1,ENSG00000184507,gene,NUT,~15%,true,true,yes,fusion_transcript,high,PMID:34672128,second most common NUT carcinoma fusion
+NUTM,NSD3-NUTM1,NSD3,ENSG00000147548,gene,KMT/HMTase,NUTM1,ENSG00000184507,gene,NUT,~10%,true,true,yes,fusion_transcript,high,PMID:35325484,NSD3=WHSC1L1; NUT carcinoma variant
+NUTM,ZNF532-NUTM1,ZNF532,ENSG00000074657,gene,,NUTM1,ENSG00000184507,gene,NUT,rare,true,true,yes,fusion_transcript,medium,PMID:34232599,rare NUT carcinoma partner
+ADCC,MYB-NFIB,MYB,ENSG00000118513,gene,MYB,NFIB,ENSG00000147862,gene,NFI,~60%,true,true,yes,fusion_transcript,high,PMID:19841262,adenoid cystic carcinoma; t(6;9)(q22-23;p23-24)
+ADCC,MYBL1-NFIB,MYBL1,ENSG00000185697,gene,MYB,NFIB,ENSG00000147862,gene,NFI,subset,true,true,yes,fusion_transcript,high,PMID:26851182,MYBL1-NFIB alternative in MYB-negative ACC; same MYB-pathway activation
+ACINIC,HTN3-MSANTD3,HTN3,ENSG00000205649,gene,,MSANTD3,ENSG00000066697,gene,,subset,true,true,yes,fusion_transcript,medium,PMID:30520817,acinic cell carcinoma (salivary) recurrent fusion; t(4;11)
+ACINIC,(none),,,none,,,,none,,,false,false,surrogate,enhancer_hijack,medium,PMID:30664630,secretory acinic / mammary analogue overlap; many acinic cell carcinomas show NR4A3 enhancer hijack overexpression rather than a clean chimera
+THCA,CCDC6-RET,CCDC6,ENSG00000108091,gene,,RET,ENSG00000165731,gene,RTK,subset,false,false,yes,fusion_transcript,high,PMID:39212716,papillary thyroid carcinoma RET/PTC1; CCDC6=H4; RET-inhibitor target; radiation-associated
+THCA,NCOA4-RET,NCOA4,ENSG00000266412,gene,NR coactivator,RET,ENSG00000165731,gene,RTK,subset,false,false,yes,fusion_transcript,high,PMID:39212716,RET/PTC3; NCOA4=ELE1/ARA70; common in radiation-induced PTC
+THCA,PAX8-PPARG,PAX8,ENSG00000125618,gene,PAX,PPARG,ENSG00000132170,gene,nuclear receptor,subset,false,false,yes,fusion_transcript,high,PMID:25069464,follicular thyroid carcinoma (and follicular-variant PTC); t(2;3)(q13;p25)
+THCA,ETV6-NTRK3,ETV6,ENSG00000139083,gene,ETS,NTRK3,ENSG00000140538,gene,RTK,minority,false,false,yes,fusion_transcript,medium,PMID:29046324,NTRK-rearranged PTC; TRK-inhibitor target
+THCA,STRN-ALK,STRN,ENSG00000115808,gene,,ALK,ENSG00000171094,gene,RTK,rare,false,false,surrogate,fusion_transcript,medium,PMID:29046324,ALK-rearranged thyroid carcinoma subset
+THCA,(none),,,none,,,,none,,,false,false,no,other,high,,"most PTC driven by BRAF V600E point mutation, not a fusion; fusions enrich in young/radiation cases"
+LUAD,EML4-ALK,EML4,ENSG00000143924,gene,,ALK,ENSG00000171094,gene,RTK,~4-5%,false,false,yes,fusion_transcript,high,PMID:17625570,NSCLC; inv(2)(p21p23); ALK-TKI responsive; variant 1/3 common; intronic breakpoints
+LUAD,CD74-ROS1,CD74,ENSG00000019582,gene,,ROS1,ENSG00000047936,gene,RTK,~1-2%,false,false,yes,fusion_transcript,high,PMID:23877438,ROS1-rearranged NSCLC; crizotinib/entrectinib target
+LUAD,EZR-ROS1,EZR,ENSG00000092820,gene,,ROS1,ENSG00000047936,gene,RTK,minority,false,false,yes,fusion_transcript,medium,PMID:25230898,ROS1 partner in NSCLC
+LUAD,SLC34A2-ROS1,SLC34A2,ENSG00000157765,gene,SLC,ROS1,ENSG00000047936,gene,RTK,minority,false,false,yes,fusion_transcript,medium,PMID:28860822,ROS1 partner in NSCLC
+LUAD,KIF5B-RET,KIF5B,ENSG00000170759,gene,,RET,ENSG00000165731,gene,RTK,~1-2%,false,false,yes,fusion_transcript,high,PMID:22327623,RET-rearranged NSCLC; selpercatinib/pralsetinib target
+LUAD,CCDC6-RET,CCDC6,ENSG00000108091,gene,,RET,ENSG00000165731,gene,RTK,minority,false,false,yes,fusion_transcript,medium,PMID:22327623,RET partner in NSCLC
+LUAD,CD74-NRG1,CD74,ENSG00000019582,gene,,NRG1,ENSG00000157168,gene,growth factor,rare,false,false,yes,fusion_transcript,medium,PMID:24469108,NRG1-rearranged (often invasive mucinous adenocarcinoma); HER3 pathway; zenocutuzumab target
+LUAD,SLC3A2-NRG1,SLC3A2,ENSG00000168003,gene,SLC,NRG1,ENSG00000157168,gene,growth factor,rare,false,false,yes,fusion_transcript,low,PMID:34743207,NRG1 partner
+LUAD,NTRK,,,none,,NTRK1,ENSG00000198400,gene,RTK,rare,false,false,yes,fusion_transcript,medium,PMID:24162815,"NTRK1/3-rearranged NSCLC (rare); multiple 5' partners (e.g. MPRIP, TPM3, SQSTM1); TRK-inhibitor target"
+PRAD,TMPRSS2-ERG,TMPRSS2,ENSG00000184012,gene,,ERG,ENSG00000157554,gene,ETS,~50%,false,false,surrogate,promoter_swap,high,PMID:16254181,prostate cancer; androgen-driven TMPRSS2 promoter drives ERG; intrachromosomal del 21q22; ERG IHC surrogate
+PRAD,SLC45A3-ERG,SLC45A3,ENSG00000158715,gene,SLC,ERG,ENSG00000157554,gene,ETS,minority,false,false,surrogate,promoter_swap,medium,PMID:20118910,androgen-regulated SLC45A3 (prostein) promoter drives ERG
+PRAD,TMPRSS2-ETV1,TMPRSS2,ENSG00000184012,gene,,ETV1,ENSG00000006468,gene,ETS,minority,false,false,surrogate,promoter_swap,medium,PMID:16254181,ETV1 alternative ETS partner; ETV1 has additional 5' partners
+PRAD,TMPRSS2-ETV4,TMPRSS2,ENSG00000184012,gene,,ETV4,ENSG00000175832,gene,ETS,rare,false,false,surrogate,promoter_swap,medium,PMID:16585160,rarer ETS fusion
+PRAD,TMPRSS2-ETV5,TMPRSS2,ENSG00000184012,gene,,ETV5,ENSG00000244405,gene,ETS,rare,false,false,surrogate,promoter_swap,low,PMID:18172298,rarest ETS fusion
+GBM,FGFR3-TACC3,FGFR3,ENSG00000068078,gene,RTK,TACC3,ENSG00000013810,gene,TACC,~3%,false,false,yes,fusion_transcript,high,PMID:22837387,glioblastoma; tandem dup 4p16; FGFR-inhibitor target; tandem-dup can be missed by some callers
+GBM,(none),,,none,,,,none,,,false,false,no,other,high,,"most GBM driven by EGFR amp/EGFRvIII, +7/-10, CDKN2A loss, TERT promoter; not a defining fusion"
+LGG,KIAA1549-BRAF,KIAA1549,ENSG00000122778,gene,,BRAF,ENSG00000157764,gene,,~70%,true,true,yes,fusion_transcript,high,PMID:26083571,pilocytic astrocytoma; tandem dup 7q34; MAPK activation; MEK-inhibitor sensitive
+LGG,FGFR3-TACC3,FGFR3,ENSG00000068078,gene,RTK,TACC3,ENSG00000013810,gene,TACC,subset,false,false,yes,fusion_transcript,medium,PMID:28976058,subset of diffuse gliomas; FGFR target
+LGG,(none),,,none,,,,none,,,false,false,no,other,high,,diffuse adult LGG driven by IDH1/2 mutation +/- 1p19q codeletion or ATRX/TP53; not fusion-defined
+ASTB,MN1-BEND2,MN1,ENSG00000169184,gene,,BEND2,ENSG00000177324,gene,,defining,true,true,yes,fusion_transcript,high,PMID:36366964,MN1::BEND2 fusion-defined astroblastoma / high-grade neuroepithelial tumor; BEND2 expression surrogate available
+CHOL,FGFR2-BICC1,FGFR2,ENSG00000066468,gene,RTK,BICC1,ENSG00000122870,gene,,subset,false,false,yes,fusion_transcript,high,PMID:31807010,intrahepatic cholangiocarcinoma; FGFR2 fusions (~10-15% iCCA); FGFR-inhibitor (pemigatinib) target; promiscuous 3' partners
+CHOL,FGFR2-AHCYL1,FGFR2,ENSG00000066468,gene,RTK,AHCYL1,ENSG00000168710,gene,,subset,false,false,yes,fusion_transcript,medium,PMID:24122810,recurrent FGFR2 3' partner in iCCA
+MTC,(none),,,none,,,,none,,,false,false,no,other,high,,medullary thyroid carcinoma: RET germline/somatic POINT mutations (M918T etc.) or RAS; NOT a fusion
+NEC_MERKEL,(none),,,none,,,,none,,,false,false,no,other,high,,Merkel cell carcinoma: MCPyV clonal integration (virus-positive) or UV-mutation (virus-negative); not a chromosomal fusion
+SCLC,(none),,,none,,,,none,,,false,false,no,other,high,,"small cell lung cancer: near-universal TP53 + RB1 loss, MYC family amp; no recurrent fusion"
+NET_PANCREAS,(none),,,none,,,,none,,,false,false,no,other,high,,"pancreatic neuroendocrine tumor: MEN1, DAXX/ATRX, mTOR-pathway mutations; not fusion-driven"
+NET_MIDGUT,(none),,,none,,,,none,,,false,false,no,other,high,,"midgut/small-bowel NET: CDKN1B mutation, chr18 LOH; not fusion-driven"
+LIHC,DNAJB1-PRKACA,DNAJB1,ENSG00000132002,gene,,PRKACA,ENSG00000072062,gene,non-RTK kinase,~100% of FLC,true,true,yes,fusion_transcript,high,PMID:24578576,"fibrolamellar HCC subtype; ~400kb deletion chr19 fuses DNAJB1 to PRKACA; defining for FLC (young, non-cirrhotic)"
+LIHC,(none),,,none,,,,none,,,false,false,no,other,high,,"conventional HCC: TERT promoter, CTNNB1, TP53; not fusion-driven"
+BRCA,ETV6-NTRK3,ETV6,ENSG00000139083,gene,ETS,NTRK3,ENSG00000140538,gene,RTK,~100% of secretory,true,false,yes,fusion_transcript,high,PMID:12450792,secretory carcinoma of breast (MASC analogue); t(12;15); rare subtype but defining; TRK-inhibitor target
+BRCA,(none),,,none,,,,none,,,false,false,no,other,high,,common breast cancer (luminal/HER2/basal): driven by ER/HER2/CN events; no defining fusion (secretory carcinoma excepted)
+SARC_RMS_ARMS,PAX-FOXO/alt,PAX3,ENSG00000135903,gene,PAX,NCOA1,ENSG00000084676,gene,NR coactivator,rare,true,true,yes,fusion_transcript,low,PMID:19953635,PAX3 alternative 3' partner (NCOA1); fusion-positive ARMS variant
+SARC_RMS_ARMS,PAX-FOXO/alt,PAX3,ENSG00000135903,gene,PAX,NCOA2,ENSG00000140396,gene,NR coactivator,rare,true,true,yes,fusion_transcript,low,PMID:19953635,PAX3 alternative 3' partner (NCOA2)
+SARC_RMS_SSRMS,FET-TFCP2,EWSR1,ENSG00000182944,gene,FET,TFCP2,ENSG00000135457,gene,CP2 TF,subset,true,true,yes,fusion_transcript,medium,PMID:32556562,"sclerosing/spindle-cell RMS, often intraosseous; FET-TFCP2"
+SARC_RMS_SSRMS,FET-TFCP2,FUS,ENSG00000089280,gene,FET,TFCP2,ENSG00000135457,gene,CP2 TF,minority,true,true,yes,fusion_transcript,low,PMID:32556562,FUS alternative to EWSR1 in spindle/sclerosing RMS
+SARC_RMS_SSRMS,NCOA2-fusion,SRF,ENSG00000112658,gene,MADS-box TF,NCOA2,ENSG00000140396,gene,NR coactivator,rare,true,true,yes,fusion_transcript,low,PMID:23463663,infantile spindle cell RMS variant (SRF-NCOA2)
+SARC_CIC,CIC-DUX4,CIC,ENSG00000079432,gene,HMG-box (capicua),DUX4,ENSG00000260596,gene,homeobox,~95%,true,true,surrogate,fusion_transcript,medium,PMID:16717057,CIC-rearranged sarcoma; t(4;19)/t(10;19); DUX4 D4Z4 macrosatellite is hard to call by RNA-seq -> ETV4/PEA3 + WT1 overexpression surrogate
+SARC_CIC,CIC-FOXO4,CIC,ENSG00000079432,gene,HMG-box (capicua),FOXO4,ENSG00000184481,gene,FOX,minority,true,true,yes,fusion_transcript,low,PMID:25007147,t(X;19) variant
+SARC_CIC,CIC-NUTM1,CIC,ENSG00000079432,gene,HMG-box (capicua),NUTM1,ENSG00000184507,gene,NUT,rare,true,true,yes,fusion_transcript,low,PMID:38851744,rare CIC 3' partner
+SARC_BCOR,BCOR-CCNB3,BCOR,ENSG00000183337,gene,PRC2/Polycomb,CCNB3,ENSG00000147082,gene,cyclin,majority,true,true,yes,fusion_transcript,medium,PMID:22387997,"BCOR-rearranged sarcoma; Xp11 paracentric inversion (cryptic by FISH, RNA-seq detectable)"
+SARC_BCOR,ZC3H7B-BCOR,ZC3H7B,ENSG00000100403,gene,,BCOR,ENSG00000183337,gene,PRC2/Polycomb,minority,true,false,yes,fusion_transcript,low,PMID:26752546,also occurs in high-grade endometrial stromal sarcoma (not entity-specific)
+SARC_BCOR,BCOR-MAML3,BCOR,ENSG00000183337,gene,PRC2/Polycomb,MAML3,ENSG00000196782,gene,Mastermind,rare,true,true,yes,fusion_transcript,low,PMID:26752546,variant BCOR fusion
+SARC_BCOR,(none-ITD),,,none,,,,none,,subset,true,false,no,other,medium,PMID:32372022,"infantile primitive myxoid mesenchymal tumor / undifferentiated round cell: BCOR internal tandem duplication (ITD), not a fusion"
+SARC_MYOEP,EWSR1-POU5F1,EWSR1,ENSG00000182944,gene,FET,POU5F1,ENSG00000204531,gene,POU-homeobox,subset,true,true,yes,fusion_transcript,medium,PMID:20815032,soft-tissue myoepithelial carcinoma; POU5F1=OCT4 pluripotency factor
+SARC_MYOEP,FUS-POU5F1,FUS,ENSG00000089280,gene,FET,POU5F1,ENSG00000204531,gene,POU-homeobox,minority,true,true,yes,fusion_transcript,low,PMID:25066216,FET-family alternative (FUS)
+SARC_MYOEP,EWSR1-PBX1,EWSR1,ENSG00000182944,gene,FET,PBX1,ENSG00000185630,gene,homeobox(TALE),subset,true,true,yes,fusion_transcript,low,PMID:18383210,myoepithelioma EWSR1 partner
+SARC_MYOEP,EWSR1-ZNF444,EWSR1,ENSG00000182944,gene,FET,ZNF444,ENSG00000167685,gene,,rare,true,true,yes,fusion_transcript,low,PMID:19760602,rare myoepithelial partner
+SARC_SMARCA4,(none),,,none,,,,none,,,false,false,no,other,high,,"SMARCA4/BRG1 deficiency (deletion/truncating mutation), not a fusion"
+ALCL,ALK_rearrangement,NPM1,ENSG00000181163,gene,nucleophosmin,ALK,ENSG00000171094,gene,RTK,~majority of ALK+ ALCL,true,false,yes,fusion_transcript,high,PMID:8122112,ALK+ ALCL; t(2;5)(p23;q35); NPM1-ALK most common ALK partner (also TPM3/ATIC/TFG); ALK-inhibitor target. ALK- ALCL is DUSP22/TP63-rearranged.

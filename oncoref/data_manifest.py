@@ -99,11 +99,11 @@ WHEEL: dict[str, tuple[str, str]] = {
     ),
     "cancer-driver-genes": (
         "legacy-compat",
-        "frozen per-type driver-gene rows; new facts use cancer-entity-driver-spectrum",
+        "frozen Bailey Table S1 schema; rows migrated to driver-gene-evidence",
     ),
     "cancer-driver-variants": (
         "legacy-compat",
-        "frozen driver variants; new facts use cancer-entity-driver-spectrum",
+        "frozen Bailey Table S4 schema; rows migrated to driver-variant-evidence",
     ),
     "cancer-type-genes": (
         "legacy-compat",
@@ -263,6 +263,14 @@ CANCERDATA_ORIGINATED: dict[str, tuple[str, str]] = {
     "cancer-entity-driver-spectrum": (
         "genomics",
         "structured observed driver distributions for heterogeneous cancer entities",
+    ),
+    "driver-gene-evidence": (
+        "genomics",
+        "source-anchored Bailey Table S1 cancer-driver gene evidence",
+    ),
+    "driver-variant-evidence": (
+        "genomics",
+        "source-anchored Bailey Table S4 pan-cancer recurrent driver variants",
     ),
     "cancer-reference-sample-molecular-provenance": (
         "genomics",

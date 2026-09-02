@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import data_bundle, data_manifest, reference_data, source_matrices
+from .legacy import LEGACY_TYPED_ACCESSORS, legacy_dataset_dispositions
 
 _BUNDLE = "bundle"
 _HPA = "hpa"
@@ -241,15 +242,23 @@ def inventory() -> list[dict]:
     """The complete oncoref-domain data inventory — the full picture behind the
     fetchable :func:`datasets`. One row per dataset with ``name``, ``held``
     (``wheel`` / ``bundle`` / ``hpa`` / ``source`` / ``planned``), ``category``,
-    ``available`` (present locally / shipped), and ``description``. Driven by
+    ``available`` (present locally / shipped), and ``description``. Legacy rows
+    additionally expose ``current_status``, ``replacement_owner``,
+    ``replacement_surface``, ``compatibility_policy``, and ``typed_accessor``;
+    those fields are ``None`` for current datasets. Driven by
     :mod:`oncoref.data_manifest`; this is the current self-owned inventory.
     The separately versioned pirlygenes migration snapshot is historical audit
     evidence and does not expand when downstream adds a new dataset.
     """
     bundle_member = {p.removesuffix(".csv"): p for p in data_bundle.DOWNLOADABLE_PATHS}
     rows: list[dict] = []
+    legacy_rows = {
+        str(row.dataset): row._asdict()
+        for row in legacy_dataset_dispositions().itertuples(index=False)
+    }
 
     def _add(name, held, category, description, available, cohorts=None):
+        disposition = legacy_rows.get(name, {})
         rows.append(
             {
                 "name": name,
@@ -258,6 +267,11 @@ def inventory() -> list[dict]:
                 "available": available,
                 "cohorts": cohorts,
                 "description": description,
+                "current_status": disposition.get("current_status"),
+                "replacement_owner": disposition.get("replacement_owner"),
+                "replacement_surface": disposition.get("replacement_surface"),
+                "compatibility_policy": disposition.get("compatibility_policy"),
+                "typed_accessor": LEGACY_TYPED_ACCESSORS.get(name),
             }
         )
 
