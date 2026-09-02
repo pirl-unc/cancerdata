@@ -22,20 +22,104 @@ entity. This module is the read + query surface: per-type lookup, reverse lookup
 
 from __future__ import annotations
 
+from functools import lru_cache
+
+import pandas as pd
+
 from .cancer_types import cancer_type_descendants, resolve_cancer_type
-from .load_dataset import get_data
+from .gene_ids import canonical_gene_id
+from .legacy import warn_legacy_dataset_access
+from .load_dataset import _register_derived_cache, get_data
+
+FUSION_PARTNER_KINDS = frozenset({"gene", "immunoglobulin_locus", "tcr_locus", "none"})
+IMMUNOGLOBULIN_FUSION_LOCI = frozenset({"IGH", "IGK", "IGL"})
+TCR_FUSION_LOCI = frozenset({"TRA", "TRB", "TRD", "TRG"})
+
+
+def _clean(value) -> str:
+    return "" if pd.isna(value) else str(value).strip()
+
+
+def _validate_fusion_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    required = {
+        "cancer_code",
+        "fusion_family",
+        "gene_5prime",
+        "gene_5prime_ensembl_id",
+        "gene_5prime_kind",
+        "gene_3prime",
+        "gene_3prime_ensembl_id",
+        "gene_3prime_kind",
+    }
+    missing = sorted(required - set(frame.columns))
+    if missing:
+        raise ValueError(f"cancer-fusions is missing required columns: {missing}")
+
+    duplicate_key = ["cancer_code", "gene_5prime", "gene_3prime"]
+    duplicate_rows = frame.duplicated(duplicate_key, keep=False)
+    if duplicate_rows.any():
+        keys = frame.loc[duplicate_rows, duplicate_key].fillna("").to_dict("records")
+        raise ValueError(f"cancer-fusions contains duplicate logical keys: {keys}")
+
+    for index, row in frame.iterrows():
+        for side in ("5prime", "3prime"):
+            symbol = _clean(row[f"gene_{side}"]).upper()
+            ensembl_id = _clean(row[f"gene_{side}_ensembl_id"])
+            kind = _clean(row[f"gene_{side}_kind"])
+            if kind not in FUSION_PARTNER_KINDS:
+                raise ValueError(
+                    f"cancer-fusions row {index} has invalid gene_{side}_kind {kind!r}"
+                )
+            if kind == "none":
+                if symbol or ensembl_id:
+                    raise ValueError(
+                        f"cancer-fusions row {index} marks a named partner as kind='none'"
+                    )
+                continue
+            if kind == "immunoglobulin_locus":
+                if symbol not in IMMUNOGLOBULIN_FUSION_LOCI or ensembl_id:
+                    raise ValueError(
+                        f"cancer-fusions row {index} has an invalid immunoglobulin locus"
+                    )
+                continue
+            if kind == "tcr_locus":
+                if symbol not in TCR_FUSION_LOCI or ensembl_id:
+                    raise ValueError(f"cancer-fusions row {index} has an invalid TCR locus")
+                continue
+            expected = canonical_gene_id(symbol)
+            if expected is None:
+                raise ValueError(
+                    f"cancer-fusions row {index} has unresolved gene partner {symbol!r}"
+                )
+            if ensembl_id != expected or canonical_gene_id(ensembl_id) != expected:
+                raise ValueError(
+                    f"cancer-fusions row {index} has a symbol/Ensembl mismatch for "
+                    f"{symbol}: expected {expected}, observed {ensembl_id or '<missing>'}"
+                )
+    return frame
+
+
+@lru_cache(maxsize=1)
+def _cancer_fusions_frame() -> pd.DataFrame:
+    return _validate_fusion_frame(get_data("cancer-fusions", copy=False))
+
+
+_register_derived_cache(_cancer_fusions_frame.cache_clear)
 
 
 def cancer_fusions_df():
     """The full curated fusion table (defensive copy).
 
     Columns: ``cancer_code``, ``fusion_family``, ``gene_5prime``,
-    ``gene_5prime_family``, ``gene_3prime``, ``gene_3prime_family``, ``frequency``,
-    ``is_defining``, ``pathognomonic``, ``rnaseq_detectable``, ``mechanism``,
-    ``confidence``, ``pmid``, ``notes``. Fusion-negative entities carry a single
+    ``gene_5prime_ensembl_id``, ``gene_5prime_kind``, ``gene_5prime_family``,
+    ``gene_3prime``, ``gene_3prime_ensembl_id``, ``gene_3prime_kind``,
+    ``gene_3prime_family``, ``frequency``, ``is_defining``, ``pathognomonic``,
+    ``rnaseq_detectable``, ``mechanism``, ``confidence``, ``pmid``, ``notes``.
+    Partner kinds distinguish ordinary genes, immunoglobulin loci, TCR loci, and
+    absent partners. Fusion-negative entities carry a single
     ``fusion_family="(none)"`` row naming the real driver.
     """
-    return get_data("cancer-fusions").copy()
+    return _cancer_fusions_frame().copy()
 
 
 def cancer_fusion_citation_audit():
@@ -165,20 +249,35 @@ def protein_family(gene):
 
 
 def rare_cancer_fusion_rules_df():
-    """Direct fusion-detection rules for rare cancers (``rule_id``, ``cancer_code``,
-    ``gene_a``, ``gene_b``, ``matching``, ``confidence``, …). Defensive copy."""
+    """Frozen compatibility snapshot of direct rare-cancer fusion rules.
+
+    New per-sample interpretation rules belong to trufflepig. Columns include
+    ``rule_id``, ``cancer_code``, ``gene_a``, ``gene_b``, ``matching``, and
+    ``confidence``. Defensive copy.
+    """
+    warn_legacy_dataset_access("rare-cancer-fusion-rules", stacklevel=2)
     return get_data("rare-cancer-fusion-rules").copy()
 
 
 def fusion_surrogate_expression_df():
-    """Genes whose expression is a surrogate for a fusion/translocation class
-    (``fusion_class``, ``surrogate_gene``, ``surrogate_role``, ``cancer_code``, …)."""
+    """Frozen compatibility snapshot of fusion-expression surrogate rules.
+
+    New per-sample surrogate interpretation belongs to trufflepig. Columns
+    include ``fusion_class``, ``surrogate_gene``, ``surrogate_role``, and
+    ``cancer_code``.
+    """
+    warn_legacy_dataset_access("fusion-surrogate-expression", stacklevel=2)
     return get_data("fusion-surrogate-expression").copy()
 
 
 def fusion_expression_effect_rules_df():
-    """Downstream-expression rules per fusion (``gene_a``, ``gene_b``,
-    ``anchor_genes``, ``expected_up_genes``, …). Defensive copy."""
+    """Frozen compatibility snapshot of fusion-expression effect rules.
+
+    New per-sample effect interpretation belongs to trufflepig. Columns include
+    ``gene_a``, ``gene_b``, ``anchor_genes``, and ``expected_up_genes``.
+    Defensive copy.
+    """
+    warn_legacy_dataset_access("fusion-expression-effects", stacklevel=2)
     return get_data("fusion-expression-effects").copy()
 
 

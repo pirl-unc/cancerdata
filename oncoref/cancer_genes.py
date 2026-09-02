@@ -22,6 +22,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .cancer_types import resolve_cancer_type
+from .legacy import warn_legacy_dataset_access
 from .load_dataset import get_data
 
 
@@ -33,13 +34,24 @@ def _split(value, sep=";") -> list[str]:
 
 
 def cancer_driver_genes_df() -> pd.DataFrame:
-    """Curated cancer driver genes (``Symbol``, ``Cancer``, ``Function``,
-    ``Ensembl_Gene_ID``, …). Defensive copy."""
+    """Frozen driver-gene compatibility snapshot; defensive copy.
+
+    Use :func:`oncoref.drivers.driver_gene_evidence_df` for the source-anchored
+    replacement. Legacy columns include ``Symbol``, ``Cancer``, ``Function``,
+    and ``Ensembl_Gene_ID``.
+    """
+    warn_legacy_dataset_access("cancer-driver-genes", stacklevel=2)
     return get_data("cancer-driver-genes").copy()
 
 
 def cancer_driver_variants_df() -> pd.DataFrame:
-    """Curated driver variants (``Symbol``, ``Mutation``, ``Ensembl_Gene_ID``, …)."""
+    """Frozen driver-variant compatibility snapshot; defensive copy.
+
+    Use :func:`oncoref.drivers.driver_variant_evidence_df` for the
+    source-anchored replacement. Legacy columns include ``Symbol``, ``Mutation``,
+    ``Ensembl_Transcript_ID``, and ``Ensembl_Gene_ID``.
+    """
+    warn_legacy_dataset_access("cancer-driver-variants", stacklevel=2)
     return get_data("cancer-driver-variants").copy()
 
 
@@ -47,8 +59,13 @@ def cancer_driver_variants_df() -> pd.DataFrame:
 
 
 def cancer_key_genes_df() -> pd.DataFrame:
-    """Per-type key genes — ``role`` ∈ {biomarker, target} with agent/phase/
-    indication context. Defensive copy."""
+    """Frozen compatibility snapshot of per-type biomarker/target rows.
+
+    New purpose-specific panels belong to pirlygenes; source-anchored clinical
+    benefit/toxicity facts belong to oncoref's therapy-evidence API. Defensive
+    copy.
+    """
+    warn_legacy_dataset_access("cancer-key-genes", stacklevel=2)
     return get_data("cancer-key-genes").copy()
 
 
@@ -86,8 +103,13 @@ def cancer_therapy_targets(cancer_type, *, subtype=None) -> pd.DataFrame:
 
 
 def cancer_type_genes_df() -> pd.DataFrame:
-    """Role-stratified per-type genes (``Symbol``, ``Ensembl_Gene_ID``,
-    ``Cancer_Type``, ``Role``). Defensive copy."""
+    """Frozen role-stratified cancer-gene compatibility snapshot.
+
+    New purpose-specific lineage and marker panels belong to pirlygenes. Legacy
+    columns include ``Symbol``, ``Ensembl_Gene_ID``, ``Cancer_Type``, and
+    ``Role``. Defensive copy.
+    """
+    warn_legacy_dataset_access("cancer-type-genes", stacklevel=2)
     return get_data("cancer-type-genes").copy()
 
 
@@ -106,8 +128,13 @@ def cancer_type_gene_sets(cancer_type) -> dict[str, dict[str, str]]:
 
 
 def cancer_viral_antigens_df() -> pd.DataFrame:
-    """Per-oncovirus targetable antigens (``virus``, ``targetable_antigens``,
-    ``associated_cohorts``, …). Defensive copy."""
+    """Frozen per-oncovirus target-selection compatibility snapshot.
+
+    New oncovirus target-selection panels belong to pirlygenes. Legacy columns
+    include ``virus``, ``targetable_antigens``, and ``associated_cohorts``.
+    Defensive copy.
+    """
+    warn_legacy_dataset_access("cancer-viral-antigens", stacklevel=2)
     return get_data("cancer-viral-antigens").copy()
 
 
@@ -136,7 +163,12 @@ def viral_antigens_for_cancer(cancer_type) -> list[tuple[str, list[str]]]:
 
 
 def narrative_gene_sets_df() -> pd.DataFrame:
-    """Named narrative gene sets (``set_name``, ``members``, ``notes``)."""
+    """Frozen named-gene-set compatibility snapshot.
+
+    New purpose-specific named gene sets belong to pirlygenes. Legacy columns
+    include ``set_name``, ``members``, and ``notes``. Defensive copy.
+    """
+    warn_legacy_dataset_access("narrative-gene-sets", stacklevel=2)
     return get_data("narrative-gene-sets").copy()
 
 
@@ -148,8 +180,13 @@ def narrative_gene_set(set_name: str) -> list[str]:
 
 
 def disease_state_rules_df() -> pd.DataFrame:
-    """Declarative disease-state rules (``rule_id``, ``cancer_code``, ``claims``,
-    ``conditions``, ``narrative``). Defensive copy."""
+    """Frozen declarative disease-state rule compatibility snapshot.
+
+    New per-sample disease-state interpretation belongs to trufflepig. Legacy
+    columns include ``rule_id``, ``cancer_code``, ``claims``, ``conditions``, and
+    ``narrative``. Defensive copy.
+    """
+    warn_legacy_dataset_access("disease-state-rules", stacklevel=2)
     return get_data("disease-state-rules").copy()
 
 

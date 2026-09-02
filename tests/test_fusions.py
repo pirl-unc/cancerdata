@@ -6,6 +6,10 @@
 
 """Driver fusions per cancer type + reverse lookups (#27, O4)."""
 
+import subprocess
+import sys
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -16,11 +20,82 @@ from oncoref import (
     cancer_fusions_df,
     cancer_type_registry,
     cancer_types_with_fusion,
+    canonical_gene_id,
     fusion_partners,
     fusion_status,
     fusions,
     protein_family,
 )
+
+_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_fusion_partner_identity_columns_are_complete_and_lossless():
+    frame = cancer_fusions_df()
+    for side in ("5prime", "3prime"):
+        symbol = frame[f"gene_{side}"]
+        ensembl_id = frame[f"gene_{side}_ensembl_id"]
+        kind = frame[f"gene_{side}_kind"]
+
+        genes = frame[kind == "gene"]
+        assert genes[f"gene_{side}"].notna().all()
+        assert genes[f"gene_{side}_ensembl_id"].notna().all()
+        for row in genes.itertuples(index=False):
+            assert canonical_gene_id(getattr(row, f"gene_{side}")) == getattr(
+                row, f"gene_{side}_ensembl_id"
+            )
+
+        absent = kind == "none"
+        assert symbol[absent].isna().all()
+        assert ensembl_id[absent].isna().all()
+
+    immunoglobulin = frame[frame["gene_5prime_kind"] == "immunoglobulin_locus"]
+    assert set(immunoglobulin["gene_5prime"]) == {"IGH", "IGK", "IGL"}
+    assert immunoglobulin["gene_5prime_ensembl_id"].isna().all()
+    tcr = frame[frame["gene_5prime_kind"] == "tcr_locus"]
+    assert set(tcr["gene_5prime"]) == {"TRD"}
+    assert tcr["gene_5prime_ensembl_id"].isna().all()
+
+
+def test_fusion_filters_and_reverse_rows_preserve_partner_identity_columns():
+    expected = {
+        "gene_5prime_ensembl_id",
+        "gene_5prime_kind",
+        "gene_3prime_ensembl_id",
+        "gene_3prime_kind",
+    }
+    assert expected <= set(cancer_fusions("SARC_EWS").columns)
+    assert expected <= set(cancer_types_with_fusion("EWSR1-FLI1", as_rows=True).columns)
+
+
+def test_fusion_validation_rejects_identity_mismatch_unresolved_and_duplicates():
+    base = cancer_fusions_df()
+
+    mismatch = base.copy()
+    mismatch.loc[0, "gene_5prime_ensembl_id"] = "ENSG00000133703"
+    with pytest.raises(ValueError, match="symbol/Ensembl mismatch"):
+        fusions._validate_fusion_frame(mismatch)
+
+    unresolved = base.copy()
+    unresolved.loc[0, "gene_5prime"] = "NOT_A_REAL_GENE"
+    unresolved.loc[0, "gene_5prime_ensembl_id"] = ""
+    with pytest.raises(ValueError, match="unresolved gene partner"):
+        fusions._validate_fusion_frame(unresolved)
+
+    duplicate = pd.concat([base, base.iloc[[0]]], ignore_index=True)
+    with pytest.raises(ValueError, match="duplicate logical keys"):
+        fusions._validate_fusion_frame(duplicate)
+
+
+def test_fusion_partner_identity_annotations_are_reproducible():
+    result = subprocess.run(
+        [sys.executable, "scripts/annotate_fusion_partner_ids.py", "--check"],
+        cwd=_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_ifs_driver_model_is_heterogeneous_and_diagnosis_independent():

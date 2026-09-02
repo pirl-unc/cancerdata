@@ -168,8 +168,16 @@ from .cta import (
     cta_unfiltered_gene_names,
 )
 from .drivers import (
+    DRIVER_EVIDENCE_SCOPE_KINDS,
+    DRIVER_MIGRATION_STATUSES,
     cancer_driver_spectrum,
     cancer_driver_spectrum_df,
+    driver_gene_evidence,
+    driver_gene_evidence_df,
+    driver_legacy_migration_audit_df,
+    driver_legacy_migration_summary,
+    driver_variant_evidence,
+    driver_variant_evidence_df,
     observed_driver_events,
 )
 from .expression import (
@@ -233,6 +241,7 @@ from .expression_registry import (
     sources_for_cancer_code,
 )
 from .fusions import (
+    FUSION_PARTNER_KINDS,
     cancer_fusion_citation_audit,
     cancer_fusions,
     cancer_fusions_df,
@@ -443,7 +452,10 @@ __all__ = [
     "CPTAC_CALIBRATION_COLUMNS",
     "CPTAC_CALIBRATION_SAMPLE_COLUMNS",
     "CPTAC_CALIBRATION_VERSION",
+    "DRIVER_EVIDENCE_SCOPE_KINDS",
+    "DRIVER_MIGRATION_STATUSES",
     "EXPRESSION_ARTIFACT_BUILD_METADATA_SCHEMA_VERSION",
+    "FUSION_PARTNER_KINDS",
     "HOUSEKEEPING_NORMALIZATION_METHOD",
     "HOUSEKEEPING_REFERENCE_PROFILE_SOURCE",
     "HOUSEKEEPING_REFERENCE_PROFILE_VERSION",
@@ -646,6 +658,12 @@ __all__ = [
     "cta_unfiltered_gene_ids",
     "cta_unfiltered_gene_names",
     "display_gene_name",
+    "driver_gene_evidence",
+    "driver_gene_evidence_df",
+    "driver_legacy_migration_audit_df",
+    "driver_legacy_migration_summary",
+    "driver_variant_evidence",
+    "driver_variant_evidence_df",
     "drop_technical_rna",
     "ensembl_id_aliases",
     "entrez_gene_mappings",

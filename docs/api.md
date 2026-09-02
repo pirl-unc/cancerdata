@@ -692,6 +692,16 @@ diagnosis-only Treehouse sample.
 
 - `oncoref.drivers.cancer_driver_spectrum(code)` returns the structured observed
   fusion, intragenic-rearrangement, and unresolved states for an entity.
+- `oncoref.drivers.driver_gene_evidence_df()` returns all 739 Bailey et al.
+  Table S1 gene/scope rows with source-native scope, canonical Ensembl gene ID,
+  publication locator, immutable upstream ref, and source-file checksum.
+- `oncoref.drivers.driver_variant_evidence_df()` returns all 579 Bailey et al.
+  Table S4 pan-cancer recurrent variants with canonical Ensembl gene/transcript
+  IDs and normalized HGVS protein notation. These rows are explicitly
+  pan-cancer and are not assigned to an invented cancer entity.
+- `oncoref.drivers.driver_legacy_migration_audit_df()` gives one
+  `migrated` / `rejected` / `awaiting_source` disposition per frozen driver row;
+  `driver_legacy_migration_summary()` exposes the counts per legacy table.
 - `oncoref.samples.molecular_provenance_for_cancer_code(code)` returns public
   sample/library evidence with donor identity, diagnosis, driver event, assay,
   confirmation status, expression availability, and access level.
@@ -699,10 +709,34 @@ diagnosis-only Treehouse sample.
   donors separately for each physical source cohort.
 
 The eleven historical `legacy-compat` tables remain importable but frozen.
-`oncoref.legacy_dataset_dispositions()` gives every table's reviewed owner,
-replacement surface, and compatibility policy. In particular, new driver facts
-belong in the source-anchored `cancer-entity-driver-spectrum`; the legacy
-driver-gene and driver-variant tables receive no new unsourced rows.
+Typed accessors emit one `DeprecationWarning` per dataset per process and name
+the reviewed owner/replacement. `oncoref.legacy_dataset_dispositions()` gives
+the same policy as data. `catalog.inventory()` includes `current_status`,
+`replacement_owner`, `replacement_surface`, `compatibility_policy`, and
+`typed_accessor` for every legacy row. Generic `get_data()` remains a
+warning-free low-level compatibility escape hatch.
+
+The old driver schemas now have complete replacements rather than pointing at
+the much smaller entity spectrum: `driver-gene-evidence` is the source-anchored
+replacement for `cancer-driver-genes`, and `driver-variant-evidence` replaces
+`cancer-driver-variants`. The frozen files are byte-identical to the immutable
+OpenVax export documented as Bailey et al. Tables S1/S4, so every one of their
+1,318 rows has a canonical destination. The entity spectrum remains a separate
+model for entity-level study distributions.
+
+| Frozen typed accessor | New owner / surface |
+|---|---|
+| `cancer_driver_genes_df` | oncoref `driver-gene-evidence` |
+| `cancer_driver_variants_df` | oncoref `driver-variant-evidence` |
+| `cancer_key_genes_df` | split: pirlygenes panels / oncoref therapy evidence |
+| `cancer_type_genes_df` | pirlygenes purpose-specific lineage/marker panels |
+| `cancer_viral_antigens_df` | pirlygenes oncovirus target-selection panels |
+| `narrative_gene_sets_df` | pirlygenes purpose-specific named gene sets |
+| `response_signatures_df` | pirlygenes therapy-response signatures |
+| `disease_state_rules_df` | trufflepig per-sample disease-state rules |
+| `rare_cancer_fusion_rules_df` | trufflepig per-sample rare-fusion rules |
+| `fusion_surrogate_expression_df` | trufflepig per-sample fusion-surrogate rules |
+| `fusion_expression_effect_rules_df` | trufflepig per-sample fusion-effect rules |
 
 For VSCC, the molecular-provenance table preserves the study's complete
 13-tumor HPV audit: three PCR-confirmed HPV16 integrations, two directly detected
@@ -1325,7 +1359,12 @@ order.
   composition or residual formula and one or more resolvable PMID/DOI anchors.
   Locator status values such as `not_extracted` remain explicit until exact
   per-region table/export locators and raw counts are filled in.
-- `oncoref.fusions` — defining fusions and partner-family lookups.
+- `oncoref.fusions` — defining fusions and partner-family lookups. Every ordinary
+  named partner carries a canonical `gene_*_ensembl_id`; `gene_*_kind`
+  distinguishes `gene`, `immunoglobulin_locus`, `tcr_locus`, and `none` so IG/TCR
+  rearrangement loci remain lossless without fake gene identities. The same
+  identity columns survive per-cancer filters and reverse lookups with
+  `as_rows=True`.
 - `oncoref.response_signatures` — legacy/compatibility response-signature
   surface used by oncoref plots. Treat it as transitional: new or extended
   therapy-response signature panels belong in pirlygenes unless they are recast
@@ -1337,7 +1376,9 @@ order.
 
 - `oncoref.catalog` — unified dataset inventory and fetch/status/path operations.
 
-`catalog.inventory()` describes the current oncoref-owned inventory.
+`catalog.inventory()` describes the current oncoref-owned inventory. Its legacy
+rows disclose frozen status, replacement owner/surface, compatibility policy,
+and typed accessor alongside the usual holding/category metadata.
 `PIRLYGENES_MIGRATION_SNAPSHOT` is separate historical evidence pinned to the
 exact pirlygenes tag and commit recorded in
 `PIRLYGENES_MIGRATION_SNAPSHOT_METADATA`; it is not a live downstream
