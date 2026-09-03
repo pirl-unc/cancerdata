@@ -163,6 +163,14 @@ _ICI_EVIDENCE_OVERRIDES = {
         "source_scope": "subtype_sources_not_aggregated",
         "missing_reason": "response_is_histology_stratified",
     },
+    # The STAD anchor is an all-comer gastric ORR, and MSI-H/dMMR gastric disease
+    # responds substantially better, so inheriting it understates the subtype. Curated
+    # alongside the STAD_MSI TMB gap so the code is not half-audited: unknown TMB but
+    # a confidently inherited all-comer ORR.
+    "STAD_MSI": {
+        "source_scope": "source_rejected_for_subtype_value",
+        "missing_reason": "no_supported_subtype_orr",
+    },
 }
 
 
@@ -191,6 +199,7 @@ def response_anchor_evidence_df(
     *,
     value_col: str,
     regimen_col: str = "regimen",
+    gap_codes=frozenset(),
 ):
     """Append evidence/provenance fields to compact representative ICI anchors.
 
@@ -261,14 +270,36 @@ def response_anchor_evidence_df(
     )
     if regimen_col != "regimen":
         merged = merged.drop(columns=["regimen"])
-    # Curated gap rows deliberately carry no anchor value, so they have no primary ORR
-    # estimate to join. Every row that *does* claim a value must still resolve to an
-    # audited estimate, so the integrity check applies to valued rows only.
-    is_gap = merged[value_col].isna()
+    # A curated gap row deliberately carries no anchor value, so it has no primary ORR
+    # estimate to join. Being blank is *not* enough to earn that exemption: the code
+    # must also be declared in the caller's reviewed gap set, so an accidentally blank
+    # value still raises instead of being silently promoted to an "audited" gap.
+    is_gap = merged[value_col].isna() & merged["cancer_code"].astype(str).isin(gap_codes)
     missing = merged["response_metric"].isna() & ~is_gap
     if missing.any():
-        cells = merged.loc[missing, ["cancer_code", regimen_col]].astype(str).agg("/".join, axis=1)
+        # fillna before astype: a blank regimen is a float NaN under the string dtype
+        # and astype(str) leaves it as one, which would break the join below.
+        cells = (
+            merged.loc[missing, ["cancer_code", regimen_col]]
+            .fillna("")
+            .astype(str)
+            .agg("/".join, axis=1)
+        )
         raise ValueError(f"missing primary ORR evidence rows for: {', '.join(cells)}")
+    # A gap is a statement about the cancer code, not about one regimen, so a gap row
+    # must not name a regimen — that keeps the code-keyed gap lookup unambiguous and
+    # stops a per-regimen blank from silently suppressing the code's other regimens.
+    named_regimen = is_gap & merged[regimen_col].notna()
+    if named_regimen.any():
+        codes = sorted(set(merged.loc[named_regimen, "cancer_code"].astype(str)))
+        raise ValueError(f"curated gap rows must leave regimen blank: {', '.join(codes)}")
+    valued_gap_codes = set(merged.loc[merged[value_col].notna(), "cancer_code"].astype(str)) & set(
+        merged.loc[is_gap, "cancer_code"].astype(str)
+    )
+    if valued_gap_codes:
+        raise ValueError(
+            f"codes cannot be both valued and an audited gap: {', '.join(sorted(valued_gap_codes))}"
+        )
 
     mixture_codes = _mixture_cohort_code_set()
     merged["source_anchor"] = merged["source_anchor"].where(merged["source_anchor"].notna(), None)
@@ -316,14 +347,15 @@ def _apply_gap_evidence(merged, is_gap) -> None:
     merged.loc[is_gap, "histology_match"] = None
     merged.loc[is_gap, "is_direct_cancer_code_evidence"] = False
     merged.loc[is_gap, "response_value_matches_anchor"] = False
+    # A gap row names no regimen and cites no evidence, so it must not keep the
+    # regimen class the fillna default assigned it, nor claim itself as its own
+    # evidence source.
+    merged.loc[is_gap, "therapy_regimen_class"] = None
+    merged.loc[is_gap, "evidence_source_code"] = None
     for position, code in merged.loc[is_gap, "cancer_code"].items():
-        override = _ICI_EVIDENCE_OVERRIDES.get(str(code), {})
-        merged.at[position, "source_scope"] = override.get(
-            "source_scope", "no_supported_representative_value"
-        )
-        merged.at[position, "missing_reason"] = override.get(
-            "missing_reason", "no_curated_representative_orr"
-        )
+        override = _ICI_EVIDENCE_OVERRIDES[str(code)]
+        merged.at[position, "source_scope"] = override["source_scope"]
+        merged.at[position, "missing_reason"] = override["missing_reason"]
 
 
 def cancer_ici_response_df():
@@ -336,7 +368,11 @@ def cancer_ici_response_df():
     exact primary ORR row in ``cancer_ici_response_estimates_df``), source-locator
     extraction status, and structured CI/value status. A cancer type may appear under
     several regimens."""
-    return response_anchor_evidence_df(get_data("cancer-ici-response"), value_col="orr_pct")
+    return response_anchor_evidence_df(
+        get_data("cancer-ici-response"),
+        value_col="orr_pct",
+        gap_codes=frozenset(_ICI_EVIDENCE_OVERRIDES),
+    )
 
 
 def ici_regimens() -> tuple[str, ...]:
@@ -371,6 +407,24 @@ def _gap_rows() -> dict[str, object]:
 
 
 _register_derived_cache(_gap_rows.cache_clear)
+
+
+def _gap_record(requested_code: str) -> dict:
+    """The public record for an audited gap: the curated row plus lookup metadata."""
+    record = _record_from_row(
+        _gap_rows()[requested_code],
+        requested_code=requested_code,
+        resolved_code=requested_code,
+        inheritance_kind="direct_missing",
+    )
+    record.update(
+        {
+            "selected_regimen": None,
+            "available_regimens": (),
+            "has_ici_response_source": True,
+        }
+    )
+    return record
 
 
 def _resolve_with_fallback(code: str, maps: dict[str, dict[str, float]], order):
@@ -433,13 +487,17 @@ def _record_from_row(row, *, requested_code: str, resolved_code: str, inheritanc
 def _resolve_ici_response_source(requested_code: str, order, *, inherit: bool):
     df = cancer_ici_response_df().dropna(subset=["orr_pct"])
     direct = _matching_rows(df, requested_code, order)
-    if direct or not inherit:
+    if direct:
         return requested_code, "direct", direct
 
     # A curated gap row is a reviewed decision about *this* code, so it outranks any
     # inherited evidence — exactly as a blank-value TMB row stops the ancestor walk.
+    # It is reported whether or not inheritance is enabled, because the review applies
+    # to the requested code itself; ``tmb._resolve_tmb_row`` makes the same ordering.
     if requested_code in _gap_rows():
         return requested_code, "direct_missing", {}
+    if not inherit:
+        return requested_code, "direct", direct
 
     source_code = cancer_evidence_source_code(requested_code)
     if source_code != requested_code:
@@ -490,6 +548,8 @@ def resolve_ici_response_source(cancer_type, *, regimen=None, fallback=True, inh
     resolved_code, inheritance_kind, rows = _resolve_ici_response_source(
         requested_code, order, inherit=inherit
     )
+    if inheritance_kind == "direct_missing":
+        return _gap_record(requested_code)
     selected_regimen = None
     selected_row = None
     if fallback or regimen is not None:
@@ -509,21 +569,6 @@ def resolve_ici_response_source(cancer_type, *, regimen=None, fallback=True, inh
         if selected_row is not None
         else {}
     )
-    if inheritance_kind == "direct_missing":
-        gap = _gap_rows()[requested_code]
-        record = {key: _public_value(gap[key]) for key in gap.index}
-        record.update(
-            {
-                "requested_cancer_code": requested_code,
-                "resolved_cancer_code": requested_code,
-                "inheritance_kind": "direct_missing",
-                "is_inherited_evidence": False,
-                "selected_regimen": None,
-                "available_regimens": (),
-                "has_ici_response_source": True,
-            }
-        )
-        return record
     record.update(
         {
             "requested_cancer_code": requested_code,
@@ -615,6 +660,11 @@ def cancer_ici_response(
         per = {r: maps[r][code] for r in REGIMEN_FALLBACK if code in maps.get(r, {})}
         if per or not inherit:
             return per
+        # Same audited-gap guard as the scalar path below: a reviewed gap must not
+        # inherit an ancestor's per-regimen map either, or the two lookup paths would
+        # disagree about whether the code has a value.
+        if code in _gap_rows():
+            return {}
         source_code = cancer_evidence_source_code(code)
         if source_code != code:
             hit = {
@@ -721,6 +771,7 @@ def cancer_ici_response_record(
     )
 
     if not fallback and regimen is None:
+        # A gap names no regimen, so the per-regimen view is legitimately empty.
         return {
             key: _record_from_row(
                 row,
@@ -730,6 +781,12 @@ def cancer_ici_response_record(
             )
             for key, row in rows.items()
         }
+
+    # Mirror tmb.cancer_tmb_record: an audited gap returns its curated record so the
+    # record surface can distinguish a reviewed gap from an uncurated code. Only a
+    # genuinely unresolved lookup returns None.
+    if inheritance_kind == "direct_missing":
+        return _gap_record(requested_code)
 
     for key in order:
         row = rows.get(str(key))
