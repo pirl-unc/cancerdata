@@ -380,11 +380,10 @@ curated row with a blank `orr_pct` and blank `regimen`, and resolve with
 `inheritance_kind="direct_missing"` and `has_ici_response_source=True` — the same
 audited-gap contract `oncoref.tmb` uses. `source_scope` and `missing_reason` record
 why no value exists, and the gap stops the resolver's parent walk, so a code with a
-reviewed gap never inherits an ancestor's ORR instead (`STAD_MSI` does not fall back
-to the all-comer `STAD` anchor). The gap is reported whether or not `inherit` is set,
-and `cancer_ici_response_record(...)` returns the gap record rather than `None`. The
-per-regimen views (`fallback=False`) return an empty mapping, since a gap names no
-regimen.
+reviewed gap never inherits an ancestor's ORR instead. The gap is reported whether or
+not `inherit` is set, and `cancer_ici_response_record(...)` returns the gap record
+rather than `None`. The per-regimen views (`fallback=False`) return an empty mapping,
+since a gap names no regimen.
 
 Only codes declared in the module's reviewed gap set may carry a blank `orr_pct`; an
 undeclared blank still raises, so a data-entry slip cannot be promoted to an
@@ -405,17 +404,21 @@ Current gaps, with the reason recorded on each row:
 | `RCC` | member histologies anchored on separate trials spanning 9.5% to 42% | `KIRC`, `KIRP`, `KICH`, `RCC_NCC` |
 | `BRCA` | curated anchors are receptor-subtype (TNBC) anchors only | `BRCA_Basal` |
 | `SARC` | histology-determined, from 0% (LMS, EWS, GIST) to 62% (KS) across curated histologies | per-histology `SARC_*` |
-| `STAD_MSI` | the `STAD` anchor is an all-comer gastric ORR that did not select on MMR status | *(none curated)* |
 
-`STAD_MSI` is the one gap with no stratified replacement: it previously inherited
-`STAD`'s all-comer anchor and now returns nothing until an MSI-stratified gastric ORR
-is curated. Note also that `COAD` and `READ` are prevalence-weighted `derived_blend`
-values over the MSI-H and MSS populations, not measured all-comer ORRs. A code with no
-curated row at all still reports `inheritance_kind="missing"` with
+`STAD_MSI` is not an ICI gap: KEYNOTE-059 reports a 57.1% ORR (4/7; 95% CI
+18.4–90.1) for its MSI-high gastric/GEJ subgroup, so the subtype has its own
+low-confidence anchor instead of inheriting `STAD`'s 12% all-comer ORR. Its TMB remains
+an audited gap because the curated genomic sources do not report an MSI-stratified
+gastric median.
+
+Note also that `COAD` and `READ` are prevalence-weighted `derived_blend` values over
+the MSI-H and MSS populations, not measured all-comer ORRs. A code with no curated row
+at all still reports `inheritance_kind="missing"` with
 `has_ici_response_source=False`, so a reviewed gap stays distinguishable from an
-uncurated one on the scalar and record surfaces. The per-regimen views
-(`fallback=False`) return `{}` for both, since neither has a row for any regimen —
-use `ici_response_source(...)` when that distinction matters.
+uncurated one on the resolver, record, and CLI surfaces. The scalar value accessor
+returns `None` for both. The per-regimen views (`fallback=False`) return `{}` for both,
+since neither has a row for any regimen — use `ici_response_source(...)` when that
+distinction matters.
 
 ## Therapy Benefit and Toxicity
 

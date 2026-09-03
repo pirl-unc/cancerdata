@@ -166,14 +166,6 @@ _ICI_EVIDENCE_OVERRIDES = {
         "source_scope": "subtype_sources_not_aggregated",
         "missing_reason": "response_is_histology_stratified",
     },
-    # The STAD anchor is KEYNOTE-059 third-line all-comers, which did not select on
-    # mismatch-repair status, so it does not describe dMMR/MSI-H gastric disease.
-    # Curated alongside the STAD_MSI TMB gap: before both existed the code silently
-    # inherited STAD's pooled TMB median and its all-comer ORR alike.
-    "STAD_MSI": {
-        "source_scope": "source_rejected_for_subtype_value",
-        "missing_reason": "no_supported_subtype_orr",
-    },
 }
 
 
@@ -357,10 +349,26 @@ def _validate_gap_rows(
         )
     # Fail on an incomplete override here rather than with a bare KeyError from inside
     # the frame builder when the fields are read.
+    required_override_fields = ("source_scope", "missing_reason")
+
+    def _missing_override_value(value) -> bool:
+        if value is None:
+            return True
+        try:
+            if pd.isna(value):
+                return True
+        except (TypeError, ValueError):
+            pass
+        return not str(value).strip()
+
     incomplete = sorted(
         code
         for code in set(merged.loc[is_gap, "cancer_code"].astype(str))
-        if not {"source_scope", "missing_reason"} <= set(gap_overrides[code])
+        if not isinstance(gap_overrides.get(code), dict)
+        or any(
+            field not in gap_overrides[code] or _missing_override_value(gap_overrides[code][field])
+            for field in required_override_fields
+        )
     )
     if incomplete:
         raise ValueError(

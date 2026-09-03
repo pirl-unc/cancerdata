@@ -90,6 +90,29 @@ def test_ici_anchor_table_exposes_evidence_schema():
     assert pd.isna(coad["source_anchor"])
 
 
+def test_anchor_match_flag_has_one_nullable_schema_and_preserves_not_applicable():
+    ici_df = ici.cancer_ici_response_df()
+    apd1_df = apd1.cancer_apd1_response_df()
+
+    for frame in (ici_df, apd1_df):
+        assert str(frame["response_value_matches_anchor"].dtype) == "boolean"
+
+    valued = ici_df["orr_pct"].notna()
+    assert ici_df.loc[valued, "response_value_matches_anchor"].all()
+    assert ici_df.loc[~valued, "response_value_matches_anchor"].isna().all()
+    assert apd1_df["response_value_matches_anchor"].all()
+
+
+def test_cached_anchor_frames_are_defensive_copies():
+    ici_df = ici.cancer_ici_response_df()
+    apd1_df = apd1.cancer_apd1_response_df()
+    ici_df.loc[0, "cancer_code"] = "MUTATED"
+    apd1_df.loc[0, "cancer_code"] = "MUTATED"
+
+    assert ici.cancer_ici_response_df().loc[0, "cancer_code"] != "MUTATED"
+    assert apd1.cancer_apd1_response_df().loc[0, "cancer_code"] != "MUTATED"
+
+
 def test_ici_estimates_expose_structured_source_and_ci_provenance():
     df = ici.cancer_ici_response_estimates_df()
     expected = {
@@ -793,31 +816,46 @@ def test_subtype_stratified_aggregates_do_not_report_a_pooled_orr():
     assert not ({"CRC", "RCC", "BRCA", "SARC"} & set(bulk))
 
 
-def test_ici_gap_row_blocks_inheritance_instead_of_borrowing_an_ancestor():
-    """A reviewed gap outranks ancestor evidence, mirroring blank-value TMB rows.
-
-    STAD_MSI is the case that actually exercises this: its parent STAD carries an
-    all-comer gastric anchor, so without the guard the resolver would hand MSI-H
-    disease the all-comer ORR.
-    """
+def test_stad_msi_uses_reported_subgroup_orr_while_tmb_stays_an_audited_gap():
     registry = ici.cancer_type_registry().set_index("code")
     assert registry.loc["STAD_MSI", "parent_code"] == "STAD"
     assert ici.cancer_ici_response("STAD") == 12.0
 
-    # Every lookup path refuses to inherit through the gap.
-    assert ici.cancer_ici_response("STAD_MSI") is None
-    assert ici.cancer_ici_response("STAD_MSI", fallback=False) == {}
+    # KEYNOTE-059 reported this subgroup directly, so neither public anti-PD-1
+    # surface may inherit the all-comer STAD value.
+    assert ici.cancer_ici_response("STAD_MSI") == 57.1
+    assert ici.cancer_ici_response("STAD_MSI", fallback=False) == {"PD-1": 57.1}
+    assert apd1.cancer_apd1_response("STAD_MSI") == 57.1
     resolved = ici.resolve_ici_response_source("STAD_MSI")
-    assert resolved["inheritance_kind"] == "direct_missing"
+    assert resolved["inheritance_kind"] == "direct"
     assert resolved["resolved_cancer_code"] == "STAD_MSI"
-    assert resolved["missing_reason"] == "no_supported_subtype_orr"
+    assert resolved["response_numerator"] == 4
+    assert resolved["response_denominator"] == 7
+    assert resolved["response_ci_low"] == 18.4
+    assert resolved["response_ci_high"] == 90.1
 
-    # TMB and ICI now agree that STAD_MSI is audited-unknown rather than half-audited.
+    # The ICI subgroup result does not supply a TMB median; that remains audited-unknown.
     assert tmb.cancer_tmb("STAD_MSI") is None
     assert tmb.resolve_tmb_source("STAD_MSI")["inheritance_kind"] == "direct_missing"
 
-    # A sibling without a gap row still inherits normally.
+    # A sibling without a direct subtype anchor still inherits normally.
     assert ici.cancer_ici_response("STAD_CIN") == 12.0
+
+
+def test_ici_gap_row_blocks_inheritance_instead_of_borrowing_an_ancestor(monkeypatch):
+    """A reviewed gap outranks ancestor evidence on every lookup path."""
+    synthetic_code = "STAD_CIN"
+    gap = ici._gap_rows()["CRC"].copy()
+    gap["cancer_code"] = synthetic_code
+    gaps = {**ici._gap_rows(), synthetic_code: gap}
+    monkeypatch.setattr(ici, "_gap_rows", lambda: gaps)
+
+    assert ici.cancer_ici_response(synthetic_code) is None
+    assert ici.cancer_ici_response(synthetic_code, fallback=False) == {}
+    resolved = ici.resolve_ici_response_source(synthetic_code)
+    assert resolved["inheritance_kind"] == "direct_missing"
+    assert resolved["resolved_cancer_code"] == synthetic_code
+    assert ici.cancer_ici_response_record(synthetic_code)["inheritance_kind"] == "direct_missing"
 
 
 def test_only_declared_codes_may_carry_a_blank_orr():
@@ -854,6 +892,18 @@ def test_only_declared_codes_may_carry_a_blank_orr():
             perturbed,
             value_col="orr_pct",
             gap_overrides={**declared, "HCL": {"source_scope": "s", "missing_reason": "r"}},
+        )
+
+    # Merely spelling both keys is not enough; empty provenance is still incomplete.
+    empty_reason = {
+        **declared,
+        "CRC": {"source_scope": "subtype_sources_not_aggregated", "missing_reason": " "},
+    }
+    with pytest.raises(ValueError, match="need both source_scope and missing_reason"):
+        ici.response_anchor_evidence_df(
+            anchors,
+            value_col="orr_pct",
+            gap_overrides=empty_reason,
         )
 
     # A code cannot be both valued and an audited gap. COAD keeps its valued anchor
@@ -906,7 +956,7 @@ def test_gap_rows_do_not_publish_fabricated_evidence_fields():
     """A gap row names no regimen and cites no evidence, so derived fields stay empty."""
     df = ici.cancer_ici_response_df()
     gaps = df[df["orr_pct"].isna()]
-    assert set(gaps["cancer_code"]) == {"CRC", "RCC", "BRCA", "SARC", "STAD_MSI"}
+    assert set(gaps["cancer_code"]) == {"CRC", "RCC", "BRCA", "SARC"}
     assert gaps["regimen"].isna().all()
     assert gaps["therapy_regimen_class"].isna().all()
     assert gaps["evidence_source_code"].isna().all()
@@ -980,5 +1030,3 @@ def test_gap_note_quoted_values_match_the_curated_anchors():
     assert orr("SARC_UPS") == 23.0
     assert orr("SARC_SMARCA4") == 25.0
     assert orr("SARC_GIST") == 0.0
-    # STAD_MSI note: "KEYNOTE-059 third-line all-comers (12.0%)"
-    assert orr("STAD") == 12.0

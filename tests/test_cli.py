@@ -76,6 +76,14 @@ def test_ici_pinned_regimen_absent_returns_1(capsys):
     assert "No ICI ORR" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("extra", [[], ["--all-regimens"]])
+def test_ici_audited_gap_explains_the_missing_value(capsys, extra):
+    assert cli.main(["ici", "CRC", *extra]) == 1
+    err = capsys.readouterr().err
+    assert "response_is_mmr_stratified_not_aggregate" in err
+    assert "Colorectal aggregate intentionally blank" in err
+
+
 def test_ici_unknown_code_errors(capsys):
     assert cli.main(["ici", "not_a_real_cancer"]) == 1
     assert "Error" in capsys.readouterr().err

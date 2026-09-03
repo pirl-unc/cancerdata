@@ -231,6 +231,7 @@ def test_stad_msi_is_an_audited_gap_not_the_pooled_stomach_median():
     assert record["estimate_type"] == "unknown"
     assert record["source_scope"] == "source_rejected_for_subtype_value"
     assert record["missing_reason"] == "no_supported_subtype_median"
+    assert record["pmid_doi"] == "PMID:28420421;PMID:25079317"
 
     # The remaining TCGA gastric subtypes still inherit deliberately: the pooled
     # median is dominated by CIN and no subtype-specific medians are curated.
