@@ -36,11 +36,12 @@ _TMB_EVIDENCE_OVERRIDES = {
         "source_scope": "source_rejected_for_site_specific_value",
         "missing_reason": "no_supported_site_specific_median",
     },
-    # The curated stomach median is the pooled intestinal-type panel value. MSI-H
-    # gastric tumours are hypermutated, so inheriting that pooled median from STAD
-    # would report a confidently wrong value for the one gastric subtype whose TMB
-    # drives checkpoint-inhibitor reasoning. Kept as an explicit audited gap until an
-    # MSI-stratified gastric median is curated (compare CRC_MSI / UCEC_MSI, which have
+    # The curated stomach median is the pooled intestinal-type panel value (5.0 mut/Mb,
+    # Chalmers 2017 Table 1). TCGA-STAD analysed its 215 tumours below 11.4 mut/Mb,
+    # "none of which were MSI-positive", separately from 74 hypermutated tumours, so
+    # that pooled median demonstrably does not cover MSI-H disease. Neither source
+    # publishes an MSI-stratified gastric median, so this stays an explicit audited gap
+    # rather than an invented estimate (compare CRC_MSI / UCEC_MSI, which do have
     # published subtype estimates).
     "STAD_MSI": {
         "estimate_type": "unknown",

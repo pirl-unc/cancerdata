@@ -17,7 +17,7 @@ KIRP,1.3,,Chalmers 2017,PMID:28420421,low,Kidney papillary; panel approx ~1-1.5.
 LAML,0.4,,Lawrence 2013,PMID:23770567,high,AML WES median; among lowest of all cancers.
 LGG,1.0,,Lawrence 2013,PMID:23770567,medium,IDH-mutant low; temozolomide recurrences hypermutate.
 LIHC,4.0,,Chalmers 2017,PMID:28420421,medium,Liver HCC; panel/WES ~3-4.
-NSCLC,8.0,970,Jonna 2021,PMID:33889505,medium,"Annotated NSCLC specimens assayed by clinical targeted sequencing; median 8 mut/Mb in both treatment-naive and previously treated groups; aggregate retained alongside histology-specific LUAD/LUSC WES rows."
+NSCLC,8.0,970,Jonna 2021,PMID:33889505,medium,Annotated NSCLC specimens assayed by clinical targeted sequencing; median 8 mut/Mb in both treatment-naive and previously treated groups; aggregate retained alongside histology-specific LUAD/LUSC WES rows.
 LUAD,8.1,,Lawrence 2013,PMID:23770567,high,Lung adeno WES median; smoking-dependent (never-smokers far lower).
 LUSC,9.9,,Lawrence 2013,PMID:23770567,high,Lung squamous WES median; smoking signature.
 MESO,1.8,,Chalmers 2017,PMID:28420421,medium,Mesothelioma; low; panel ~1.1-2.
@@ -68,8 +68,8 @@ CML,,,,,none,Chronic myeloid leukemia; BCR-ABL1-defined; very few additional mut
 CTCL,3.0,,Park 2021,PMID:33574607,low,CTCL/mycosis fungoides; UV-signature; stage-dependent; advanced much higher.
 NET_PANCREAS,1.9,,Backman 2021,PMID:34326338,medium,Pancreatic NET well-diff median ~1.9 (vs NEC ~5.0); low.
 NEN,,,Backman 2021,PMID:34326338,none,"Broad neuroendocrine-neoplasm aggregate intentionally blank: the 85-case WGS cohort reports mean TMB by differentiation (NET 1.09 and NEC 5.45 mut/Mb), not a pooled median compatible with this table."
-NET,,,Backman 2021,PMID:34326338,none,"Broad well-differentiated NET aggregate intentionally blank: the source reports a mean of 1.09 mut/Mb rather than a median and spans multiple primary sites."
-NEC,,,Backman 2021,PMID:34326338,none,"Broad poorly differentiated NEC aggregate intentionally blank: the source reports a mean of 5.45 mut/Mb rather than a median and spans multiple primary sites."
+NET,,,Backman 2021,PMID:34326338,none,Broad well-differentiated NET aggregate intentionally blank: the source reports a mean of 1.09 mut/Mb rather than a median and spans multiple primary sites.
+NEC,,,Backman 2021,PMID:34326338,none,Broad poorly differentiated NEC aggregate intentionally blank: the source reports a mean of 5.45 mut/Mb rather than a median and spans multiple primary sites.
 NEC_LUNG,,,George 2015;George 2018,PMID:26168399;PMID:29535388,none,"Pulmonary NEC union intentionally blank: SCLC and LCNEC have independently curated rows, but no defensible sample-weighted combined median is published."
 SCLC,8.6,,George 2015,PMID:26168399,high,Small cell lung; high ~8.6; smoking signature.
 NEC_MERKEL,5.3,,Knepper 2019,PMID:31399473,medium,Merkel cell carcinoma median ~5.3; bimodal MCPyV-neg(UV) high vs MCPyV-pos low.
@@ -104,7 +104,7 @@ SARC_GIST,0.67,,Wu 2024 Nat Commun,PMID:39489749,high,KIT/PDGFRA-driven; very lo
 NEC_LUNG_LARGECELL,8.6,,George 2018 Nat Commun,PMID:29535388,high,LCNEC; smoking signature; TMB-high tier with SCLC.
 SARC_SMARCA4,10.6,,Cooper 2024,PMID:39802817,high,SMARCA4-deficient thoracic; smoking signature (really an undiff carcinoma); TMB-H. Overrides pan-SARC.
 NET_MIDGUT,,,Jeong 2023,PMID:37720428,none,Jeong 2023 reports GEP-NEN median 4.7 mut/Mb with IQR 3.1-6.3 across 31 patients including small bowel n=2 and rectum n=7; TMB did not vary by primary tumor site or WHO grade; no supported site-specific midgut median curated.
-NET_RECTAL,1.15,18,Li 2023,PMID:36645718,medium,"Rectal NET whole-exome sequencing; median 1.15 mut/Mb (range 0.03-23.28) across 18 tumors; supersedes the earlier pooled GEP-NEN source that lacked a site-specific median."
+NET_RECTAL,1.15,18,Li 2023,PMID:36645718,medium,Rectal NET whole-exome sequencing; median 1.15 mut/Mb (range 0.03-23.28) across 18 tumors; supersedes the earlier pooled GEP-NEN source that lacked a site-specific median.
 NET_LUNG,0.4,,Fernandez-Cuesta 2014,PMID:24670920,medium,Typical/atypical pulmonary carcinoid; very low (chromatin-remodeling driven).
 SARC_CIC,1.2,,Antonescu 2017,PMID:29901569,medium,CIC-DUX4-driven; low TMB (range 0.8-1.6). Overrides pan-SARC.
 NBL_MYCNamp,0.6,,Wang 2018 JNCI,PMID:30307503,medium,Pediatric; very low TMB; MYCN amp does NOT raise total TMB.
@@ -128,4 +128,4 @@ MENINGIOMA,0.5,,Anaplastic meningioma WGS,DOI:10.1038/s41598-018-31659-0,low,Amo
 CHOROID_PLEXUS,0.5,,Choroid plexus tumor landscape,PMID:33249490,low,Very low (median ~20 coding mutations/tumor); hypermutant Li-Fraumeni/RRD subset is the exception
 ATC,3.8,141,ATC genomic landscape,DOI:10.1016/j.celrep.2024.113826,medium,Anaplastic thyroid; higher than differentiated (~0.4) but below TMB-high; dedifferentiated drivers
 THYMCA,0.7,,Chalmers 2017,PMID:28420421,low,Thymic carcinoma; very low like thymoma (mean ~0.72 mut/Mb in TET series); TMB-high in only ~7%
-STAD_MSI,,,Chalmers 2017,PMID:28420421,none,"MSI-H gastric intentionally blank: the pooled stomach intestinal-type median (5.0 mut/Mb, Chalmers Table 1, n=58) does not describe the hypermutated MSI-H subset - Chalmers reports 83% of MSI-High specimens above 20 mut/Mb and 97% at or above 10 mut/Mb - and no MSI-stratified gastric median is published in the curated sources; TCGA-STAD analysed 74 hypermutated tumours separately above an 11.4 mut/Mb threshold without reporting a subtype median"
+STAD_MSI,,,Chalmers 2017,PMID:28420421,none,"MSI-H gastric intentionally blank: the STAD row is the pooled stomach intestinal-type panel median (5.0 mut/Mb, n=58, Chalmers 2017 Table 1) and cannot describe MSI-H disease. TCGA-STAD analysed the 215 tumours below 11.4 mut/Mb, 'none of which were MSI-positive', separately from 74 hypermutated tumours (PMID:25079317); Chalmers reports that in stomach adenocarcinoma MSI-High and high TMB (>20 mut/Mb) almost always co-occur. Neither source publishes an MSI-stratified gastric median, so this is an audited gap rather than an invented estimate."

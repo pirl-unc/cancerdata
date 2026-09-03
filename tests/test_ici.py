@@ -17,12 +17,15 @@ def test_regimens_and_table():
     df = ici.cancer_ici_response_df()
     assert {"cancer_code", "regimen", "orr_pct"} <= set(df.columns)
     # Curated gap rows carry no ORR and no regimen — the regimen vocabulary applies to
-    # rows that actually anchor a value.
-    valued = df[df["orr_pct"].notna()]
+    # rows that actually anchor a value. Exempt only the declared gaps, so a stray
+    # blank cannot slip past this check.
+    gap_codes = set(ici._ICI_EVIDENCE_OVERRIDES)
+    valued = df[~df["cancer_code"].isin(gap_codes)]
+    assert valued["orr_pct"].notna().all()
     # all three regimens are actually present (not just PD-1)
     assert set(valued["regimen"]) == {"PD-1", "PD-L1", "PD-1+CTLA-4"}
     assert (valued["regimen"] == "PD-L1").sum() >= 10  # anti-PD-L1 is well-represented
-    assert df.loc[df["orr_pct"].isna(), "regimen"].isna().all()
+    assert df.loc[df["cancer_code"].isin(gap_codes), "regimen"].isna().all()
 
 
 def test_ici_anchor_table_exposes_evidence_schema():
@@ -880,3 +883,56 @@ def test_gap_rows_do_not_publish_fabricated_evidence_fields():
     assert (gaps["evidence_type"] == "unknown").all()
     assert not gaps["is_direct_cancer_code_evidence"].any()
     assert gaps["missing_reason"].notna().all()
+
+
+def test_gap_note_citations_resolve_to_real_anchor_rows():
+    """The notes column is the audit trail, so its citations must be real.
+
+    A gap note that names a trial or PMID the table does not actually anchor is a
+    curation error, not just prose drift — and prose is exactly what no other test
+    checks.
+    """
+    import re
+
+    df = ici.cancer_ici_response_df()
+    valued = df[df["orr_pct"].notna()]
+    known_refs = set(valued["pmid_doi"].dropna().astype(str))
+    gaps = df[df["cancer_code"].isin(ici._ICI_EVIDENCE_OVERRIDES)]
+    assert not gaps.empty
+
+    for _, row in gaps.iterrows():
+        code = row["cancer_code"]
+        cited = set(re.findall(r"PMID:\d+|DOI:[^\s,;)]+", str(row["notes"])))
+        assert cited, f"{code} gap note cites no source"
+        unknown = cited - known_refs
+        assert not unknown, f"{code} note cites refs absent from the anchor table: {unknown}"
+
+
+def test_gap_note_quoted_values_match_the_curated_anchors():
+    """Percentages quoted in a gap note must equal the rows they describe."""
+
+    def orr(code, regimen="PD-1"):
+        df = ici.cancer_ici_response_df()
+        hit = df[(df["cancer_code"] == code) & (df["regimen"] == regimen)]
+        return float(hit["orr_pct"].iloc[0])
+
+    # CRC note: "CRC_MSI 43.8%"
+    assert orr("CRC_MSI") == 43.8
+    # RCC note: "KIRC 25.0% ... 42.0% ... KIRP 28.8% and KICH 9.5% ... spanning 9.5% to 42%"
+    assert orr("KIRC") == 25.0
+    assert orr("KIRC", "PD-1+CTLA-4") == 42.0
+    assert orr("KIRP") == 28.8
+    assert orr("KICH") == 9.5
+    renal = [orr("KIRC"), orr("KIRC", "PD-1+CTLA-4"), orr("KIRP"), orr("KICH")]
+    assert (min(renal), max(renal)) == (9.5, 42.0)
+    # BRCA note: "pembrolizumab 5.0% ... atezolizumab 10.0%"
+    assert orr("BRCA_Basal") == 5.0
+    assert orr("BRCA_Basal", "PD-L1") == 10.0
+    # SARC note: "0% in SARC_LMS and SARC_EWS ... 23% in SARC_UPS ... 25% in
+    # SARC_SMARCA4 ... 0% in SARC_GIST"
+    assert orr("SARC_LMS") == 0.0 and orr("SARC_EWS") == 0.0
+    assert orr("SARC_UPS") == 23.0
+    assert orr("SARC_SMARCA4") == 25.0
+    assert orr("SARC_GIST") == 0.0
+    # STAD_MSI note: "KEYNOTE-059 third-line all-comers (12.0%)"
+    assert orr("STAD") == 12.0

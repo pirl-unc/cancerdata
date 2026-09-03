@@ -142,31 +142,34 @@ _ICI_EVIDENCE_OVERRIDES = {
         "source_scope": "subtype_sources_not_aggregated",
         "missing_reason": "response_is_mmr_stratified_not_aggregate",
     },
-    # Clear-cell and non-clear-cell renal carcinoma have separate curated anchors
-    # (KIRC CheckMate 025 / 214, RCC_NCC KEYNOTE-427 cohort B) with materially
-    # different response; the histology-spanning aggregate has no single trial.
+    # The renal histologies carry anchors from separate trials spanning 9.5% (KICH,
+    # KEYNOTE-427 cohort B) to 42% (KIRC, CheckMate 214). No trial enrolled the
+    # histology-spanning aggregate, so no single ORR represents it.
     "RCC": {
         "source_scope": "subtype_sources_not_aggregated",
         "missing_reason": "no_supported_aggregate_orr",
     },
     # Breast checkpoint evidence is receptor-subtype evidence: the curated anchors sit
-    # on BRCA_Basal (KEYNOTE-086, PCD4989g). Hormone-receptor-positive disease has no
-    # comparable single-agent anchor, so no all-comer breast ORR is defensible.
+    # on BRCA_Basal / TNBC (KEYNOTE-086, PCD4989g). Nothing is curated for the
+    # hormone-receptor-positive or HER2-enriched subtypes that make up most of the
+    # aggregate, so an all-comer breast ORR would extrapolate TNBC evidence to
+    # populations those trials did not enrol.
     "BRCA": {
         "source_scope": "subtype_sources_not_aggregated",
         "missing_reason": "response_is_receptor_subtype_stratified",
     },
-    # SARC028 and the AcSe/DART programmes report per-histology response that ranges
-    # from 0% (LMS, EWS, GIST) to 23-25% (UPS, SMARCA4); the sarcoma umbrella is a
-    # member union over those histologies and has no meaningful pooled ORR.
+    # Response is histology-determined: SARC028 reports 0% in LMS and EWS against 23%
+    # in UPS (the latter from its expansion cohorts), AcSe Pembrolizumab 25% in
+    # SMARCA4-deficient sarcoma, and Alliance A091401 0% in GIST. The umbrella is a
+    # member union over those histologies and no trial enrolled it as a whole.
     "SARC": {
         "source_scope": "subtype_sources_not_aggregated",
         "missing_reason": "response_is_histology_stratified",
     },
-    # The STAD anchor is an all-comer gastric ORR, and MSI-H/dMMR gastric disease
-    # responds substantially better, so inheriting it understates the subtype. Curated
-    # alongside the STAD_MSI TMB gap so the code is not half-audited: unknown TMB but
-    # a confidently inherited all-comer ORR.
+    # The STAD anchor is KEYNOTE-059 third-line all-comers, which did not select on
+    # mismatch-repair status, so it does not describe dMMR/MSI-H gastric disease.
+    # Curated alongside the STAD_MSI TMB gap so the code is not half-audited: unknown
+    # TMB but a confidently inherited all-comer ORR.
     "STAD_MSI": {
         "source_scope": "source_rejected_for_subtype_value",
         "missing_reason": "no_supported_subtype_orr",
@@ -368,11 +371,26 @@ def cancer_ici_response_df():
     exact primary ORR row in ``cancer_ici_response_estimates_df``), source-locator
     extraction status, and structured CI/value status. A cancer type may appear under
     several regimens."""
+    return _ici_response_evidence_frame().copy()
+
+
+@lru_cache(maxsize=1)
+def _ici_response_evidence_frame():
+    """The joined anchor+evidence frame, built once.
+
+    The join and its derived columns are rebuilt on every lookup otherwise, and
+    :func:`_resolve_ici_response_source` runs one lookup per requested cancer code.
+    Callers of :func:`cancer_ici_response_df` still get a defensive copy; internal
+    callers that immediately filter (which already produces a new frame) use this
+    directly."""
     return response_anchor_evidence_df(
         get_data("cancer-ici-response"),
         value_col="orr_pct",
         gap_codes=frozenset(_ICI_EVIDENCE_OVERRIDES),
     )
+
+
+_register_derived_cache(_ici_response_evidence_frame.cache_clear)
 
 
 def ici_regimens() -> tuple[str, ...]:
@@ -384,7 +402,7 @@ def ici_regimens() -> tuple[str, ...]:
 def _regimen_maps() -> dict[str, dict[str, float]]:
     """``{regimen: {cancer_code: orr_pct}}`` from the curated table. Cached; callers
     must treat the result as read-only (copy before mutating)."""
-    df = cancer_ici_response_df().dropna(subset=["orr_pct"])
+    df = _ici_response_evidence_frame().dropna(subset=["orr_pct"])
     out: dict[str, dict[str, float]] = {r: {} for r in REGIMEN_FALLBACK}
     for code, regimen, orr in zip(df["cancer_code"], df["regimen"], df["orr_pct"]):
         out.setdefault(str(regimen), {})[str(code)] = float(orr)
@@ -401,7 +419,7 @@ def _gap_rows() -> dict[str, object]:
     These are the audited ICI gaps. They are excluded from the value maps (there is no
     value) but they still resolve, so a reviewed "no defensible aggregate" is
     distinguishable from a code nobody has looked at yet."""
-    df = cancer_ici_response_df()
+    df = _ici_response_evidence_frame()
     gaps = df[df["orr_pct"].isna()]
     return {str(row["cancer_code"]): row for _, row in gaps.iterrows()}
 
@@ -445,7 +463,7 @@ def _parent_code(code: str, registry) -> str | None:
 
 
 def _bulk_lookup_codes(*, include_inherited: bool = False) -> list[str]:
-    df = cancer_ici_response_df().dropna(subset=["orr_pct"])
+    df = _ici_response_evidence_frame().dropna(subset=["orr_pct"])
     direct_codes = {str(code) for code in df["cancer_code"]}
     if not include_inherited:
         return sorted(direct_codes)
@@ -485,7 +503,7 @@ def _record_from_row(row, *, requested_code: str, resolved_code: str, inheritanc
 
 
 def _resolve_ici_response_source(requested_code: str, order, *, inherit: bool):
-    df = cancer_ici_response_df().dropna(subset=["orr_pct"])
+    df = _ici_response_evidence_frame().dropna(subset=["orr_pct"])
     direct = _matching_rows(df, requested_code, order)
     if direct:
         return requested_code, "direct", direct
