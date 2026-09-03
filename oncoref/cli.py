@@ -250,7 +250,10 @@ def _cmd_ici(args: argparse.Namespace) -> int:
         if args.all_regimens:
             per = ici.cancer_ici_response(args.code, fallback=False, inherit=not args.no_inherit)
             if not per:
-                print(f"No ICI ORR for {args.code!r}", file=sys.stderr)
+                print(
+                    _no_ici_orr_message(args.code, inherit=not args.no_inherit),
+                    file=sys.stderr,
+                )
                 return 1
             for reg in ici.ici_regimens():
                 if reg in per:
@@ -261,10 +264,24 @@ def _cmd_ici(args: argparse.Namespace) -> int:
         print(f"Error: {e}", file=sys.stderr)
         return 1
     if value is None:
-        print(f"No ICI ORR for {args.code!r}", file=sys.stderr)
+        print(_no_ici_orr_message(args.code, inherit=not args.no_inherit), file=sys.stderr)
         return 1
     print(f"{value:g}")
     return 0
+
+
+def _no_ici_orr_message(code: str, *, inherit: bool) -> str:
+    """Explain *why* there is no ORR when the code is a reviewed gap.
+
+    An audited gap and an uncurated code both resolve to no value; only the gap can
+    say why, and the reason is the whole point of curating it."""
+    resolved = ici.resolve_ici_response_source(code, inherit=inherit)
+    if resolved.get("inheritance_kind") != "direct_missing":
+        return f"No ICI ORR for {code!r}"
+    reason = resolved.get("missing_reason") or "no_curated_representative_orr"
+    message = f"No representative ICI ORR for {code!r}: {reason}"
+    note = resolved.get("notes")
+    return f"{message}\n{note}" if note else message
 
 
 def _cmd_cta(args: argparse.Namespace) -> int:

@@ -928,16 +928,30 @@ def test_gap_note_citations_resolve_to_real_anchor_rows():
 
     df = ici.cancer_ici_response_df()
     valued = df[df["orr_pct"].notna()]
-    known_refs = set(valued["pmid_doi"].dropna().astype(str))
+    refs_by_code = {
+        str(code): set(group["pmid_doi"].dropna().astype(str))
+        for code, group in valued.groupby("cancer_code")
+    }
     gaps = df[df["cancer_code"].isin(ici._ICI_EVIDENCE_OVERRIDES)]
     assert not gaps.empty
 
     for _, row in gaps.iterrows():
         code = row["cancer_code"]
-        cited = set(re.findall(r"PMID:\d+|DOI:[^\s,;)]+", str(row["notes"])))
+        note = str(row["notes"])
+        cited = set(re.findall(r"PMID:\d+|DOI:[^\s,;)]+", note))
         assert cited, f"{code} gap note cites no source"
-        unknown = cited - known_refs
-        assert not unknown, f"{code} note cites refs absent from the anchor table: {unknown}"
+
+        # Each citation must belong to a cancer code the note itself names — checking
+        # only that it exists somewhere in the table would pass a note that attributed
+        # one trial's PMID to a different code entirely.
+        named = {c for c in refs_by_code if re.search(rf"\b{re.escape(c)}\b", note)}
+        assert named, f"{code} note names no anchored cancer code"
+        attributable = set().union(*(refs_by_code[c] for c in named))
+        misattributed = cited - attributable
+        assert not misattributed, (
+            f"{code} note cites {misattributed}, which belong to no code it names "
+            f"(names: {sorted(named)})"
+        )
 
 
 def test_gap_note_quoted_values_match_the_curated_anchors():
