@@ -168,8 +168,8 @@ _ICI_EVIDENCE_OVERRIDES = {
     },
     # The STAD anchor is KEYNOTE-059 third-line all-comers, which did not select on
     # mismatch-repair status, so it does not describe dMMR/MSI-H gastric disease.
-    # Curated alongside the STAD_MSI TMB gap so the code is not half-audited: unknown
-    # TMB but a confidently inherited all-comer ORR.
+    # Curated alongside the STAD_MSI TMB gap: before both existed the code reported no
+    # TMB but still inherited STAD's all-comer ORR.
     "STAD_MSI": {
         "source_scope": "source_rejected_for_subtype_value",
         "missing_reason": "no_supported_subtype_orr",
@@ -202,7 +202,7 @@ def response_anchor_evidence_df(
     *,
     value_col: str,
     regimen_col: str = "regimen",
-    gap_codes=frozenset(),
+    gap_overrides=None,
 ):
     """Append evidence/provenance fields to compact representative ICI anchors.
 
@@ -211,7 +211,13 @@ def response_anchor_evidence_df(
     row for every compact anchor. This helper joins that source row back onto the
     anchor table so public accessors expose both oncoref's trial identity and
     pirlygenes-style denominator/evidence semantics without duplicating curation.
+
+    ``gap_overrides`` maps a cancer code to its reviewed ``{"source_scope",
+    "missing_reason"}`` for codes allowed to carry a blank ``value_col`` — the audited
+    gaps. Each table owns its own mapping (the aPD-1 table has none), and a blank value
+    for any code outside it is rejected.
     """
+    gap_overrides = gap_overrides or {}
     df = anchors.copy()
     estimates = cancer_ici_response_estimates_df()
     primary_orr = estimates[
@@ -275,9 +281,14 @@ def response_anchor_evidence_df(
         merged = merged.drop(columns=["regimen"])
     # A curated gap row deliberately carries no anchor value, so it has no primary ORR
     # estimate to join. Being blank is *not* enough to earn that exemption: the code
-    # must also be declared in the caller's reviewed gap set, so an accidentally blank
-    # value still raises instead of being silently promoted to an "audited" gap.
-    is_gap = merged[value_col].isna() & merged["cancer_code"].astype(str).isin(gap_codes)
+    # must also be declared in the caller's reviewed gap set. The declaration is checked
+    # against the blank value itself rather than against the join, because a row that
+    # keeps its estimate while losing its value still joins cleanly — that is exactly
+    # the shape of an accidental blank, and it must not become an "audited" gap.
+    blank = merged[value_col].isna()
+    is_gap = blank & merged["cancer_code"].astype(str).isin(gap_overrides)
+    if blank.any():
+        _validate_gap_rows(merged, blank, is_gap, value_col=value_col, regimen_col=regimen_col)
     missing = merged["response_metric"].isna() & ~is_gap
     if missing.any():
         # fillna before astype: a blank regimen is a float NaN under the string dtype
@@ -289,20 +300,6 @@ def response_anchor_evidence_df(
             .agg("/".join, axis=1)
         )
         raise ValueError(f"missing primary ORR evidence rows for: {', '.join(cells)}")
-    # A gap is a statement about the cancer code, not about one regimen, so a gap row
-    # must not name a regimen — that keeps the code-keyed gap lookup unambiguous and
-    # stops a per-regimen blank from silently suppressing the code's other regimens.
-    named_regimen = is_gap & merged[regimen_col].notna()
-    if named_regimen.any():
-        codes = sorted(set(merged.loc[named_regimen, "cancer_code"].astype(str)))
-        raise ValueError(f"curated gap rows must leave regimen blank: {', '.join(codes)}")
-    valued_gap_codes = set(merged.loc[merged[value_col].notna(), "cancer_code"].astype(str)) & set(
-        merged.loc[is_gap, "cancer_code"].astype(str)
-    )
-    if valued_gap_codes:
-        raise ValueError(
-            f"codes cannot be both valued and an audited gap: {', '.join(sorted(valued_gap_codes))}"
-        )
 
     mixture_codes = _mixture_cohort_code_set()
     merged["source_anchor"] = merged["source_anchor"].where(merged["source_anchor"].notna(), None)
@@ -334,11 +331,35 @@ def response_anchor_evidence_df(
     ]
     merged["missing_reason"] = None
     if is_gap.any():
-        _apply_gap_evidence(merged, is_gap)
+        _apply_gap_evidence(merged, is_gap, gap_overrides)
     return merged.drop(columns=["_response_value"])
 
 
-def _apply_gap_evidence(merged, is_gap) -> None:
+def _validate_gap_rows(merged, blank, is_gap, *, value_col: str, regimen_col: str) -> None:
+    """Reject every blank-value row that is not a well-formed, declared audited gap."""
+    undeclared = blank & ~is_gap
+    if undeclared.any():
+        codes = sorted(set(merged.loc[undeclared, "cancer_code"].astype(str)))
+        raise ValueError(
+            f"blank {value_col} is only allowed for declared audited gaps: {', '.join(codes)}"
+        )
+    # A gap is a statement about the cancer code, not about one regimen, so a gap row
+    # must not name a regimen — that keeps the code-keyed gap lookup unambiguous and
+    # stops a per-regimen blank from silently suppressing the code's other regimens.
+    named_regimen = is_gap & merged[regimen_col].notna()
+    if named_regimen.any():
+        codes = sorted(set(merged.loc[named_regimen, "cancer_code"].astype(str)))
+        raise ValueError(f"curated gap rows must leave regimen blank: {', '.join(codes)}")
+    valued_gap_codes = set(merged.loc[merged[value_col].notna(), "cancer_code"].astype(str)) & set(
+        merged.loc[is_gap, "cancer_code"].astype(str)
+    )
+    if valued_gap_codes:
+        raise ValueError(
+            f"codes cannot be both valued and an audited gap: {', '.join(sorted(valued_gap_codes))}"
+        )
+
+
+def _apply_gap_evidence(merged, is_gap, gap_overrides) -> None:
     """Rewrite the derived evidence fields for curated rows that carry no ORR.
 
     A gap row is a reviewed statement that no defensible representative ORR exists for
@@ -349,14 +370,19 @@ def _apply_gap_evidence(merged, is_gap) -> None:
     merged.loc[is_gap, "evidence_type"] = "unknown"
     merged.loc[is_gap, "histology_match"] = None
     merged.loc[is_gap, "is_direct_cancer_code_evidence"] = False
-    merged.loc[is_gap, "response_value_matches_anchor"] = False
+    # Not False — there is no anchor value and no evidence value, so the comparison was
+    # never made. A plain bool column cannot hold that, so widen to nullable boolean.
+    merged["response_value_matches_anchor"] = merged["response_value_matches_anchor"].astype(
+        "boolean"
+    )
+    merged.loc[is_gap, "response_value_matches_anchor"] = pd.NA
     # A gap row names no regimen and cites no evidence, so it must not keep the
     # regimen class the fillna default assigned it, nor claim itself as its own
     # evidence source.
     merged.loc[is_gap, "therapy_regimen_class"] = None
     merged.loc[is_gap, "evidence_source_code"] = None
     for position, code in merged.loc[is_gap, "cancer_code"].items():
-        override = _ICI_EVIDENCE_OVERRIDES[str(code)]
+        override = gap_overrides[str(code)]
         merged.at[position, "source_scope"] = override["source_scope"]
         merged.at[position, "missing_reason"] = override["missing_reason"]
 
@@ -370,7 +396,13 @@ def cancer_ici_response_df():
     audited estimates table. The joined fields include ``source_estimate_id`` (the
     exact primary ORR row in ``cancer_ici_response_estimates_df``), source-locator
     extraction status, and structured CI/value status. A cancer type may appear under
-    several regimens."""
+    several regimens.
+
+    Codes with no defensible representative ORR are present with a blank ``orr_pct``
+    (and a blank ``regimen``, ``trial_name``, ``trial_nct`` and ``setting``) so the gap
+    is explicit rather than silently absent, with ``source_scope`` and
+    ``missing_reason`` recording why — see :data:`_ICI_EVIDENCE_OVERRIDES`. Filter on
+    ``orr_pct.notna()`` for a table of anchored values only."""
     return _ici_response_evidence_frame().copy()
 
 
@@ -386,7 +418,7 @@ def _ici_response_evidence_frame():
     return response_anchor_evidence_df(
         get_data("cancer-ici-response"),
         value_col="orr_pct",
-        gap_codes=frozenset(_ICI_EVIDENCE_OVERRIDES),
+        gap_overrides=_ICI_EVIDENCE_OVERRIDES,
     )
 
 
@@ -418,9 +450,14 @@ def _gap_rows() -> dict[str, object]:
 
     These are the audited ICI gaps. They are excluded from the value maps (there is no
     value) but they still resolve, so a reviewed "no defensible aggregate" is
-    distinguishable from a code nobody has looked at yet."""
+    distinguishable from a code nobody has looked at yet.
+
+    Cached; callers must treat the result as read-only (copy before mutating). The
+    declared-code filter is redundant with the validation in
+    :func:`response_anchor_evidence_df` and kept so that only a reviewed code can ever
+    resolve as a gap, whatever produced the frame."""
     df = _ici_response_evidence_frame()
-    gaps = df[df["orr_pct"].isna()]
+    gaps = df[df["orr_pct"].isna() & df["cancer_code"].astype(str).isin(_ICI_EVIDENCE_OVERRIDES)]
     return {str(row["cancer_code"]): row for _, row in gaps.iterrows()}
 
 

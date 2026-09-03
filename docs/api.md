@@ -313,7 +313,7 @@ ici_response.ici_source_locator_audit_df()
 
 `ici_response_estimates_df()` is the auditable long table behind the compact
 ORR anchors. Each row has a stable `estimate_id`; compact
-`ici_response_record(...)` / `apd1_response_df()` rows expose that pointer as
+`cancer_ici_response_record(...)` / `apd1_response_df()` rows expose that pointer as
 `source_estimate_id`. `ici_source_locator_audit_df()` has exactly one row per
 `estimate_id` and records the public source URL, document kind, table/figure/section
 locator, match evidence, and audit date.
@@ -347,8 +347,9 @@ audited-gap contract `oncoref.tmb` uses. `source_scope` and `missing_reason` rec
 why no value exists, and the gap stops the resolver's parent walk, so a code with a
 reviewed gap never inherits an ancestor's ORR instead (`STAD_MSI` does not fall back
 to the all-comer `STAD` anchor). The gap is reported whether or not `inherit` is set,
-and `ici_response_record(...)` returns the gap record rather than `None`, so a
-reviewed gap stays distinguishable at every surface.
+and `cancer_ici_response_record(...)` returns the gap record rather than `None`. The
+per-regimen views (`fallback=False`) return an empty mapping, since a gap names no
+regimen.
 
 Only codes declared in the module's reviewed gap set may carry a blank `orr_pct`; an
 undeclared blank still raises, so a data-entry slip cannot be promoted to an
@@ -361,16 +362,23 @@ ici_response.ici_response_source("CRC")["missing_reason"]
 # 'response_is_mmr_stratified_not_aggregate'
 ```
 
-Current gaps are `CRC` (mismatch-repair stratified: MSI-H/dMMR responds, MSS does
-not), `RCC` (clear-cell vs non-clear-cell anchors differ), `BRCA` (curated anchors are
-receptor-subtype anchors on `BRCA_Basal`), `SARC` (SARC028/AcSe report per-histology
-response from 0% to ~25%), and `STAD_MSI` (the `STAD` anchor is an all-comer gastric
-ORR that does not describe dMMR disease). Use the stratified codes — `CRC_MSI`,
-`KIRC`, `RCC_NCC`, `BRCA_Basal`, `SARC_UPS` — for a value. Note that `COAD` and `READ`
-are prevalence-weighted `derived_blend` values over the MSI-H and MSS populations, not
-measured all-comer ORRs. A code with no curated row at all still reports
-`inheritance_kind="missing"` with `has_ici_response_source=False`, so a reviewed gap
-stays distinguishable from an uncurated one.
+Current gaps, with the reason recorded on each row:
+
+| Code | Why there is no representative ORR | Use instead |
+| --- | --- | --- |
+| `CRC` | mismatch-repair stratified: MSI-H/dMMR responds, MSS essentially does not | `CRC_MSI` |
+| `RCC` | member histologies anchored on separate trials spanning 9.5% to 42% | `KIRC`, `KIRP`, `KICH`, `RCC_NCC` |
+| `BRCA` | curated anchors are receptor-subtype (TNBC) anchors only | `BRCA_Basal` |
+| `SARC` | histology-determined, from 0% (LMS, EWS, GIST) to ~25% (UPS, SMARCA4) | per-histology `SARC_*` |
+| `STAD_MSI` | the `STAD` anchor is an all-comer gastric ORR that did not select on MMR status | *(none curated)* |
+
+`STAD_MSI` is the one gap with no stratified replacement: it previously inherited
+`STAD`'s all-comer anchor and now returns nothing until an MSI-stratified gastric ORR
+is curated. Note also that `COAD` and `READ` are prevalence-weighted `derived_blend`
+values over the MSI-H and MSS populations, not measured all-comer ORRs. A code with no
+curated row at all still reports `inheritance_kind="missing"` with
+`has_ici_response_source=False`, so a reviewed gap stays distinguishable from an
+uncurated one.
 
 `ci_basis` distinguishes source-reported intervals from calculated 95% intervals:
 `computed_wilson` for the standard pooled/count-derived interval and

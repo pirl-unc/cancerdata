@@ -823,29 +823,37 @@ def test_ici_gap_row_blocks_inheritance_instead_of_borrowing_an_ancestor():
 def test_only_declared_codes_may_carry_a_blank_orr():
     """An accidental blank must raise, not become an 'audited' gap.
 
-    Narrowing the estimates-join integrity check to skip blank rows would otherwise
-    let a data-entry slip mint a fabricated provenance record.
+    The declaration is checked against the blank value itself, not against the
+    estimates join: a row that keeps its estimate while losing its value still joins
+    cleanly, so a join-keyed check would wave it through.
     """
-    declared = frozenset(ici._ICI_EVIDENCE_OVERRIDES)
+    declared = ici._ICI_EVIDENCE_OVERRIDES
     anchors = ici.get_data("cancer-ici-response").copy()
-    # HCL has no curated estimate rows, so a blank-value anchor for it has nothing to
-    # join against — the exact shape of an accidental blank.
+
+    # The shipped table is valid only because its blank rows are declared gaps.
+    ici.response_anchor_evidence_df(anchors, value_col="orr_pct", gap_overrides=declared)
+
+    # The realistic slip: clearing the value on a row that already has an estimate.
+    # The join still succeeds, so only the blank-value check can catch this.
+    cleared = anchors.copy()
+    cleared.loc[cleared["cancer_code"] == "LUAD", "orr_pct"] = float("nan")
+    with pytest.raises(ValueError, match="only allowed for declared audited gaps"):
+        ici.response_anchor_evidence_df(cleared, value_col="orr_pct", gap_overrides=declared)
+
+    # And the slip with no estimate to join against.
     slip = anchors[anchors["cancer_code"] == "LUAD"].iloc[[0]].copy()
     slip["orr_pct"] = float("nan")
     slip["cancer_code"] = "HCL"
     perturbed = pd.concat([anchors, slip], ignore_index=True)
-
-    # The shipped table is only valid because its blank rows are declared gaps.
-    ici.response_anchor_evidence_df(anchors, value_col="orr_pct", gap_codes=declared)
-
-    # An undeclared blank still raises, even alongside the legitimate gap rows.
-    with pytest.raises(ValueError, match="missing primary ORR evidence rows"):
-        ici.response_anchor_evidence_df(perturbed, value_col="orr_pct", gap_codes=declared)
+    with pytest.raises(ValueError, match="only allowed for declared audited gaps"):
+        ici.response_anchor_evidence_df(perturbed, value_col="orr_pct", gap_overrides=declared)
 
     # Declaring the code is not enough either: a gap row must not name a regimen.
     with pytest.raises(ValueError, match="must leave regimen blank"):
         ici.response_anchor_evidence_df(
-            perturbed, value_col="orr_pct", gap_codes=declared | {"HCL"}
+            perturbed,
+            value_col="orr_pct",
+            gap_overrides={**declared, "HCL": {"source_scope": "s", "missing_reason": "r"}},
         )
 
     # A code cannot be both valued and an audited gap. COAD keeps its valued anchor
@@ -857,7 +865,7 @@ def test_only_declared_codes_may_carry_a_blank_orr():
         ici.response_anchor_evidence_df(
             pd.concat([anchors, blank_coad], ignore_index=True),
             value_col="orr_pct",
-            gap_codes=declared | {"COAD"},
+            gap_overrides={**declared, "COAD": {"source_scope": "s", "missing_reason": "r"}},
         )
 
     # Two gap rows for one code would collapse the code-keyed lookup to whichever came
@@ -867,7 +875,31 @@ def test_only_declared_codes_may_carry_a_blank_orr():
         [anchors, anchors[anchors["cancer_code"] == "CRC"].iloc[[0]].copy()], ignore_index=True
     )
     with pytest.raises(pd.errors.MergeError, match="not a one-to-one merge"):
-        ici.response_anchor_evidence_df(twice, value_col="orr_pct", gap_codes=declared)
+        ici.response_anchor_evidence_df(twice, value_col="orr_pct", gap_overrides=declared)
+
+    # The shared helper defaults to allowing no gaps at all, so the aPD-1 table keeps
+    # the strict contract.
+    with pytest.raises(ValueError, match="only allowed for declared audited gaps"):
+        ici.response_anchor_evidence_df(anchors, value_col="orr_pct")
+
+
+def test_audited_gap_agrees_across_every_lookup_surface():
+    """The gap guard lives in four resolution paths; they must not drift apart."""
+    for code in ici._ICI_EVIDENCE_OVERRIDES:
+        assert ici.cancer_ici_response(code) is None, code
+        assert ici.cancer_ici_response(code, inherit=False) is None, code
+        assert ici.cancer_ici_response(code, fallback=False) == {}, code
+        assert ici.cancer_ici_response(code, regimen="PD-1") is None, code
+
+        record = ici.cancer_ici_response_record(code)
+        assert record is not None and record["inheritance_kind"] == "direct_missing", code
+        assert ici.cancer_ici_response_record(code, fallback=False) == {}, code
+
+        for kwargs in ({}, {"inherit": False}, {"regimen": "PD-1"}, {"fallback": False}):
+            resolved = ici.resolve_ici_response_source(code, **kwargs)
+            assert resolved["inheritance_kind"] == "direct_missing", (code, kwargs)
+            assert resolved["has_ici_response_source"] is True, (code, kwargs)
+            assert resolved["missing_reason"], (code, kwargs)
 
 
 def test_gap_rows_do_not_publish_fabricated_evidence_fields():

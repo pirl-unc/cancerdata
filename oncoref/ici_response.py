@@ -80,7 +80,11 @@ def apd1_response_source(cancer_type, *, inherit: bool = True):
 
 
 def ici_response_anchor_df():
-    """Curated representative ICI ORR anchor table, one row per cancer/regimen."""
+    """Curated representative ICI ORR anchor table, one row per cancer/regimen.
+
+    Also carries the audited gap rows — codes with no defensible representative ORR,
+    present with a blank ``orr_pct`` and ``regimen`` and an explicit ``missing_reason``.
+    Filter on ``orr_pct.notna()`` for anchored values only."""
     return cancer_ici_response_df()
 
 
