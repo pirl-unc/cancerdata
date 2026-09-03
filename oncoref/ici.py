@@ -129,6 +129,43 @@ def _mixture_cohort_code_set() -> frozenset[str]:
     return frozenset(reg.loc[flag, "code"].astype(str))
 
 
+#: Reviewed provenance for curated rows that carry no representative ORR. These are
+#: audited gaps, not unreviewed holes: a reviewer has recorded *why* no single ORR
+#: describes the code. Mirrors ``oncoref.tmb._TMB_EVIDENCE_OVERRIDES``.
+_ICI_EVIDENCE_OVERRIDES = {
+    # Checkpoint response in colorectal cancer is determined by mismatch-repair
+    # status, not by the anatomical aggregate: MSI-H/dMMR disease responds and MSS
+    # disease essentially does not. A pooled CRC ORR would average two populations
+    # that must never be averaged, so the aggregate stays an explicit gap and callers
+    # are directed to the stratified rows.
+    "CRC": {
+        "source_scope": "subtype_sources_not_aggregated",
+        "missing_reason": "response_is_mmr_stratified_not_aggregate",
+    },
+    # Clear-cell and non-clear-cell renal carcinoma have separate curated anchors
+    # (KIRC CheckMate 025 / 214, RCC_NCC KEYNOTE-427 cohort B) with materially
+    # different response; the histology-spanning aggregate has no single trial.
+    "RCC": {
+        "source_scope": "subtype_sources_not_aggregated",
+        "missing_reason": "no_supported_aggregate_orr",
+    },
+    # Breast checkpoint evidence is receptor-subtype evidence: the curated anchors sit
+    # on BRCA_Basal (KEYNOTE-086, PCD4989g). Hormone-receptor-positive disease has no
+    # comparable single-agent anchor, so no all-comer breast ORR is defensible.
+    "BRCA": {
+        "source_scope": "subtype_sources_not_aggregated",
+        "missing_reason": "response_is_receptor_subtype_stratified",
+    },
+    # SARC028 and the AcSe/DART programmes report per-histology response that ranges
+    # from 0% (LMS, EWS, GIST) to 23-25% (UPS, SMARCA4); the sarcoma umbrella is a
+    # member union over those histologies and has no meaningful pooled ORR.
+    "SARC": {
+        "source_scope": "subtype_sources_not_aggregated",
+        "missing_reason": "response_is_histology_stratified",
+    },
+}
+
+
 def _evidence_type(value_basis) -> str:
     basis = str(value_basis).strip()
     return {
@@ -224,7 +261,11 @@ def response_anchor_evidence_df(
     )
     if regimen_col != "regimen":
         merged = merged.drop(columns=["regimen"])
-    missing = merged["response_metric"].isna()
+    # Curated gap rows deliberately carry no anchor value, so they have no primary ORR
+    # estimate to join. Every row that *does* claim a value must still resolve to an
+    # audited estimate, so the integrity check applies to valued rows only.
+    is_gap = merged[value_col].isna()
+    missing = merged["response_metric"].isna() & ~is_gap
     if missing.any():
         cells = merged.loc[missing, ["cancer_code", regimen_col]].astype(str).agg("/".join, axis=1)
         raise ValueError(f"missing primary ORR evidence rows for: {', '.join(cells)}")
@@ -258,7 +299,31 @@ def response_anchor_evidence_df(
         for code, basis in zip(merged["cancer_code"], merged["value_basis"])
     ]
     merged["missing_reason"] = None
+    if is_gap.any():
+        _apply_gap_evidence(merged, is_gap)
     return merged.drop(columns=["_response_value"])
+
+
+def _apply_gap_evidence(merged, is_gap) -> None:
+    """Rewrite the derived evidence fields for curated rows that carry no ORR.
+
+    A gap row is a reviewed statement that no defensible representative ORR exists for
+    the code, so it must not pick up the ``direct_reported`` defaults that the
+    ``value_basis`` mapping assigns to an empty cell.
+    """
+    merged.loc[is_gap, "response_metric"] = None
+    merged.loc[is_gap, "evidence_type"] = "unknown"
+    merged.loc[is_gap, "histology_match"] = None
+    merged.loc[is_gap, "is_direct_cancer_code_evidence"] = False
+    merged.loc[is_gap, "response_value_matches_anchor"] = False
+    for position, code in merged.loc[is_gap, "cancer_code"].items():
+        override = _ICI_EVIDENCE_OVERRIDES.get(str(code), {})
+        merged.at[position, "source_scope"] = override.get(
+            "source_scope", "no_supported_representative_value"
+        )
+        merged.at[position, "missing_reason"] = override.get(
+            "missing_reason", "no_curated_representative_orr"
+        )
 
 
 def cancer_ici_response_df():
@@ -291,6 +356,21 @@ def _regimen_maps() -> dict[str, dict[str, float]]:
 
 
 _register_derived_cache(_regimen_maps.cache_clear)
+
+
+@lru_cache(maxsize=1)
+def _gap_rows() -> dict[str, object]:
+    """``{cancer_code: row}`` for curated rows with no representative ORR.
+
+    These are the audited ICI gaps. They are excluded from the value maps (there is no
+    value) but they still resolve, so a reviewed "no defensible aggregate" is
+    distinguishable from a code nobody has looked at yet."""
+    df = cancer_ici_response_df()
+    gaps = df[df["orr_pct"].isna()]
+    return {str(row["cancer_code"]): row for _, row in gaps.iterrows()}
+
+
+_register_derived_cache(_gap_rows.cache_clear)
 
 
 def _resolve_with_fallback(code: str, maps: dict[str, dict[str, float]], order):
@@ -356,6 +436,11 @@ def _resolve_ici_response_source(requested_code: str, order, *, inherit: bool):
     if direct or not inherit:
         return requested_code, "direct", direct
 
+    # A curated gap row is a reviewed decision about *this* code, so it outranks any
+    # inherited evidence — exactly as a blank-value TMB row stops the ancestor walk.
+    if requested_code in _gap_rows():
+        return requested_code, "direct_missing", {}
+
     source_code = cancer_evidence_source_code(requested_code)
     if source_code != requested_code:
         source = _matching_rows(df, source_code, order)
@@ -385,10 +470,16 @@ def resolve_ici_response_source(cancer_type, *, regimen=None, fallback=True, inh
 
     - ``requested_cancer_code``: canonical code requested by the caller.
     - ``resolved_cancer_code``: direct/proxy/ancestor source row, when one exists.
-    - ``inheritance_kind``: ``"direct"``, ``"source_scope"``, ``"ancestor"``, or
-      ``"missing"``.
+    - ``inheritance_kind``: ``"direct"``, ``"source_scope"``, ``"ancestor"``,
+      ``"direct_missing"``, or ``"missing"``.
     - ``available_regimens``: regimens available at the resolved source row.
     - source/provenance fields from the selected record when available.
+
+    ``"direct_missing"`` is an *audited* gap: the code has a curated row stating that
+    no single representative ORR describes it (with ``source_scope`` and
+    ``missing_reason`` explaining why), so it reports
+    ``has_ici_response_source=True`` and does not inherit an ancestor's value.
+    ``"missing"`` remains the unreviewed case — no curated row of any kind.
 
     With ``regimen=None`` and ``fallback=True`` the selected record follows
     :data:`REGIMEN_FALLBACK`; with ``fallback=False`` the resolver still reports the
@@ -418,6 +509,21 @@ def resolve_ici_response_source(cancer_type, *, regimen=None, fallback=True, inh
         if selected_row is not None
         else {}
     )
+    if inheritance_kind == "direct_missing":
+        gap = _gap_rows()[requested_code]
+        record = {key: _public_value(gap[key]) for key in gap.index}
+        record.update(
+            {
+                "requested_cancer_code": requested_code,
+                "resolved_cancer_code": requested_code,
+                "inheritance_kind": "direct_missing",
+                "is_inherited_evidence": False,
+                "selected_regimen": None,
+                "available_regimens": (),
+                "has_ici_response_source": True,
+            }
+        )
+        return record
     record.update(
         {
             "requested_cancer_code": requested_code,
@@ -530,6 +636,10 @@ def cancer_ici_response(
     val, _ = _resolve_with_fallback(code, maps, order)
     if val is not None or not inherit:
         return val
+    # Keep the value path and the resolver in agreement: a curated gap row means this
+    # code has been reviewed and has no representative ORR, so it must not inherit one.
+    if code in _gap_rows():
+        return None
     source_code = cancer_evidence_source_code(code)
     if source_code != code:
         val, _ = _resolve_with_fallback(source_code, maps, order)

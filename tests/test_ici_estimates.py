@@ -72,8 +72,11 @@ def test_estimates_table_shape_and_coverage():
     }
     assert expected <= set(est.columns)
     assert len(est) >= 770
-    # every (cancer, regimen) in the curated anchor table has >=1 estimate row
+    # every (cancer, regimen) in the curated anchor table has >=1 estimate row.
+    # Curated gap rows assert the *absence* of a defensible value, so they have no
+    # estimate to point at and are excluded from the coverage requirement.
     anchor = ici.cancer_ici_response_df()
+    anchor = anchor[anchor["orr_pct"].notna()]
     anchor_cells = set(zip(anchor["cancer_code"], anchor["regimen"]))
     est_cells = set(zip(est["cancer_code"], est["regimen"]))
     assert anchor_cells <= est_cells, anchor_cells - est_cells
@@ -547,7 +550,9 @@ def test_trial_columns_split_and_clean():
     df = ici.cancer_ici_response_df()
     assert {"trial_name", "trial_alias", "trial_nct"} <= set(df.columns)
     assert "trial" not in df.columns
-    for _, r in df.iterrows():
+    # Gap rows name no trial by construction; the trial-format contract is about rows
+    # that carry a value.
+    for _, r in df[df["orr_pct"].notna()].iterrows():
         name = str(r["trial_name"]).strip()
         assert name and name.lower() != "nan", f"{r['cancer_code']} missing trial_name"
         assert "(" not in name, f"{r['cancer_code']} trial_name still has parentheses: {name}"

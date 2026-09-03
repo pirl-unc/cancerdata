@@ -36,6 +36,17 @@ _TMB_EVIDENCE_OVERRIDES = {
         "source_scope": "source_rejected_for_site_specific_value",
         "missing_reason": "no_supported_site_specific_median",
     },
+    # The curated stomach median is the pooled intestinal-type panel value. MSI-H
+    # gastric tumours are hypermutated, so inheriting that pooled median from STAD
+    # would report a confidently wrong value for the one gastric subtype whose TMB
+    # drives checkpoint-inhibitor reasoning. Kept as an explicit audited gap until an
+    # MSI-stratified gastric median is curated (compare CRC_MSI / UCEC_MSI, which have
+    # published subtype estimates).
+    "STAD_MSI": {
+        "estimate_type": "unknown",
+        "source_scope": "source_rejected_for_subtype_value",
+        "missing_reason": "no_supported_subtype_median",
+    },
     # These broad entities have subtype/site evidence but no defensible median
     # over the complete aggregate represented by the ontology code.
     "RCC": {

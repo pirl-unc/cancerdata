@@ -15,9 +15,13 @@ def test_regimens_and_table():
     assert ici.ici_regimens() == ("PD-1", "PD-L1", "PD-1+CTLA-4")
     df = ici.cancer_ici_response_df()
     assert {"cancer_code", "regimen", "orr_pct"} <= set(df.columns)
+    # Curated gap rows carry no ORR and no regimen — the regimen vocabulary applies to
+    # rows that actually anchor a value.
+    valued = df[df["orr_pct"].notna()]
     # all three regimens are actually present (not just PD-1)
-    assert set(df["regimen"]) == {"PD-1", "PD-L1", "PD-1+CTLA-4"}
-    assert (df["regimen"] == "PD-L1").sum() >= 10  # anti-PD-L1 is well-represented
+    assert set(valued["regimen"]) == {"PD-1", "PD-L1", "PD-1+CTLA-4"}
+    assert (valued["regimen"] == "PD-L1").sum() >= 10  # anti-PD-L1 is well-represented
+    assert df.loc[df["orr_pct"].isna(), "regimen"].isna().all()
 
 
 def test_ici_anchor_table_exposes_evidence_schema():
@@ -707,3 +711,67 @@ def test_parent_code_helper_treats_nan_parent_as_missing():
 def test_regimen_maps_cached():
     # _regimen_maps is memoized (same object back from the cache).
     assert ici._regimen_maps() is ici._regimen_maps()
+
+
+def test_audited_ici_gap_is_distinguishable_from_an_unreviewed_code():
+    """A curated gap row must resolve, not vanish.
+
+    Before this contract existed the response table could only express "has a value";
+    a blank-ORR row was dropped by the value maps, so a reviewed "no defensible
+    aggregate exists" was indistinguishable from a code nobody had curated.
+    """
+    reviewed = ici.resolve_ici_response_source("CRC")
+    assert reviewed["inheritance_kind"] == "direct_missing"
+    assert reviewed["has_ici_response_source"] is True
+    assert reviewed["resolved_cancer_code"] == "CRC"
+    assert reviewed["is_inherited_evidence"] is False
+    assert reviewed["available_regimens"] == ()
+    assert reviewed["selected_regimen"] is None
+    assert reviewed["evidence_type"] == "unknown"
+    assert reviewed["source_scope"] == "subtype_sources_not_aggregated"
+    assert reviewed["missing_reason"] == "response_is_mmr_stratified_not_aggregate"
+
+    # An unreviewed code keeps the original bare-miss contract.
+    unreviewed = ici.resolve_ici_response_source("HCL")
+    assert unreviewed["inheritance_kind"] == "missing"
+    assert unreviewed["has_ici_response_source"] is False
+    assert "missing_reason" not in unreviewed
+
+
+def test_subtype_stratified_aggregates_do_not_report_a_pooled_orr():
+    """CRC/RCC/BRCA/SARC response is subtype-determined, so the umbrella has no ORR."""
+    expected = {
+        "CRC": "response_is_mmr_stratified_not_aggregate",
+        "RCC": "no_supported_aggregate_orr",
+        "BRCA": "response_is_receptor_subtype_stratified",
+        "SARC": "response_is_histology_stratified",
+    }
+    for code, reason in expected.items():
+        assert ici.cancer_ici_response(code) is None
+        assert ici.cancer_ici_response_record(code) is None
+        record = ici.resolve_ici_response_source(code)
+        assert record["inheritance_kind"] == "direct_missing"
+        assert record["missing_reason"] == reason
+        assert record["source_scope"] == "subtype_sources_not_aggregated"
+
+    # The stratified children each keep their own curated anchor.
+    assert ici.cancer_ici_response("CRC_MSI") == 43.8
+    assert ici.cancer_ici_response("KIRC") == 25.0
+    assert ici.cancer_ici_response("BRCA_Basal") is not None
+    assert ici.cancer_ici_response("SARC_UPS") == 23.0
+
+    # Gap rows stay out of the bulk value map and out of the regimen maps.
+    bulk = ici.cancer_ici_response()
+    assert not ({"CRC", "RCC", "BRCA", "SARC"} & set(bulk))
+
+
+def test_ici_gap_row_blocks_inheritance_instead_of_borrowing_an_ancestor():
+    """A reviewed gap outranks ancestor evidence, mirroring blank-value TMB rows."""
+    # COAD has its own anchor and is unaffected by the CRC gap row above it.
+    assert ici.cancer_ici_response("COAD") == 5.0
+    assert ici.resolve_ici_response_source("COAD")["inheritance_kind"] == "direct"
+
+    # Nothing inherits *through* a gap row: CRC reports its own reviewed gap rather
+    # than reaching past it, and the value path agrees with the resolver.
+    assert ici.cancer_ici_response("CRC", inherit=True) is None
+    assert ici.resolve_ici_response_source("CRC", inherit=True)["resolved_cancer_code"] == "CRC"

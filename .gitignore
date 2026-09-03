@@ -28,3 +28,6 @@ site/
 
 # generated figure runs
 outputs/
+
+# scratch downloads / working files
+tmp/

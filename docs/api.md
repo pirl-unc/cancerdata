@@ -337,6 +337,31 @@ quotes from the paper.
 - `not_verified`: no supporting source block was confirmed.
 - `not_applicable`: a curator-derived value has no single source location.
 
+### Audited response gaps
+
+Some cancer codes have no defensible *representative* ORR because response is
+determined by a stratifying subtype rather than by the umbrella entity. These carry a
+curated row with a blank `orr_pct` and blank `regimen`, and resolve with
+`inheritance_kind="direct_missing"` and `has_ici_response_source=True` — the same
+audited-gap contract `oncoref.tmb` uses. `source_scope` and `missing_reason` record
+why no aggregate value exists, and the gap outranks ancestor inheritance so an
+umbrella never silently borrows a child's ORR.
+
+```python
+from oncoref import ici_response
+
+ici_response.ici_response_source("CRC")["missing_reason"]
+# 'response_is_mmr_stratified_not_aggregate'
+```
+
+Current aggregate gaps are `CRC` (mismatch-repair stratified: MSI-H/dMMR responds,
+MSS does not), `RCC` (clear-cell vs non-clear-cell anchors differ), `BRCA` (curated
+anchors are receptor-subtype anchors on `BRCA_Basal`), and `SARC` (SARC028/AcSe report
+per-histology response from 0% to ~25%). Use the stratified codes — `CRC_MSI`, `KIRC`,
+`RCC_NCC`, `BRCA_Basal`, `SARC_UPS` — for a value. A code with no curated row at all
+still reports `inheritance_kind="missing"` with `has_ici_response_source=False`, so a
+reviewed gap stays distinguishable from an uncurated one.
+
 `ci_basis` distinguishes source-reported intervals from calculated 95% intervals:
 `computed_wilson` for the standard pooled/count-derived interval and
 `computed_clopper_pearson` where an evidence row explicitly uses the two-sided exact
