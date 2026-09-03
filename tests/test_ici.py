@@ -845,6 +845,27 @@ def test_only_declared_codes_may_carry_a_blank_orr():
             perturbed, value_col="orr_pct", gap_codes=declared | {"HCL"}
         )
 
+    # A code cannot be both valued and an audited gap. COAD keeps its valued anchor
+    # (which has a backing estimate), so only the contradiction itself can raise.
+    blank_coad = anchors[anchors["cancer_code"] == "COAD"].iloc[[0]].copy()
+    blank_coad["orr_pct"] = float("nan")
+    blank_coad["regimen"] = None
+    with pytest.raises(ValueError, match="both valued and an audited gap"):
+        ici.response_anchor_evidence_df(
+            pd.concat([anchors, blank_coad], ignore_index=True),
+            value_col="orr_pct",
+            gap_codes=declared | {"COAD"},
+        )
+
+    # Two gap rows for one code would collapse the code-keyed lookup to whichever came
+    # last; the merge's one_to_one validation already rejects it (duplicate NaN
+    # regimen keys count as duplicates in the left frame).
+    twice = pd.concat(
+        [anchors, anchors[anchors["cancer_code"] == "CRC"].iloc[[0]].copy()], ignore_index=True
+    )
+    with pytest.raises(pd.errors.MergeError, match="not a one-to-one merge"):
+        ici.response_anchor_evidence_df(twice, value_col="orr_pct", gap_codes=declared)
+
 
 def test_gap_rows_do_not_publish_fabricated_evidence_fields():
     """A gap row names no regimen and cites no evidence, so derived fields stay empty."""
