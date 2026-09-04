@@ -18,6 +18,7 @@ from functools import lru_cache
 
 import pandas as pd
 
+from ._evidence_resolution import evidence_record, resolve_evidence
 from .cancer_types import cancer_evidence_source_code, cancer_type_registry, resolve_cancer_type
 from .load_dataset import _register_derived_cache, get_data
 
@@ -185,33 +186,13 @@ def _tmb_value_map(df=None) -> dict[str, float]:
     return dict(zip(vals["cancer_code"].astype(str), vals["median_tmb_mut_mb"].astype(float)))
 
 
-def _parent_code(code: str, registry) -> str | None:
-    if code not in registry.index:
-        return None
-    parent = registry.loc[code].get("parent_code", "")
-    if pd.isna(parent):
-        return None
-    parent = str(parent).strip()
-    return parent or None
-
-
-def _public_value(value):
-    try:
-        if pd.isna(value):
-            return None
-    except (TypeError, ValueError):
-        pass
-    if hasattr(value, "item"):
-        return value.item()
-    return value
-
-
 def _record_from_row(row, *, requested_code: str, resolved_code: str, inheritance_kind: str):
-    record = {key: _public_value(row[key]) for key in row.index}
-    record["requested_cancer_code"] = requested_code
-    record["resolved_cancer_code"] = resolved_code
-    record["inheritance_kind"] = inheritance_kind
-    record["is_inherited_evidence"] = requested_code != resolved_code
+    record = evidence_record(
+        row,
+        requested_code=requested_code,
+        resolved_code=resolved_code,
+        inheritance_kind=inheritance_kind,
+    )
     record["has_tmb_source"] = True
     return record
 
@@ -220,27 +201,15 @@ def _resolve_tmb_row(requested_code: str, *, inherit: bool):
     df = cancer_tmb_df()
     values = _tmb_value_map(df)
     rows = df.set_index("cancer_code", drop=False)
-
-    if requested_code in values:
-        return requested_code, "direct", rows.loc[requested_code]
-    if requested_code in rows.index:
-        return requested_code, "direct_missing", rows.loc[requested_code]
-    if not inherit:
-        return requested_code, "missing", None
-
-    source_code = cancer_evidence_source_code(requested_code)
-    if source_code != requested_code and source_code in values:
-        return source_code, "source_scope", rows.loc[source_code]
-
-    registry = cancer_type_registry().set_index("code")
-    cur = _parent_code(requested_code, registry)
-    seen = {requested_code}
-    while cur and cur not in seen:
-        seen.add(cur)
-        if cur in values:
-            return cur, "ancestor", rows.loc[cur]
-        cur = _parent_code(cur, registry)
-    return requested_code, "missing", None
+    resolution = resolve_evidence(
+        requested_code,
+        direct_lookup=lambda code: rows.loc[code] if code in values else None,
+        direct_gap_lookup=lambda code: rows.loc[code] if code in rows.index else None,
+        source_code_for=cancer_evidence_source_code,
+        parent_by_code=cancer_type_registry().set_index("code")["parent_code"],
+        inherit=inherit,
+    )
+    return resolution.resolved_code, resolution.inheritance_kind, resolution.payload
 
 
 def resolve_tmb_source(cancer_type, *, inherit=True) -> dict:
