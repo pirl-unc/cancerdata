@@ -14,11 +14,13 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import pandas as pd
 
 from .cancer_types import cancer_evidence_source_code, cancer_type_registry, resolve_cancer_type
 from .ici import response_anchor_evidence_df
-from .load_dataset import get_data
+from .load_dataset import _register_derived_cache, get_data
 
 
 def cancer_apd1_response_df():
@@ -34,11 +36,34 @@ def cancer_apd1_response_df():
     that context. Evidence/provenance fields are joined from the audited ICI estimates
     table, keyed by ``drug_target`` (``PD-1`` / ``PD-L1`` / ``PD-1+CTLA-4``), so
     non-monotherapy fallback anchors remain explicit."""
+    return _apd1_response_evidence_frame().copy()
+
+
+@lru_cache(maxsize=1)
+def _apd1_response_evidence_frame():
+    """The joined aPD-1 anchor+evidence frame, built once.
+
+    Same shared join as :func:`oncoref.ici.cancer_ici_response_df`, and the same
+    rebuild-per-lookup cost: ``_resolve_apd1_response_row`` runs one lookup per
+    requested code, and the ``include_inherited`` bulk maps run one per registry code.
+    Public callers still receive a defensive copy."""
     return response_anchor_evidence_df(
         get_data("cancer-apd1-response"),
         value_col="apd1_orr_pct",
         regimen_col="drug_target",
     )
+
+
+_register_derived_cache(_apd1_response_evidence_frame.cache_clear)
+
+
+@lru_cache(maxsize=1)
+def _apd1_valued_rows():
+    """The anchored aPD-1 rows only. Cached; treat as read-only."""
+    return _apd1_response_evidence_frame().dropna(subset=["apd1_orr_pct"])
+
+
+_register_derived_cache(_apd1_valued_rows.cache_clear)
 
 
 def cancer_apd1_response(cancer_type=None, *, inherit=True, include_inherited=False):
@@ -54,8 +79,7 @@ def cancer_apd1_response(cancer_type=None, *, inherit=True, include_inherited=Fa
     used for individual lookups, so source-scoped children such as ``COAD_MSI`` and
     ``READ_MSI`` are included with inherited values.
     """
-    df = cancer_apd1_response_df()
-    vals = df.dropna(subset=["apd1_orr_pct"])
+    vals = _apd1_valued_rows()
     mapping = dict(zip(vals["cancer_code"].astype(str), vals["apd1_orr_pct"].astype(float)))
     if cancer_type is None:
         if include_inherited:
@@ -123,7 +147,7 @@ def _matching_row(df: pd.DataFrame, code: str):
 
 
 def _resolve_apd1_response_row(requested_code: str, *, inherit: bool):
-    df = cancer_apd1_response_df().dropna(subset=["apd1_orr_pct"])
+    df = _apd1_valued_rows()
     direct = _matching_row(df, requested_code)
     if direct is not None or not inherit:
         return requested_code, "direct" if direct is not None else "missing", direct
@@ -191,7 +215,7 @@ def cancer_apd1_response_record(cancer_type=None, *, inherit=True, include_inher
     source metadata.
     """
     if cancer_type is None:
-        df = cancer_apd1_response_df().dropna(subset=["apd1_orr_pct"])
+        df = _apd1_valued_rows()
         direct_codes = set(df["cancer_code"].astype(str).unique())
         codes = (
             sorted(set(cancer_type_registry()["code"].astype(str)) | direct_codes)

@@ -784,3 +784,4 @@ ICI-9eb893ac25-01,PMID:34293460,https://pubmed.ncbi.nlm.nih.gov/34293460/,pubmed
 ICI-897a51cb7a-01,PMID:29863979,https://pubmed.ncbi.nlm.nih.gov/29863979/,pubmed_abstract,"Abstract, Results",source_section,source citation verified; only a coarse public source section was available,0,2026-07-31
 ICI-8b126eef2c-01,PMID:30409776,https://pmc.ncbi.nlm.nih.gov/articles/PMC6397669/,pmc_full_text,"Abstract, Findings; Results, Clinical outcomes",verified,"endpoint,numerator/denominator,value,population,response definition",26,2026-08-31
 ICI-4b4990885c-01,PMID:34581778,https://pmc.ncbi.nlm.nih.gov/articles/PMC9152999/,pmc_full_text,"Abstract; Results, Safety and efficacy",verified,"endpoint,numerator/denominator,population,response status",24,2026-08-31
+ICI-2a7de231fa-01,PMID:29543932,https://pmc.ncbi.nlm.nih.gov/articles/PMC5885175/,pmc_full_text,"Results, Microsatellite Instability",verified,"endpoint,numerator/denominator,value,denominator,ci,population",30,2026-09-03

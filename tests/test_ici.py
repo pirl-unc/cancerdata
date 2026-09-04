@@ -7,17 +7,25 @@
 import math
 
 import pandas as pd
+import pytest
 
-from oncoref import apd1, ici
+from oncoref import apd1, ici, tmb
 
 
 def test_regimens_and_table():
     assert ici.ici_regimens() == ("PD-1", "PD-L1", "PD-1+CTLA-4")
     df = ici.cancer_ici_response_df()
     assert {"cancer_code", "regimen", "orr_pct"} <= set(df.columns)
+    # Curated gap rows carry no ORR and no regimen — the regimen vocabulary applies to
+    # rows that actually anchor a value. Exempt only the declared gaps, so a stray
+    # blank cannot slip past this check.
+    gap_codes = set(ici._ICI_EVIDENCE_OVERRIDES)
+    valued = df[~df["cancer_code"].isin(gap_codes)]
+    assert valued["orr_pct"].notna().all()
     # all three regimens are actually present (not just PD-1)
-    assert set(df["regimen"]) == {"PD-1", "PD-L1", "PD-1+CTLA-4"}
-    assert (df["regimen"] == "PD-L1").sum() >= 10  # anti-PD-L1 is well-represented
+    assert set(valued["regimen"]) == {"PD-1", "PD-L1", "PD-1+CTLA-4"}
+    assert (valued["regimen"] == "PD-L1").sum() >= 10  # anti-PD-L1 is well-represented
+    assert df.loc[df["cancer_code"].isin(gap_codes), "regimen"].isna().all()
 
 
 def test_ici_anchor_table_exposes_evidence_schema():
@@ -80,6 +88,29 @@ def test_ici_anchor_table_exposes_evidence_schema():
     assert coad["source_scope"] == "derived_blend"
     assert pd.isna(coad["response_denominator"])
     assert pd.isna(coad["source_anchor"])
+
+
+def test_anchor_match_flag_has_one_nullable_schema_and_preserves_not_applicable():
+    ici_df = ici.cancer_ici_response_df()
+    apd1_df = apd1.cancer_apd1_response_df()
+
+    for frame in (ici_df, apd1_df):
+        assert str(frame["response_value_matches_anchor"].dtype) == "boolean"
+
+    valued = ici_df["orr_pct"].notna()
+    assert ici_df.loc[valued, "response_value_matches_anchor"].all()
+    assert ici_df.loc[~valued, "response_value_matches_anchor"].isna().all()
+    assert apd1_df["response_value_matches_anchor"].all()
+
+
+def test_cached_anchor_frames_are_defensive_copies():
+    ici_df = ici.cancer_ici_response_df()
+    apd1_df = apd1.cancer_apd1_response_df()
+    ici_df.loc[0, "cancer_code"] = "MUTATED"
+    apd1_df.loc[0, "cancer_code"] = "MUTATED"
+
+    assert ici.cancer_ici_response_df().loc[0, "cancer_code"] != "MUTATED"
+    assert apd1.cancer_apd1_response_df().loc[0, "cancer_code"] != "MUTATED"
 
 
 def test_ici_estimates_expose_structured_source_and_ci_provenance():
@@ -707,3 +738,295 @@ def test_parent_code_helper_treats_nan_parent_as_missing():
 def test_regimen_maps_cached():
     # _regimen_maps is memoized (same object back from the cache).
     assert ici._regimen_maps() is ici._regimen_maps()
+
+
+def test_audited_ici_gap_is_distinguishable_from_an_unreviewed_code():
+    """A curated gap row must resolve, not vanish.
+
+    Before this contract existed the response table could only express "has a value";
+    a blank-ORR row was dropped by the value maps, so a reviewed "no defensible
+    aggregate exists" was indistinguishable from a code nobody had curated.
+    """
+    reviewed = ici.resolve_ici_response_source("CRC")
+    assert reviewed["inheritance_kind"] == "direct_missing"
+    assert reviewed["has_ici_response_source"] is True
+    assert reviewed["resolved_cancer_code"] == "CRC"
+    assert reviewed["is_inherited_evidence"] is False
+    assert reviewed["available_regimens"] == ()
+    assert reviewed["selected_regimen"] is None
+    assert reviewed["evidence_type"] == "unknown"
+    assert reviewed["source_scope"] == "subtype_sources_not_aggregated"
+    assert reviewed["missing_reason"] == "response_is_mmr_stratified_not_aggregate"
+
+    # An unreviewed code keeps the original bare-miss contract.
+    unreviewed = ici.resolve_ici_response_source("HCL")
+    assert unreviewed["inheritance_kind"] == "missing"
+    assert unreviewed["has_ici_response_source"] is False
+    assert "missing_reason" not in unreviewed
+
+
+def test_audited_ici_gap_is_reported_on_every_surface():
+    """The gap must survive inherit=False and reach the record accessor.
+
+    tmb.resolve_tmb_source / tmb.cancer_tmb_record both report an audited gap
+    regardless of ``inherit``; ICI must match or the "same contract" claim in
+    docs/api.md is false.
+    """
+    for kwargs in ({}, {"inherit": False}):
+        record = ici.resolve_ici_response_source("CRC", **kwargs)
+        assert record["inheritance_kind"] == "direct_missing", kwargs
+        assert record["has_ici_response_source"] is True, kwargs
+        assert record["missing_reason"] == "response_is_mmr_stratified_not_aggregate"
+
+    # The record surface distinguishes a reviewed gap from an uncurated code.
+    gap_record = ici.cancer_ici_response_record("CRC")
+    assert gap_record is not None
+    assert gap_record["inheritance_kind"] == "direct_missing"
+    assert gap_record["missing_reason"] == "response_is_mmr_stratified_not_aggregate"
+    assert ici.cancer_ici_response_record("HCL") is None
+
+    # A gap names no regimen, so the per-regimen view is empty rather than inherited.
+    assert ici.cancer_ici_response("CRC", fallback=False) == {}
+    assert ici.cancer_ici_response_record("CRC", fallback=False) == {}
+
+
+def test_subtype_stratified_aggregates_do_not_report_a_pooled_orr():
+    """CRC/RCC/BRCA/SARC response is subtype-determined, so the umbrella has no ORR."""
+    expected = {
+        "CRC": "response_is_mmr_stratified_not_aggregate",
+        "RCC": "no_supported_aggregate_orr",
+        "BRCA": "response_is_receptor_subtype_stratified",
+        "SARC": "response_is_histology_stratified",
+    }
+    for code, reason in expected.items():
+        assert ici.cancer_ici_response(code) is None
+        record = ici.resolve_ici_response_source(code)
+        assert record["inheritance_kind"] == "direct_missing"
+        assert record["missing_reason"] == reason
+        assert record["source_scope"] == "subtype_sources_not_aggregated"
+
+    # The stratified children each keep their own curated anchor.
+    assert ici.cancer_ici_response("CRC_MSI") == 43.8
+    assert ici.cancer_ici_response("KIRC") == 25.0
+    assert ici.cancer_ici_response("BRCA_Basal") is not None
+    assert ici.cancer_ici_response("SARC_UPS") == 23.0
+
+    # Gap rows stay out of the bulk value map and out of the regimen maps.
+    bulk = ici.cancer_ici_response()
+    assert not ({"CRC", "RCC", "BRCA", "SARC"} & set(bulk))
+
+
+def test_stad_msi_uses_reported_subgroup_orr_while_tmb_stays_an_audited_gap():
+    registry = ici.cancer_type_registry().set_index("code")
+    assert registry.loc["STAD_MSI", "parent_code"] == "STAD"
+    assert ici.cancer_ici_response("STAD") == 12.0
+
+    # KEYNOTE-059 reported this subgroup directly, so neither public anti-PD-1
+    # surface may inherit the all-comer STAD value.
+    assert ici.cancer_ici_response("STAD_MSI") == 57.1
+    assert ici.cancer_ici_response("STAD_MSI", fallback=False) == {"PD-1": 57.1}
+    assert apd1.cancer_apd1_response("STAD_MSI") == 57.1
+    resolved = ici.resolve_ici_response_source("STAD_MSI")
+    assert resolved["inheritance_kind"] == "direct"
+    assert resolved["resolved_cancer_code"] == "STAD_MSI"
+    assert resolved["response_numerator"] == 4
+    assert resolved["response_denominator"] == 7
+    assert resolved["response_ci_low"] == 18.4
+    assert resolved["response_ci_high"] == 90.1
+
+    # The ICI subgroup result does not supply a TMB median; that remains audited-unknown.
+    assert tmb.cancer_tmb("STAD_MSI") is None
+    assert tmb.resolve_tmb_source("STAD_MSI")["inheritance_kind"] == "direct_missing"
+
+    # A sibling without a direct subtype anchor still inherits normally.
+    assert ici.cancer_ici_response("STAD_CIN") == 12.0
+
+
+def test_ici_gap_row_blocks_inheritance_instead_of_borrowing_an_ancestor(monkeypatch):
+    """A reviewed gap outranks ancestor evidence on every lookup path."""
+    synthetic_code = "STAD_CIN"
+    gap = ici._gap_rows()["CRC"].copy()
+    gap["cancer_code"] = synthetic_code
+    gaps = {**ici._gap_rows(), synthetic_code: gap}
+    monkeypatch.setattr(ici, "_gap_rows", lambda: gaps)
+
+    assert ici.cancer_ici_response(synthetic_code) is None
+    assert ici.cancer_ici_response(synthetic_code, fallback=False) == {}
+    resolved = ici.resolve_ici_response_source(synthetic_code)
+    assert resolved["inheritance_kind"] == "direct_missing"
+    assert resolved["resolved_cancer_code"] == synthetic_code
+    assert ici.cancer_ici_response_record(synthetic_code)["inheritance_kind"] == "direct_missing"
+
+
+def test_only_declared_codes_may_carry_a_blank_orr():
+    """An accidental blank must raise, not become an 'audited' gap.
+
+    The declaration is checked against the blank value itself, not against the
+    estimates join: a row that keeps its estimate while losing its value still joins
+    cleanly, so a join-keyed check would wave it through.
+    """
+    declared = ici._ICI_EVIDENCE_OVERRIDES
+    anchors = ici.get_data("cancer-ici-response").copy()
+
+    # The shipped table is valid only because its blank rows are declared gaps.
+    ici.response_anchor_evidence_df(anchors, value_col="orr_pct", gap_overrides=declared)
+
+    # The realistic slip: clearing the value on a row that already has an estimate.
+    # The join still succeeds, so only the blank-value check can catch this.
+    cleared = anchors.copy()
+    cleared.loc[cleared["cancer_code"] == "LUAD", "orr_pct"] = float("nan")
+    with pytest.raises(ValueError, match="only allowed for declared audited gaps"):
+        ici.response_anchor_evidence_df(cleared, value_col="orr_pct", gap_overrides=declared)
+
+    # And the slip with no estimate to join against.
+    slip = anchors[anchors["cancer_code"] == "LUAD"].iloc[[0]].copy()
+    slip["orr_pct"] = float("nan")
+    slip["cancer_code"] = "HCL"
+    perturbed = pd.concat([anchors, slip], ignore_index=True)
+    with pytest.raises(ValueError, match="only allowed for declared audited gaps"):
+        ici.response_anchor_evidence_df(perturbed, value_col="orr_pct", gap_overrides=declared)
+
+    # Declaring the code is not enough either: a gap row must not name a regimen.
+    with pytest.raises(ValueError, match="must leave regimen blank"):
+        ici.response_anchor_evidence_df(
+            perturbed,
+            value_col="orr_pct",
+            gap_overrides={**declared, "HCL": {"source_scope": "s", "missing_reason": "r"}},
+        )
+
+    # Merely spelling both keys is not enough; empty provenance is still incomplete.
+    empty_reason = {
+        **declared,
+        "CRC": {"source_scope": "subtype_sources_not_aggregated", "missing_reason": " "},
+    }
+    with pytest.raises(ValueError, match="need both source_scope and missing_reason"):
+        ici.response_anchor_evidence_df(
+            anchors,
+            value_col="orr_pct",
+            gap_overrides=empty_reason,
+        )
+
+    # A code cannot be both valued and an audited gap. COAD keeps its valued anchor
+    # (which has a backing estimate), so only the contradiction itself can raise.
+    blank_coad = anchors[anchors["cancer_code"] == "COAD"].iloc[[0]].copy()
+    blank_coad["orr_pct"] = float("nan")
+    blank_coad["regimen"] = None
+    with pytest.raises(ValueError, match="both valued and an audited gap"):
+        ici.response_anchor_evidence_df(
+            pd.concat([anchors, blank_coad], ignore_index=True),
+            value_col="orr_pct",
+            gap_overrides={**declared, "COAD": {"source_scope": "s", "missing_reason": "r"}},
+        )
+
+    # Two gap rows for one code would collapse the code-keyed lookup to whichever came
+    # last; the merge's one_to_one validation already rejects it (duplicate NaN
+    # regimen keys count as duplicates in the left frame).
+    twice = pd.concat(
+        [anchors, anchors[anchors["cancer_code"] == "CRC"].iloc[[0]].copy()], ignore_index=True
+    )
+    with pytest.raises(pd.errors.MergeError, match="not a one-to-one merge"):
+        ici.response_anchor_evidence_df(twice, value_col="orr_pct", gap_overrides=declared)
+
+    # The shared helper defaults to allowing no gaps at all, so the aPD-1 table keeps
+    # the strict contract.
+    with pytest.raises(ValueError, match="only allowed for declared audited gaps"):
+        ici.response_anchor_evidence_df(anchors, value_col="orr_pct")
+
+
+def test_audited_gap_agrees_across_every_lookup_surface():
+    """The gap guard lives in four resolution paths; they must not drift apart."""
+    for code in ici._ICI_EVIDENCE_OVERRIDES:
+        assert ici.cancer_ici_response(code) is None, code
+        assert ici.cancer_ici_response(code, inherit=False) is None, code
+        assert ici.cancer_ici_response(code, fallback=False) == {}, code
+        assert ici.cancer_ici_response(code, regimen="PD-1") is None, code
+
+        record = ici.cancer_ici_response_record(code)
+        assert record is not None and record["inheritance_kind"] == "direct_missing", code
+        assert ici.cancer_ici_response_record(code, fallback=False) == {}, code
+
+        for kwargs in ({}, {"inherit": False}, {"regimen": "PD-1"}, {"fallback": False}):
+            resolved = ici.resolve_ici_response_source(code, **kwargs)
+            assert resolved["inheritance_kind"] == "direct_missing", (code, kwargs)
+            assert resolved["has_ici_response_source"] is True, (code, kwargs)
+            assert resolved["missing_reason"], (code, kwargs)
+
+
+def test_gap_rows_do_not_publish_fabricated_evidence_fields():
+    """A gap row names no regimen and cites no evidence, so derived fields stay empty."""
+    df = ici.cancer_ici_response_df()
+    gaps = df[df["orr_pct"].isna()]
+    assert set(gaps["cancer_code"]) == {"CRC", "RCC", "BRCA", "SARC"}
+    assert gaps["regimen"].isna().all()
+    assert gaps["therapy_regimen_class"].isna().all()
+    assert gaps["evidence_source_code"].isna().all()
+    assert gaps["response_metric"].isna().all()
+    assert gaps["source_estimate_id"].isna().all()
+    assert (gaps["evidence_type"] == "unknown").all()
+    assert not gaps["is_direct_cancer_code_evidence"].any()
+    assert gaps["missing_reason"].notna().all()
+
+
+def test_gap_note_citations_resolve_to_real_anchor_rows():
+    """The notes column is the audit trail, so its citations must be real.
+
+    A gap note that names a trial or PMID the table does not actually anchor is a
+    curation error, not just prose drift — and prose is exactly what no other test
+    checks.
+    """
+    import re
+
+    df = ici.cancer_ici_response_df()
+    valued = df[df["orr_pct"].notna()]
+    refs_by_code = {
+        str(code): set(group["pmid_doi"].dropna().astype(str))
+        for code, group in valued.groupby("cancer_code")
+    }
+    gaps = df[df["cancer_code"].isin(ici._ICI_EVIDENCE_OVERRIDES)]
+    assert not gaps.empty
+
+    for _, row in gaps.iterrows():
+        code = row["cancer_code"]
+        note = str(row["notes"])
+        cited = set(re.findall(r"PMID:\d+|DOI:[^\s,;)]+", note))
+        assert cited, f"{code} gap note cites no source"
+
+        # Each citation must belong to a cancer code the note itself names — checking
+        # only that it exists somewhere in the table would pass a note that attributed
+        # one trial's PMID to a different code entirely.
+        named = {c for c in refs_by_code if re.search(rf"\b{re.escape(c)}\b", note)}
+        assert named, f"{code} note names no anchored cancer code"
+        attributable = set().union(*(refs_by_code[c] for c in named))
+        misattributed = cited - attributable
+        assert not misattributed, (
+            f"{code} note cites {misattributed}, which belong to no code it names "
+            f"(names: {sorted(named)})"
+        )
+
+
+def test_gap_note_quoted_values_match_the_curated_anchors():
+    """Percentages quoted in a gap note must equal the rows they describe."""
+
+    def orr(code, regimen="PD-1"):
+        df = ici.cancer_ici_response_df()
+        hit = df[(df["cancer_code"] == code) & (df["regimen"] == regimen)]
+        return float(hit["orr_pct"].iloc[0])
+
+    # CRC note: "CRC_MSI 43.8%"
+    assert orr("CRC_MSI") == 43.8
+    # RCC note: "KIRC 25.0% ... 42.0% ... KIRP 28.8% and KICH 9.5% ... spanning 9.5% to 42%"
+    assert orr("KIRC") == 25.0
+    assert orr("KIRC", "PD-1+CTLA-4") == 42.0
+    assert orr("KIRP") == 28.8
+    assert orr("KICH") == 9.5
+    renal = [orr("KIRC"), orr("KIRC", "PD-1+CTLA-4"), orr("KIRP"), orr("KICH")]
+    assert (min(renal), max(renal)) == (9.5, 42.0)
+    # BRCA note: "pembrolizumab 5.0% ... atezolizumab 10.0%"
+    assert orr("BRCA_Basal") == 5.0
+    assert orr("BRCA_Basal", "PD-L1") == 10.0
+    # SARC note: "0% in SARC_LMS and SARC_EWS ... 23% in SARC_UPS ... 25% in
+    # SARC_SMARCA4 ... 0% in SARC_GIST"
+    assert orr("SARC_LMS") == 0.0 and orr("SARC_EWS") == 0.0
+    assert orr("SARC_UPS") == 23.0
+    assert orr("SARC_SMARCA4") == 25.0
+    assert orr("SARC_GIST") == 0.0

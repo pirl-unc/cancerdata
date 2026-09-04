@@ -211,3 +211,29 @@ def test_new_aggregate_tmb_rows_preserve_source_scope_and_missing_boundaries():
 def test_tmb_unknown_value_returns_none():
     # A real code with no curated value and no ancestor value returns None.
     assert tmb.cancer_tmb("PRAD", inherit=False) == tmb.cancer_tmb().get("PRAD")
+
+
+def test_stad_msi_is_an_audited_gap_not_the_pooled_stomach_median():
+    """MSI-H gastric must not inherit the pooled STAD median.
+
+    STAD's curated 5.0 mut/Mb is the pooled intestinal-type panel value; MSI-H
+    gastric tumours are hypermutated. Before this row existed the ancestor walk
+    reported 5.0 for STAD_MSI, which is confidently wrong for the one gastric
+    subtype whose TMB drives checkpoint reasoning.
+    """
+    assert tmb.cancer_tmb("STAD") == 5.0
+    assert tmb.cancer_tmb("STAD_MSI") is None
+    assert "STAD_MSI" not in tmb.cancer_tmb()
+
+    record = tmb.resolve_tmb_source("STAD_MSI")
+    assert record["inheritance_kind"] == "direct_missing"
+    assert record["has_tmb_source"] is True
+    assert record["estimate_type"] == "unknown"
+    assert record["source_scope"] == "source_rejected_for_subtype_value"
+    assert record["missing_reason"] == "no_supported_subtype_median"
+    assert record["pmid_doi"] == "PMID:28420421;PMID:25079317"
+
+    # The remaining TCGA gastric subtypes still inherit deliberately: the pooled
+    # median is dominated by CIN and no subtype-specific medians are curated.
+    assert tmb.resolve_tmb_source("STAD_CIN")["inheritance_kind"] == "ancestor"
+    assert tmb.cancer_tmb("STAD_CIN") == 5.0

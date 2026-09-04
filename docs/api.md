@@ -313,7 +313,7 @@ ici_response.ici_source_locator_audit_df()
 
 `ici_response_estimates_df()` is the auditable long table behind the compact
 ORR anchors. Each row has a stable `estimate_id`; compact
-`ici_response_record(...)` / `apd1_response_df()` rows expose that pointer as
+`cancer_ici_response_record(...)` / `apd1_response_df()` rows expose that pointer as
 `source_estimate_id`. `ici_source_locator_audit_df()` has exactly one row per
 `estimate_id` and records the public source URL, document kind, table/figure/section
 locator, match evidence, and audit date.
@@ -336,6 +336,7 @@ quotes from the paper.
   unverified because its population or value could not be confirmed.
 - `not_verified`: no supporting source block was confirmed.
 - `not_applicable`: a curator-derived value has no single source location.
+
 
 `ci_basis` distinguishes source-reported intervals from calculated 95% intervals:
 `computed_wilson` for the standard pooled/count-derived interval and
@@ -370,6 +371,54 @@ python scripts/audit_ici_source_locators.py --write-estimates
 The script retrieves one public source document at a time and stores compressed
 cache entries under `~/.cache/oncoref/ici-source-locator-audit`, keeping the source
 corpus out of memory.
+
+### Audited response gaps
+
+Some cancer codes have no defensible *representative* ORR because response is
+determined by a stratifying subtype rather than by the entity itself. These carry a
+curated row with a blank `orr_pct` and blank `regimen`, and resolve with
+`inheritance_kind="direct_missing"` and `has_ici_response_source=True` — the same
+audited-gap contract `oncoref.tmb` uses. `source_scope` and `missing_reason` record
+why no value exists, and the gap stops the resolver's parent walk, so a code with a
+reviewed gap never inherits an ancestor's ORR instead. The gap is reported whether or
+not `inherit` is set, and `cancer_ici_response_record(...)` returns the gap record
+rather than `None`. The per-regimen views (`fallback=False`) return an empty mapping,
+since a gap names no regimen.
+
+Only codes declared in the module's reviewed gap set may carry a blank `orr_pct`; an
+undeclared blank still raises, so a data-entry slip cannot be promoted to an
+"audited" gap.
+
+```python
+from oncoref import ici_response
+
+ici_response.ici_response_source("CRC")["missing_reason"]
+# 'response_is_mmr_stratified_not_aggregate'
+```
+
+Current gaps, with the reason recorded on each row:
+
+| Code | Why there is no representative ORR | Use instead |
+| --- | --- | --- |
+| `CRC` | mismatch-repair stratified: MSI-H/dMMR responds, MSS essentially does not | `CRC_MSI` |
+| `RCC` | member histologies anchored on separate trials spanning 9.5% to 42% | `KIRC`, `KIRP`, `KICH`, `RCC_NCC` |
+| `BRCA` | curated anchors are receptor-subtype (TNBC) anchors only | `BRCA_Basal` |
+| `SARC` | histology-determined, from 0% (LMS, EWS, GIST) to 62% (KS) across curated histologies | per-histology `SARC_*` |
+
+`STAD_MSI` is not an ICI gap: KEYNOTE-059 reports a 57.1% ORR (4/7; 95% CI
+18.4–90.1) for its MSI-high gastric/GEJ subgroup, so the subtype has its own
+low-confidence anchor instead of inheriting `STAD`'s 12% all-comer ORR. Its TMB remains
+an audited gap because the curated genomic sources do not report an MSI-stratified
+gastric median.
+
+Note also that `COAD` and `READ` are prevalence-weighted `derived_blend` values over
+the MSI-H and MSS populations, not measured all-comer ORRs. A code with no curated row
+at all still reports `inheritance_kind="missing"` with
+`has_ici_response_source=False`, so a reviewed gap stays distinguishable from an
+uncurated one on the resolver, record, and CLI surfaces. The scalar value accessor
+returns `None` for both. The per-regimen views (`fallback=False`) return `{}` for both,
+since neither has a row for any regimen — use `ici_response_source(...)` when that
+distinction matters.
 
 ## Therapy Benefit and Toxicity
 
