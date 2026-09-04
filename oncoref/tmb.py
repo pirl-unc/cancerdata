@@ -19,7 +19,12 @@ from functools import lru_cache
 import pandas as pd
 
 from ._evidence_resolution import evidence_record, resolve_evidence
-from .cancer_types import cancer_evidence_source_code, cancer_type_registry, resolve_cancer_type
+from .cancer_types import (
+    _registry_parent_by_code,
+    cancer_evidence_source_code,
+    cancer_type_registry,
+    resolve_cancer_type,
+)
 from .load_dataset import _register_derived_cache, get_data
 
 _TMB_EVIDENCE_OVERRIDES = {
@@ -135,6 +140,12 @@ def cancer_tmb_df():
     (Lawrence 2013) with panel-based medians (Chalmers 2017) and disease-specific
     studies; see the ``source``/``notes`` columns — panel and WES TMB are not
     strictly comparable in the low-TMB range."""
+    return _tmb_evidence_frame().copy()
+
+
+@lru_cache(maxsize=1)
+def _tmb_evidence_frame():
+    """Cached annotated TMB frame. Internal callers treat it as read-only."""
     df = get_data("cancer-tmb").copy()
     evidence = [
         tmb_evidence_fields(row["cancer_code"], row["median_tmb_mut_mb"])
@@ -143,6 +154,9 @@ def cancer_tmb_df():
     for col in ("estimate_type", "source_scope", "missing_reason"):
         df[col] = [record[col] for record in evidence]
     return df
+
+
+_register_derived_cache(_tmb_evidence_frame.cache_clear)
 
 
 def tmb_evidence_fields(
@@ -180,10 +194,23 @@ def tmb_evidence_fields(
     }
 
 
-def _tmb_value_map(df=None) -> dict[str, float]:
-    df = cancer_tmb_df() if df is None else df
-    vals = df.dropna(subset=["median_tmb_mut_mb"])
+@lru_cache(maxsize=1)
+def _tmb_value_map() -> dict[str, float]:
+    """Cached direct numeric map. Callers must treat it as read-only."""
+    vals = _tmb_evidence_frame().dropna(subset=["median_tmb_mut_mb"])
     return dict(zip(vals["cancer_code"].astype(str), vals["median_tmb_mut_mb"].astype(float)))
+
+
+_register_derived_cache(_tmb_value_map.cache_clear)
+
+
+@lru_cache(maxsize=1)
+def _tmb_rows_by_code() -> dict[str, object]:
+    """Cached direct-row index, including audited gaps. Treat rows as read-only."""
+    return {str(row["cancer_code"]): row for _, row in _tmb_evidence_frame().iterrows()}
+
+
+_register_derived_cache(_tmb_rows_by_code.cache_clear)
 
 
 def _record_from_row(row, *, requested_code: str, resolved_code: str, inheritance_kind: str):
@@ -198,15 +225,14 @@ def _record_from_row(row, *, requested_code: str, resolved_code: str, inheritanc
 
 
 def _resolve_tmb_row(requested_code: str, *, inherit: bool):
-    df = cancer_tmb_df()
-    values = _tmb_value_map(df)
-    rows = df.set_index("cancer_code", drop=False)
+    values = _tmb_value_map()
+    rows = _tmb_rows_by_code()
     resolution = resolve_evidence(
         requested_code,
-        direct_lookup=lambda code: rows.loc[code] if code in values else None,
-        direct_gap_lookup=lambda code: rows.loc[code] if code in rows.index else None,
+        direct_lookup=lambda code: rows.get(code) if code in values else None,
+        direct_gap_lookup=rows.get,
         source_code_for=cancer_evidence_source_code,
-        parent_by_code=cancer_type_registry().set_index("code")["parent_code"],
+        parent_by_code=_registry_parent_by_code,
         inherit=inherit,
     )
     return resolution.resolved_code, resolution.inheritance_kind, resolution.payload
@@ -257,10 +283,9 @@ def cancer_tmb(cancer_type=None, *, inherit=True):
     ``LUAD``, ``SCLC_ASCL1`` -> ``SCLC``, rare ``SARC_*`` -> ``SARC``) resolve
     without a curated row each. Returns ``None`` if neither the code nor any
     ancestor has a value."""
-    df = cancer_tmb_df()
-    mapping = _tmb_value_map(df)
+    mapping = _tmb_value_map()
     if cancer_type is None:
-        return mapping
+        return dict(mapping)
     code = resolve_cancer_type(cancer_type)
     resolved_code, _, row = _resolve_tmb_row(code, inherit=inherit)
     return mapping.get(resolved_code) if row is not None else None

@@ -46,7 +46,7 @@ def resolve_evidence(
     *,
     direct_lookup: Callable[[str], Payload | None],
     source_code_for: Callable[[str], str],
-    parent_by_code: Mapping[str, object],
+    parent_by_code: Mapping[str, object] | Callable[[], Mapping[str, object]],
     inherit: bool,
     direct_gap_lookup: Callable[[str], Payload | None] | None = None,
 ) -> EvidenceResolution[Payload]:
@@ -82,14 +82,19 @@ def resolve_evidence(
         if source is not None:
             return EvidenceResolution(source_code, "source_scope", source)
 
-    current = parent_code(requested_code, parent_by_code)
+    # Parent metadata is unnecessary for direct hits, audited gaps, source-scope
+    # hits, and lookups with inheritance disabled. Accepting a provider keeps that
+    # comparatively expensive index lazy while preserving support for callers that
+    # already have a mapping.
+    parents = parent_by_code() if callable(parent_by_code) else parent_by_code
+    current = parent_code(requested_code, parents)
     seen = {requested_code}
     while current and current not in seen:
         seen.add(current)
         ancestor = direct_lookup(current)
         if ancestor is not None:
             return EvidenceResolution(current, "ancestor", ancestor)
-        current = parent_code(current, parent_by_code)
+        current = parent_code(current, parents)
 
     return EvidenceResolution(requested_code, "missing", None)
 

@@ -281,6 +281,7 @@ def _clear_caches():
     from .load_dataset import _clear_cache
 
     CANCER_TYPE_NAMES.clear_cache()
+    _registry_parent_by_code.cache_clear()
     _registry_frame.cache_clear()
     _who_audit_frame.cache_clear()
     _who_registry_metadata.cache_clear()
@@ -680,6 +681,18 @@ def _registry_frame():
     """Cached registry frame (shared, read-only). Internal hot-path callers use
     this; the public :func:`cancer_type_registry` returns a defensive copy."""
     return get_data("cancer-type-registry", copy=False)
+
+
+@lru_cache(maxsize=1)
+def _registry_parent_by_code() -> dict[str, object]:
+    """Cached ``code -> parent_code`` index for internal resolution hot paths.
+
+    This uses the raw registry frame because evidence resolution needs neither the
+    public registry's defensive copy nor its computed WHO/reference metadata.
+    Callers must treat the returned mapping as read-only.
+    """
+    registry = _registry_frame()
+    return dict(zip(registry["code"].astype(str), registry["parent_code"]))
 
 
 WHO_AUDIT_STATUS_VALUES = ("represented", "alias", "axis", "missing", "out_of_scope")

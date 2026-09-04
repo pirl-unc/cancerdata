@@ -13,6 +13,7 @@
 import numpy as np
 import pandas as pd
 
+from oncoref import apd1, cancer_types, ici, tmb
 from oncoref._evidence_resolution import evidence_record, parent_code, resolve_evidence
 
 
@@ -84,6 +85,44 @@ def test_source_scope_precedes_nearest_ancestor_and_inheritance_can_be_disabled(
     assert missing.payload is None
 
 
+def test_parent_index_provider_is_lazy_until_an_ancestor_walk_is_needed():
+    calls = []
+
+    def parents():
+        calls.append(True)
+        return {"CHILD": "PARENT"}
+
+    direct = resolve_evidence(
+        "CHILD",
+        direct_lookup={"CHILD": "direct"}.get,
+        source_code_for=lambda code: code,
+        parent_by_code=parents,
+        inherit=True,
+    )
+    assert direct.payload == "direct"
+    assert calls == []
+
+    missing_without_inheritance = resolve_evidence(
+        "CHILD",
+        direct_lookup={}.get,
+        source_code_for=lambda code: code,
+        parent_by_code=parents,
+        inherit=False,
+    )
+    assert missing_without_inheritance.payload is None
+    assert calls == []
+
+    inherited = resolve_evidence(
+        "CHILD",
+        direct_lookup={"PARENT": "ancestor"}.get,
+        source_code_for=lambda code: code,
+        parent_by_code=parents,
+        inherit=True,
+    )
+    assert inherited.payload == "ancestor"
+    assert calls == [True]
+
+
 def test_nearest_ancestor_wins_and_cycles_terminate_as_missing():
     nearest = _resolve(
         "CHILD",
@@ -125,3 +164,30 @@ def test_nullable_parent_and_public_record_conversion_are_shared():
         "inheritance_kind": "ancestor",
         "is_inherited_evidence": True,
     }
+
+
+def test_evidence_row_and_parent_indexes_are_cached_and_invalidated():
+    cache_functions = (
+        cancer_types._registry_parent_by_code,
+        ici._rows_by_code_and_regimen,
+        apd1._apd1_rows_by_code,
+        apd1._apd1_value_map,
+        tmb._tmb_evidence_frame,
+        tmb._tmb_rows_by_code,
+        tmb._tmb_value_map,
+    )
+    cancer_types._clear_caches()
+    try:
+        assert all(fn.cache_info().currsize == 0 for fn in cache_functions)
+
+        assert cancer_types._registry_parent_by_code() is cancer_types._registry_parent_by_code()
+        assert ici._rows_by_code_and_regimen() is ici._rows_by_code_and_regimen()
+        assert apd1._apd1_rows_by_code() is apd1._apd1_rows_by_code()
+        assert apd1._apd1_value_map() is apd1._apd1_value_map()
+        assert tmb._tmb_evidence_frame() is tmb._tmb_evidence_frame()
+        assert tmb._tmb_rows_by_code() is tmb._tmb_rows_by_code()
+        assert tmb._tmb_value_map() is tmb._tmb_value_map()
+    finally:
+        cancer_types._clear_caches()
+
+    assert all(fn.cache_info().currsize == 0 for fn in cache_functions)

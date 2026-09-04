@@ -83,7 +83,12 @@ from functools import lru_cache
 import pandas as pd
 
 from ._evidence_resolution import evidence_record, resolve_evidence
-from .cancer_types import cancer_evidence_source_code, cancer_type_registry, resolve_cancer_type
+from .cancer_types import (
+    _registry_parent_by_code,
+    cancer_evidence_source_code,
+    cancer_type_registry,
+    resolve_cancer_type,
+)
 from .load_dataset import _register_derived_cache, get_data
 
 #: Response-proportion endpoints that can be responder-weighted-pooled (each needs a
@@ -514,6 +519,22 @@ def _valued_rows():
 _register_derived_cache(_valued_rows.cache_clear)
 
 
+@lru_cache(maxsize=1)
+def _rows_by_code_and_regimen() -> dict[str, dict[str, object]]:
+    """Cached row index used by scalar and inherited-bulk resolution.
+
+    The source frame has at most one row per cancer-code/regimen pair. Callers must
+    treat the nested mappings and pandas rows as read-only.
+    """
+    rows: dict[str, dict[str, object]] = {}
+    for _, row in _valued_rows().iterrows():
+        rows.setdefault(str(row["cancer_code"]), {})[str(row["regimen"])] = row
+    return rows
+
+
+_register_derived_cache(_rows_by_code_and_regimen.cache_clear)
+
+
 def _gap_record(requested_code: str, *, resolver: bool) -> dict:
     """The public record for an audited gap: the curated row plus lookup metadata.
 
@@ -541,21 +562,20 @@ def _resolve_with_fallback(code: str, maps: dict[str, dict[str, float]], order):
 
 
 def _bulk_lookup_codes(*, include_inherited: bool = False) -> list[str]:
-    df = _valued_rows()
-    direct_codes = {str(code) for code in df["cancer_code"]}
+    direct_codes = set(_rows_by_code_and_regimen())
     if not include_inherited:
         return sorted(direct_codes)
-    registry_codes = set(cancer_type_registry()["code"].astype(str))
+    registry_codes = set(_registry_parent_by_code())
     return sorted(registry_codes | direct_codes)
 
 
-def _matching_rows(df, code: str, order) -> dict[str, object]:
-    rows: dict[str, object] = {}
-    sub = df[df["cancer_code"] == code]
+def _matching_rows(code: str, order) -> dict[str, object]:
+    indexed = _rows_by_code_and_regimen().get(code, {})
+    rows = {}
     for regimen in order:
-        hit = sub[sub["regimen"] == regimen]
-        if not hit.empty:
-            rows[str(regimen)] = hit.iloc[0]
+        key = str(regimen)
+        if key in indexed:
+            rows[key] = indexed[key]
     return rows
 
 
@@ -571,14 +591,13 @@ def _record_from_row(row, *, requested_code: str, resolved_code: str, inheritanc
 
 
 def _resolve_ici_response_source(requested_code: str, order, *, inherit: bool):
-    df = _valued_rows()
     gaps = _gap_rows()
     resolution = resolve_evidence(
         requested_code,
-        direct_lookup=lambda code: _matching_rows(df, code, order) or None,
+        direct_lookup=lambda code: _matching_rows(code, order) or None,
         direct_gap_lookup=gaps.get,
         source_code_for=cancer_evidence_source_code,
-        parent_by_code=cancer_type_registry().set_index("code")["parent_code"],
+        parent_by_code=_registry_parent_by_code,
         inherit=inherit,
     )
     rows = (
@@ -680,10 +699,10 @@ def cancer_ici_response(
     duplicated in default bulk maps. Pass ``include_inherited=True`` to expand across
     registry codes with the same resolver used for individual lookups.
     """
-    maps = _regimen_maps()
     order = (regimen,) if regimen is not None else REGIMEN_FALLBACK
 
     if cancer_type is None:
+        maps = _regimen_maps()
         if include_inherited:
             out = {}
             for code in _bulk_lookup_codes(include_inherited=True):
