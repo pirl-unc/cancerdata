@@ -264,7 +264,11 @@ def test_cta_expression_heatmap_renders(tmp_path):
     )
 
     out = tmp_path / "cta.png"
-    cohorts = __import__("oncoref").available_percentile_cohorts()[:6]
+    oncoref = __import__("oncoref")
+    local = oncoref.locally_available_percentile_cohorts(include_recomputable=False)
+    availability = oncoref.cancer_reference_expression_availability(local)
+    cohorts = availability.loc[availability["available"], "cancer_code"].astype(str).tolist()[:6]
+    assert cohorts
     fig = plots.cta_expression_heatmap(
         cohorts=cohorts, n_cohorts=4, n_ctas=8, proteoform=False, save=str(out)
     )

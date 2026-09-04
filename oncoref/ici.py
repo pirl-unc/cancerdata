@@ -82,7 +82,13 @@ from functools import lru_cache
 
 import pandas as pd
 
-from .cancer_types import cancer_evidence_source_code, cancer_type_registry, resolve_cancer_type
+from ._evidence_resolution import evidence_record, resolve_evidence
+from .cancer_types import (
+    _registry_parent_by_code,
+    cancer_evidence_source_code,
+    cancer_type_registry,
+    resolve_cancer_type,
+)
 from .load_dataset import _register_derived_cache, get_data
 
 #: Response-proportion endpoints that can be responder-weighted-pooled (each needs a
@@ -513,6 +519,22 @@ def _valued_rows():
 _register_derived_cache(_valued_rows.cache_clear)
 
 
+@lru_cache(maxsize=1)
+def _rows_by_code_and_regimen() -> dict[str, dict[str, object]]:
+    """Cached row index used by scalar and inherited-bulk resolution.
+
+    The source frame has at most one row per cancer-code/regimen pair. Callers must
+    treat the nested mappings and pandas rows as read-only.
+    """
+    rows: dict[str, dict[str, object]] = {}
+    for _, row in _valued_rows().iterrows():
+        rows.setdefault(str(row["cancer_code"]), {})[str(row["regimen"])] = row
+    return rows
+
+
+_register_derived_cache(_rows_by_code_and_regimen.cache_clear)
+
+
 def _gap_record(requested_code: str, *, resolver: bool) -> dict:
     """The public record for an audited gap: the curated row plus lookup metadata.
 
@@ -539,93 +561,51 @@ def _resolve_with_fallback(code: str, maps: dict[str, dict[str, float]], order):
     return None, None
 
 
-def _parent_code(code: str, registry) -> str | None:
-    if code not in registry.index:
-        return None
-    parent = registry.loc[code].get("parent_code", "")
-    if pd.isna(parent):
-        return None
-    parent = str(parent).strip()
-    return parent or None
-
-
 def _bulk_lookup_codes(*, include_inherited: bool = False) -> list[str]:
-    df = _valued_rows()
-    direct_codes = {str(code) for code in df["cancer_code"]}
+    direct_codes = set(_rows_by_code_and_regimen())
     if not include_inherited:
         return sorted(direct_codes)
-    registry_codes = set(cancer_type_registry()["code"].astype(str))
+    registry_codes = set(_registry_parent_by_code())
     return sorted(registry_codes | direct_codes)
 
 
-def _matching_rows(df, code: str, order) -> dict[str, object]:
-    rows: dict[str, object] = {}
-    sub = df[df["cancer_code"] == code]
+def _matching_rows(code: str, order) -> dict[str, object]:
+    indexed = _rows_by_code_and_regimen().get(code, {})
+    rows = {}
     for regimen in order:
-        hit = sub[sub["regimen"] == regimen]
-        if not hit.empty:
-            rows[str(regimen)] = hit.iloc[0]
+        key = str(regimen)
+        if key in indexed:
+            rows[key] = indexed[key]
     return rows
 
 
-def _public_value(value):
-    try:
-        if pd.isna(value):
-            return None
-    except (TypeError, ValueError):
-        pass
-    if hasattr(value, "item"):
-        return value.item()
-    return value
-
-
 def _record_from_row(row, *, requested_code: str, resolved_code: str, inheritance_kind: str):
-    record = {key: _public_value(row[key]) for key in row.index}
-    record["requested_cancer_code"] = requested_code
-    record["resolved_cancer_code"] = resolved_code
+    record = evidence_record(
+        row,
+        requested_code=requested_code,
+        resolved_code=resolved_code,
+        inheritance_kind=inheritance_kind,
+    )
     record["selected_regimen"] = record.get("regimen")
-    record["inheritance_kind"] = inheritance_kind
-    record["is_inherited_evidence"] = requested_code != resolved_code
     return record
 
 
 def _resolve_ici_response_source(requested_code: str, order, *, inherit: bool):
-    df = _valued_rows()
-    direct = _matching_rows(df, requested_code, order)
-    if direct:
-        return requested_code, "direct", direct
-
-    # A curated gap row is a reviewed decision about *this* code, so it outranks any
-    # inherited evidence — exactly as a blank-value TMB row stops the ancestor walk.
-    # It is reported whether or not inheritance is enabled, because the review applies
-    # to the requested code itself; ``tmb._resolve_tmb_row`` makes the same ordering.
-    if requested_code in _gap_rows():
-        return requested_code, "direct_missing", {}
-    if not inherit:
-        # No rows and nothing to inherit from: the code is unreviewed, not a direct
-        # hit. ``apd1._resolve_apd1_response_row`` reports "missing" here too.
-        return requested_code, "missing", {}
-
-    source_code = cancer_evidence_source_code(requested_code)
-    if source_code != requested_code:
-        source = _matching_rows(df, source_code, order)
-        if source:
-            return source_code, "source_scope", source
-
-    registry = cancer_type_registry().set_index("code")
-    cur = _parent_code(requested_code, registry)
-    seen = {requested_code}
-    while cur and cur not in seen:
-        seen.add(cur)
-        inherited = _matching_rows(df, cur, order)
-        if inherited:
-            return cur, "ancestor", inherited
-        cur = _parent_code(cur, registry)
-    return requested_code, "missing", {}
-
-
-def _resolve_ici_response_rows(requested_code: str, order, *, inherit: bool):
-    return _resolve_ici_response_source(requested_code, order, inherit=inherit)
+    gaps = _gap_rows()
+    resolution = resolve_evidence(
+        requested_code,
+        direct_lookup=lambda code: _matching_rows(code, order) or None,
+        direct_gap_lookup=gaps.get,
+        source_code_for=cancer_evidence_source_code,
+        parent_by_code=_registry_parent_by_code,
+        inherit=inherit,
+    )
+    rows = (
+        resolution.payload
+        if resolution.payload is not None and resolution.inheritance_kind != "direct_missing"
+        else {}
+    )
+    return resolution.resolved_code, resolution.inheritance_kind, rows
 
 
 def resolve_ici_response_source(cancer_type, *, regimen=None, fallback=True, inherit=True) -> dict:
@@ -719,10 +699,10 @@ def cancer_ici_response(
     duplicated in default bulk maps. Pass ``include_inherited=True`` to expand across
     registry codes with the same resolver used for individual lookups.
     """
-    maps = _regimen_maps()
     order = (regimen,) if regimen is not None else REGIMEN_FALLBACK
 
     if cancer_type is None:
+        maps = _regimen_maps()
         if include_inherited:
             out = {}
             for code in _bulk_lookup_codes(include_inherited=True):
@@ -762,54 +742,15 @@ def cancer_ici_response(
         return out
 
     code = resolve_cancer_type(cancer_type)
+    _, _, rows = _resolve_ici_response_source(code, order, inherit=inherit)
 
     if regimen is None and not fallback:
-        per = {r: maps[r][code] for r in REGIMEN_FALLBACK if code in maps.get(r, {})}
-        if per or not inherit:
-            return per
-        # Same audited-gap guard as the scalar path below: a reviewed gap must not
-        # inherit an ancestor's per-regimen map either, or the two lookup paths would
-        # disagree about whether the code has a value.
-        if code in _gap_rows():
-            return {}
-        source_code = cancer_evidence_source_code(code)
-        if source_code != code:
-            hit = {
-                r: maps[r][source_code] for r in REGIMEN_FALLBACK if source_code in maps.get(r, {})
-            }
-            if hit:
-                return hit
-        # walk ancestors for a per-regimen mapping
-        reg = cancer_type_registry().set_index("code")
-        cur, seen = code, set()
-        while cur and cur not in seen:
-            seen.add(cur)
-            hit = {r: maps[r][cur] for r in REGIMEN_FALLBACK if cur in maps.get(r, {})}
-            if hit:
-                return hit
-            cur = _parent_code(cur, reg)
-        return {}
+        return {key: float(row["orr_pct"]) for key, row in rows.items()}
 
-    val, _ = _resolve_with_fallback(code, maps, order)
-    if val is not None or not inherit:
-        return val
-    # Keep the value path and the resolver in agreement: a curated gap row means this
-    # code has been reviewed and has no representative ORR, so it must not inherit one.
-    if code in _gap_rows():
-        return None
-    source_code = cancer_evidence_source_code(code)
-    if source_code != code:
-        val, _ = _resolve_with_fallback(source_code, maps, order)
-        if val is not None:
-            return val
-    reg = cancer_type_registry().set_index("code")
-    cur, seen = code, set()
-    while cur and cur not in seen:
-        seen.add(cur)
-        val, _ = _resolve_with_fallback(cur, maps, order)
-        if val is not None:
-            return val
-        cur = _parent_code(cur, reg)
+    for key in order:
+        row = rows.get(str(key))
+        if row is not None:
+            return float(row["orr_pct"])
     return None
 
 
@@ -882,7 +823,7 @@ def cancer_ici_response_record(
         }
 
     requested_code = resolve_cancer_type(cancer_type)
-    resolved_code, inheritance_kind, rows = _resolve_ici_response_rows(
+    resolved_code, inheritance_kind, rows = _resolve_ici_response_source(
         requested_code, order, inherit=inherit
     )
 

@@ -16,9 +16,13 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-import pandas as pd
-
-from .cancer_types import cancer_evidence_source_code, cancer_type_registry, resolve_cancer_type
+from ._evidence_resolution import evidence_record, resolve_evidence
+from .cancer_types import (
+    _registry_parent_by_code,
+    cancer_evidence_source_code,
+    cancer_type_registry,  # noqa: F401 - retained as an existing module attribute
+    resolve_cancer_type,
+)
 from .ici import response_anchor_evidence_df
 from .load_dataset import _register_derived_cache, get_data
 
@@ -43,10 +47,8 @@ def cancer_apd1_response_df():
 def _apd1_response_evidence_frame():
     """The joined aPD-1 anchor+evidence frame, built once.
 
-    Same shared join as :func:`oncoref.ici.cancer_ici_response_df`, and the same
-    rebuild-per-lookup cost: ``_resolve_apd1_response_row`` runs one lookup per
-    requested code, and the ``include_inherited`` bulk maps run one per registry code.
-    Public callers still receive a defensive copy."""
+    Same shared join as :func:`oncoref.ici.cancer_ici_response_df`. Public callers
+    still receive a defensive copy."""
     return response_anchor_evidence_df(
         get_data("cancer-apd1-response"),
         value_col="apd1_orr_pct",
@@ -66,6 +68,24 @@ def _apd1_valued_rows():
 _register_derived_cache(_apd1_valued_rows.cache_clear)
 
 
+@lru_cache(maxsize=1)
+def _apd1_rows_by_code() -> dict[str, object]:
+    """Cached direct-row index. Callers must treat rows as read-only."""
+    return {str(row["cancer_code"]): row for _, row in _apd1_valued_rows().iterrows()}
+
+
+_register_derived_cache(_apd1_rows_by_code.cache_clear)
+
+
+@lru_cache(maxsize=1)
+def _apd1_value_map() -> dict[str, float]:
+    """Cached direct numeric map. Callers must treat it as read-only."""
+    return {code: float(row["apd1_orr_pct"]) for code, row in _apd1_rows_by_code().items()}
+
+
+_register_derived_cache(_apd1_value_map.cache_clear)
+
+
 def cancer_apd1_response(cancer_type=None, *, inherit=True, include_inherited=False):
     """Anti-PD-1 monotherapy ORR (%) for one cancer type, or the whole
     ``{code: orr_pct}`` map. ``cancer_type`` is resolved through
@@ -79,95 +99,44 @@ def cancer_apd1_response(cancer_type=None, *, inherit=True, include_inherited=Fa
     used for individual lookups, so source-scoped children such as ``COAD_MSI`` and
     ``READ_MSI`` are included with inherited values.
     """
-    vals = _apd1_valued_rows()
-    mapping = dict(zip(vals["cancer_code"].astype(str), vals["apd1_orr_pct"].astype(float)))
+    mapping = _apd1_value_map()
     if cancer_type is None:
         if include_inherited:
             out = {}
-            codes = sorted(set(cancer_type_registry()["code"].astype(str)) | set(mapping))
+            codes = sorted(set(_registry_parent_by_code()) | set(mapping))
             for code in codes:
                 value = cancer_apd1_response(code, inherit=inherit)
                 if value is not None:
                     out[code] = value
             return out
-        return mapping
+        return dict(mapping)
     code = resolve_cancer_type(cancer_type)
-    if code in mapping or not inherit:
-        return mapping.get(code)
-    source_code = cancer_evidence_source_code(code)
-    if source_code != code and source_code in mapping:
-        return mapping[source_code]
-    reg = cancer_type_registry().set_index("code")
-    cur, seen = code, set()
-    while cur and cur not in seen:
-        seen.add(cur)
-        if cur in mapping:
-            return mapping[cur]
-        if cur not in reg.index:
-            break
-        cur = str(reg.loc[cur].get("parent_code", "") or "").strip() or None
-    return None
-
-
-def _parent_code(code: str, registry) -> str | None:
-    if code not in registry.index:
-        return None
-    parent = registry.loc[code].get("parent_code", "")
-    if pd.isna(parent):
-        return None
-    parent = str(parent).strip()
-    return parent or None
-
-
-def _public_value(value):
-    try:
-        if pd.isna(value):
-            return None
-    except (TypeError, ValueError):
-        pass
-    if hasattr(value, "item"):
-        return value.item()
-    return value
+    _, _, row = _resolve_apd1_response_row(code, inherit=inherit)
+    return None if row is None else float(row["apd1_orr_pct"])
 
 
 def _record_from_row(row, *, requested_code: str, resolved_code: str, inheritance_kind: str):
-    record = {key: _public_value(row[key]) for key in row.index}
-    record["requested_cancer_code"] = requested_code
-    record["resolved_cancer_code"] = resolved_code
+    record = evidence_record(
+        row,
+        requested_code=requested_code,
+        resolved_code=resolved_code,
+        inheritance_kind=inheritance_kind,
+    )
     record["selected_regimen"] = record.get("drug_target")
     record["selected_drug_target"] = record.get("drug_target")
-    record["inheritance_kind"] = inheritance_kind
-    record["is_inherited_evidence"] = requested_code != resolved_code
     return record
 
 
-def _matching_row(df: pd.DataFrame, code: str):
-    hit = df[df["cancer_code"].astype(str) == code]
-    return None if hit.empty else hit.iloc[0]
-
-
 def _resolve_apd1_response_row(requested_code: str, *, inherit: bool):
-    df = _apd1_valued_rows()
-    direct = _matching_row(df, requested_code)
-    if direct is not None or not inherit:
-        return requested_code, "direct" if direct is not None else "missing", direct
-
-    source_code = cancer_evidence_source_code(requested_code)
-    if source_code != requested_code:
-        source = _matching_row(df, source_code)
-        if source is not None:
-            return source_code, "source_scope", source
-
-    registry = cancer_type_registry().set_index("code")
-    cur = _parent_code(requested_code, registry)
-    seen = {requested_code}
-    while cur and cur not in seen:
-        seen.add(cur)
-        inherited = _matching_row(df, cur)
-        if inherited is not None:
-            return cur, "ancestor", inherited
-        cur = _parent_code(cur, registry)
-    return requested_code, "missing", None
+    rows = _apd1_rows_by_code()
+    resolution = resolve_evidence(
+        requested_code,
+        direct_lookup=rows.get,
+        source_code_for=cancer_evidence_source_code,
+        parent_by_code=_registry_parent_by_code,
+        inherit=inherit,
+    )
+    return resolution.resolved_code, resolution.inheritance_kind, resolution.payload
 
 
 def resolve_apd1_response_source(cancer_type, *, inherit=True) -> dict:
@@ -215,10 +184,9 @@ def cancer_apd1_response_record(cancer_type=None, *, inherit=True, include_inher
     source metadata.
     """
     if cancer_type is None:
-        df = _apd1_valued_rows()
-        direct_codes = set(df["cancer_code"].astype(str).unique())
+        direct_codes = set(_apd1_rows_by_code())
         codes = (
-            sorted(set(cancer_type_registry()["code"].astype(str)) | direct_codes)
+            sorted(set(_registry_parent_by_code()) | direct_codes)
             if include_inherited
             else sorted(direct_codes)
         )

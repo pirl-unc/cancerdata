@@ -730,11 +730,6 @@ def test_ici_response_record_whole_table_matches_value_maps():
     assert {code: record["orr_pct"] for code, record in pdl1_records.items()} == pdl1_values
 
 
-def test_parent_code_helper_treats_nan_parent_as_missing():
-    registry = ici.cancer_type_registry().set_index("code")
-    assert ici._parent_code("CRC", registry) is None
-
-
 def test_regimen_maps_cached():
     # _regimen_maps is memoized (same object back from the cache).
     assert ici._regimen_maps() is ici._regimen_maps()
@@ -934,7 +929,7 @@ def test_only_declared_codes_may_carry_a_blank_orr():
 
 
 def test_audited_gap_agrees_across_every_lookup_surface():
-    """The gap guard lives in four resolution paths; they must not drift apart."""
+    """Every public lookup surface must preserve the shared gap resolution."""
     for code in ici._ICI_EVIDENCE_OVERRIDES:
         assert ici.cancer_ici_response(code) is None, code
         assert ici.cancer_ici_response(code, inherit=False) is None, code

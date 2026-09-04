@@ -145,6 +145,12 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
 addopts = "-v --tb=short"
+filterwarnings = [
+    # Frozen compatibility accessors intentionally warn in user code. Their dedicated
+    # contract test forces and verifies every warning; ordinary feature tests need not
+    # repeat the same process-global warn-once messages in the suite summary.
+    "ignore:'.*' is a frozen compatibility snapshot .*:DeprecationWarning",
+]
 
 [tool.coverage.run]
 source = ["oncoref"]
