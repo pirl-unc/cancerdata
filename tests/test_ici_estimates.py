@@ -4,6 +4,8 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 
+import pytest
+
 from oncoref import ici
 
 # PMIDs that the reference audit found pointing to UNRELATED papers (birds, diabetic
@@ -124,6 +126,77 @@ def test_pooled_verified_only_and_alternates_switches():
     loose = ici.pooled_ici_response("READ", regimen="PD-1", metric="ORR", verified_only=False)
     strict = ici.pooled_ici_response("READ", regimen="PD-1", metric="ORR")
     assert len(loose["sources"]) >= len(strict["sources"])
+
+
+@pytest.mark.parametrize("regimen", [None, "PD-1+CTLA-4"])
+@pytest.mark.parametrize("include_alternates", [False, True])
+def test_pooled_adcc_prefers_direct_combination_evidence(regimen, include_alternates):
+    result = ici.pooled_ici_response("ADCC", regimen=regimen, include_alternates=include_alternates)
+    assert result["requested_cancer_code"] == result["cancer_code"] == "ADCC"
+    assert result["n_studies"] == result["n_pooled"] == (2 if include_alternates else 1)
+    assert result["responders_total"] == (3 if include_alternates else 2)
+    assert result["n_total"] == (51 if include_alternates else 32)
+    assert result["pooled_pct"] == (5.9 if include_alternates else 6.2)
+    assert (result["ci_low"], result["ci_high"]) == ici._wilson_ci(
+        result["responders_total"], result["n_total"]
+    )
+    assert "DOI:10.1038/s41591-023-02518-x" in result["refs"]
+    assert "PMID:35777186" not in result["refs"]  # Pan-salivary monotherapy is context only.
+    assert {s["drug"] for s in result["sources"]} == {"nivolumab+ipilimumab"}
+
+
+@pytest.mark.parametrize("code", ["ADCC", "ACINIC"])
+@pytest.mark.parametrize("metric", ["ORR", "PFS"])
+def test_pooled_salivary_monotherapy_keeps_source_scope_fallback(code, metric):
+    result = ici.pooled_ici_response(code, regimen="PD-1", metric=metric)
+    source = ici.pooled_ici_response("SGC", regimen="PD-1", metric=metric)
+    assert result == {**source, "requested_cancer_code": code}
+
+
+def test_pooled_source_resolution_is_endpoint_specific():
+    direct = ici.pooled_ici_response("ADCC", metric="pfs", include_alternates=False)
+    assert direct["cancer_code"] == "ADCC"
+    assert direct["value_range"] == (4.4, 4.4)
+    assert direct["poolable"] is False
+    assert direct["pooled_pct"] is None
+
+    # ADCC has direct PFS/ORR evidence, but no directly reported CRR.
+    source = ici.pooled_ici_response("ADCC", metric="CRR")
+    assert source["cancer_code"] == "SGC"
+    assert source["responders_total"] == 1
+    assert source["n_total"] == 109
+    missing = ici.pooled_ici_response("ADCC", regimen="PD-1+CTLA-4", metric="CRR")
+    assert missing["n_studies"] == 0
+    assert missing["pooled_pct"] is None
+
+
+@pytest.mark.parametrize("column, value", [("source_verified", False), ("role", "alternate")])
+def test_pooled_filters_do_not_replace_direct_evidence_with_proxy(monkeypatch, column, value):
+    estimates = ici.cancer_ici_response_estimates_df()
+    estimates.loc[estimates["cancer_code"] == "ADCC", column] = value
+    monkeypatch.setattr(ici, "cancer_ici_response_estimates_df", lambda: estimates.copy())
+
+    result = ici.pooled_ici_response("ADCC", include_alternates=False)
+    assert result["cancer_code"] == "ADCC"
+    assert result["n_studies"] == 0
+    assert result["pooled_pct"] is None
+    assert result["sources"] == []
+
+
+def test_salivary_comparator_estimates_are_context_not_subtype_pool_inputs():
+    estimates = ici.cancer_ici_response_estimates_df().set_index("estimate_id")
+    for estimate_id, regimen in (
+        ("ICI-2d5cb04e92-01", "PD-1+CTLA-4"),  # Non-ACC, not acinic-cell-isolated.
+        ("ICI-59bed8bbec-01", "PD-1+CTLA-4"),
+        ("ICI-c99b80b7ea-01", "PD-1"),  # Pan-salivary monotherapy, not ACC combo.
+    ):
+        row = estimates.loc[estimate_id]
+        assert row["value_basis"] == "reported_context"
+        assert row["regimen"] == regimen
+    result = ici.pooled_ici_response("ACINIC", regimen="PD-1+CTLA-4", verified_only=False)
+    assert result["n_studies"] == 0
+    assert result["pooled_pct"] is None
+    assert ici.pooled_ici_response("ACINIC")["cancer_code"] == "SGC"
 
 
 def test_derived_blends_marked_and_never_pooled():

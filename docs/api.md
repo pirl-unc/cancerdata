@@ -297,6 +297,12 @@ gene_ids.gene_identifier_mapping_summary()
 (`PD-1`, then `PD-L1`, then `PD-1+CTLA-4`). The older
 `REGIMEN_FALLBACK` name remains available in `oncoref.ici` for compatibility.
 
+`selected_ici_regimen(code, inherit=True)` identifies the regimen selected by
+`best_available_ici_response(code, inherit=True)`, including source-scoped and
+ancestor evidence. Pass the same `inherit` setting to both helpers; audited gaps
+and missing values return no regimen. The legacy `cancer_ici_regimen(code)` keeps
+its source-scope-only behavior and does not walk ancestors.
+
 ### Examples
 
 ```python
@@ -361,6 +367,20 @@ not-estimable, not-reported, and unverified values. There are no remaining legac
   from pooling.
 - `derived_blend` is a curator-modeled value without a single trial estimate and is
   excluded from pooling.
+
+`pooled_ici_response()` prefers direct evidence for the requested metric and regimen
+before trying the code's evidence-source fallback; it does not walk ancestors.
+Non-poolable value bases are removed before selecting the source. Verification and
+primary/alternate filters then apply to that source without silently substituting
+a different population. For example, ADCC combination pooling uses its direct
+trials, while pinned ADCC anti-PD-1 pooling uses the pan-salivary SGC source.
+
+The non-ACC salivary combination cohort is retained as context for ACINIC, not as
+an acinic-cell-specific estimate ([Vos et al.](https://www.nature.com/articles/s41591-023-02518-x)).
+Likewise, the pan-salivary pembrolizumab comparator under ADCC remains context,
+not an ADCC combination pool input ([KEYNOTE-158](https://pubmed.ncbi.nlm.nih.gov/35777186/)).
+These contextual rows retain their reported treatment regimens and values in the
+long table but are excluded from pooling.
 
 The audit can be reproduced with:
 
