@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 import oncoref
 from oncoref import antigen_coverage, apd1, cta_coverage, cta_peptides, ici, ici_response
@@ -80,6 +81,26 @@ def test_ici_response_facade_delegates_to_compatibility_api():
         ici_response.ici_source_locator_audit_df(),
         ici.cancer_ici_source_locator_audit_df(),
     )
+
+
+@pytest.mark.parametrize("code, orr", [("LUAD_EGFR", 19.0), ("STAD_CIN", 12.0)])
+def test_selected_ici_regimen_defaults_to_inherited_response(code, orr):
+    assert ici_response.best_available_ici_response(code) == orr
+    assert ici_response.selected_ici_regimen(code) == "PD-1"
+    # The legacy helper deliberately retains its source-scope-only contract.
+    assert ici.cancer_ici_regimen(code) is None
+
+
+@pytest.mark.parametrize("inherit", [False, True])
+def test_selected_ici_regimen_matches_values_records_and_sources_across_registry(inherit):
+    for code in oncoref.cancer_type_registry()["code"]:
+        value = ici_response.best_available_ici_response(code, inherit=inherit)
+        record = ici_response.best_available_ici_response_record(code, inherit=inherit)
+        source = ici_response.ici_response_source(code, inherit=inherit)
+        regimen = ici_response.selected_ici_regimen(code, inherit=inherit)
+        assert regimen == source["selected_regimen"], code
+        assert regimen == (record["regimen"] if record else None), code
+        assert (regimen is None) == (value is None), code
 
 
 def test_cta_peptides_clear_count_map_name(monkeypatch):

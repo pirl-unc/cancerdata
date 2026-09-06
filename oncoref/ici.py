@@ -968,19 +968,31 @@ def pooled_ici_response(
     per-source breakdown and ``value_range`` are always returned so heterogeneity (and
     any overlapping subgroups) stays visible. ``verified_only`` (default) keeps only
     audit-confirmed citations.
+
+    Direct evidence for the requested endpoint and optional regimen takes precedence
+    over evidence-source fallback (for example, ADCC combination evidence before
+    pan-salivary SGC evidence). Non-poolable value bases are excluded before choosing
+    the source code; contextual rows cannot mask that fallback. ``verified_only`` and
+    ``include_alternates`` then filter the chosen source without switching populations.
+    Parent-tree inheritance is not applied.
     """
     requested_code = resolve_cancer_type(cancer_type)
-    code = cancer_evidence_source_code(requested_code)
     metric = str(metric).upper()
     df = cancer_ici_response_estimates_df()
-    sub = df[(df["cancer_code"] == code) & (df["metric"].astype(str).str.upper() == metric)]
+    candidates = df[df["metric"].astype(str).str.upper() == metric]
     if regimen is not None:
-        sub = sub[sub["regimen"] == regimen]
+        candidates = candidates[candidates["regimen"] == regimen]
     # Derived blends and contextual comparator/overlapping rows are audit evidence, not
     # subtype-specific pool inputs.
-    if "value_basis" in sub.columns:
-        basis = sub["value_basis"].astype(str)
-        sub = sub[~basis.isin(NON_POOLABLE_VALUE_BASIS)]
+    if "value_basis" in candidates.columns:
+        basis = candidates["value_basis"].astype(str)
+        candidates = candidates[~basis.isin(NON_POOLABLE_VALUE_BASIS)]
+    code = requested_code
+    sub = candidates[candidates["cancer_code"] == code]
+    if sub.empty:
+        code = cancer_evidence_source_code(requested_code)
+        if code != requested_code:
+            sub = candidates[candidates["cancer_code"] == code]
     if verified_only:
         sub = sub[sub["source_verified"].map(_truthy)]
     if not include_alternates:

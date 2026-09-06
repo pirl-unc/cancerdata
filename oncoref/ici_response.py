@@ -150,9 +150,13 @@ def ici_response_source(cancer_type, *, regimen=None, fallback: bool = True, inh
     )
 
 
-def selected_ici_regimen(cancer_type):
-    """Regimen selected by ``best_available_ici_response`` for one cancer type."""
-    return cancer_ici_regimen(cancer_type)
+def selected_ici_regimen(cancer_type, *, inherit: bool = True):
+    """Regimen selected by ``best_available_ici_response`` for one cancer type.
+
+    Uses the same direct/source-scope/ancestor resolution and ``inherit`` policy as
+    the response lookup. Returns ``None`` for audited gaps and unresolved codes.
+    """
+    return resolve_ici_response_source(cancer_type, inherit=inherit)["selected_regimen"]
 
 
 __all__ = [

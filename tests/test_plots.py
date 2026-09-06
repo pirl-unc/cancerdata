@@ -81,6 +81,18 @@ def test_ici_orr_pooled_forest_renders(tmp_path):
     plots.ici_orr_pooled_forest(regimen="PD-1", save=str(tmp_path / "f2.png"))
 
 
+def test_ici_orr_pooled_forest_keeps_adcc_trial_points_and_ci(monkeypatch):
+    from oncoref import ici
+
+    monkeypatch.setattr(ici, "cancer_ici_response", lambda: {"ADCC": 6.0})
+    axis = plots.ici_orr_pooled_forest().axes[0]
+    # Both directly reported combo trials plus the primary-only pooled diamond.
+    assert sorted(float(c.get_offsets()[0, 0]) for c in axis.collections) == [5.0, 6.0, 6.2]
+    pooled_ci = [line for line in axis.lines if line.get_linewidth() == 2.6]
+    assert len(pooled_ci) == 1
+    assert tuple(pooled_ci[0].get_xdata()) == ici._wilson_ci(2, 32)
+
+
 def test_incidence_bad_region():
     with pytest.raises(ValueError, match="region must be"):
         plots.incidence_vs_mortality(region="moon")
